@@ -1,7 +1,7 @@
 [build]
   # Install root deps, backend deps (for serverless functions), and frontend deps then build
   command = "npm ci && npm ci --prefix backend && npm ci --prefix frontend && npm run build --prefix frontend"
-  publish = "frontend/build"
+  publish = "aurorabnk/frontend/build"
 
 # Exclude node_modules and markdown docs from secret scanning (false positives)
 
