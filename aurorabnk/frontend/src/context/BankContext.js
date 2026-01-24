@@ -71,17 +71,28 @@ export const BankProvider = ({ children }) => {
 
   const [apiBase, setApiBase] = useState(getApiBase());
 
-  // Helper to map Express-style endpoints to Netlify Functions in production
-  const getEndpoint = (path) => {
-    // Always use /api/* in production and rely on Netlify redirects
-    if (process.env.NODE_ENV === 'production') {
-      // Ensure path starts with /api
-      let apiPath = path.startsWith('/api') ? path : `/api${path.startsWith('/') ? '' : '/'}${path}`;
-      return apiPath;
-    }
-    // In development, use apiBase
-    return `${apiBase}${path.startsWith('/') ? '' : '/'}${path}`;
-  };
+
+// Map logical API paths to Netlify function endpoints for production
+const FUNCTION_MAP = {
+  '/auth/login': '/auth-login',
+  '/auth/register': '/auth-register',
+  '/auth/profile': '/dashboard-user',
+  '/transfers': '/transfers',
+  '/transactions': '/transactions',
+  '/bills': '/bills',
+  '/notifications': '/notifications',
+  '/chat/conversation': '/chat-conversation',
+  '/dashboard': '/dashboard',
+  '/admin/users': '/admin-users'
+};
+
+// getEndpoint is now a stable function outside the component
+const getEndpoint = (path) => {
+  if (process.env.NODE_ENV === 'production') {
+    return `/api${FUNCTION_MAP[path] || path}`;
+  }
+  return `${API_BASE}${path}`;
+};
 
   // Try to detect a reachable backend and fall back to relative `/api` if unreachable.
   const tryResolveApiBase = useCallback(async () => {
