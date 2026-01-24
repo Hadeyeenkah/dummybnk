@@ -1,7 +1,6 @@
 {
   "name": "my-fullstack-app",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "dev": "vite",
     "dev:all": "concurrently \"npm --prefix backend start\" \"npm --prefix frontend start\"",

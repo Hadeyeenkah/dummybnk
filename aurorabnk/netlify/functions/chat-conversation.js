@@ -1,8 +1,8 @@
 const jwt = require('jsonwebtoken');
-const { connectDB } = require('../../backend/src/config/database');
-const ChatConversation = require('../../backend/src/models/Chat').ChatConversation;
-const ChatMessage = require('../../backend/src/models/Chat').ChatMessage;
-const User = require('../../backend/src/models/User');
+const { connectDB } = require('backend/src/config/database');
+const ChatConversation = require('backend/src/models/Chat').ChatConversation;
+const ChatMessage = require('backend/src/models/Chat').ChatMessage;
+const User = require('backend/src/models/User');
 
 const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key';
 

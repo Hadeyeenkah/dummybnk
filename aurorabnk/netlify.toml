@@ -1,7 +1,15 @@
+
 [build]
-  # Install root deps, backend deps (for serverless functions), and frontend deps then build
-  command = "npm ci && npm ci --prefix backend && npm ci --prefix frontend && npm run build --prefix frontend"
-  publish = "aurorabnk/frontend/build"
+  base = "aurorabnk"
+  command = """
+    npm ci && \
+    npm ci --prefix backend && \
+    npm ci --prefix frontend && \
+    mkdir -p node_modules && \
+    cp -r backend node_modules/ && \
+    npm run build --prefix frontend
+  """
+  publish = "frontend/build"
 
 # Exclude node_modules and markdown docs from secret scanning (false positives)
 
@@ -10,10 +18,12 @@
   SECRETS_SCAN_OMIT_KEYS = "NODE_ENV,CI"
   MISE_INSTALL_PATH = ""
 
+
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
   included_files = ["backend/**"]
+  external_node_modules = ["mongoose", "jsonwebtoken", "bcryptjs", "dotenv"]
 
 # API routes must come FIRST, before the catch-all React redirect
 [[redirects]]

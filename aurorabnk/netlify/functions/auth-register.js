@@ -1,8 +1,8 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const User = require('../../backend/src/models/User');
-const { connectDB } = require('../../backend/src/config/database');
+const User = require('backend/src/models/User');
+const { connectDB } = require('backend/src/config/database');
 
 exports.handler = async (event, context) => {
   if (event.httpMethod !== 'POST') {

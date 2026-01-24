@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const User = require('../../backend/src/models/User');
-const { connectDB } = require('../../backend/src/config/database');
+const User = require('backend/src/models/User');
+const { connectDB } = require('backend/src/config/database');
 
 const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key';
 

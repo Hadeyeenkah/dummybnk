@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
-const { connectDB } = require('../../backend/src/config/database');
-const Notification = require('../../backend/src/models/Notification');
+const { connectDB } = require('backend/src/config/database');
+const Notification = require('backend/src/models/Notification');
 
 const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key';
 

@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
-const { connectDB } = require('../../backend/src/config/database');
-const Transaction = require('../../backend/src/models/Transaction');
+const { connectDB } = require('backend/src/config/database');
+const Transaction = require('backend/src/models/Transaction');
 
 const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key';
 
