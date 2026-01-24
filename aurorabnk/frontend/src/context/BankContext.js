@@ -128,7 +128,7 @@ export const BankProvider = ({ children }) => {
     setApiBase('/api');
     setBackendError('Backend unreachable. Using relative `/api` proxy. Start backend or set REACT_APP_API_BASE.');
     console.warn('⚠️  Backend not reachable at configured hosts; using /api fallback');
-  }, [getEndpoint]);
+  }, []);
 
 
   const fetchProfile = useCallback(async () => {
@@ -218,7 +218,7 @@ export const BankProvider = ({ children }) => {
       setCurrentUser(null);
       return false;
     }
-  }, [apiBase, getEndpoint]);
+  }, []);
 
   // Initialize auth on mount - check if user has an active session
   useEffect(() => {
