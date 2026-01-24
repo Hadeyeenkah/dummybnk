@@ -127,7 +127,6 @@ const getEndpoint = (path) => {
         const r = await tryFetch(u);
         if (r && (r.ok || r.status === 404 || r.status === 401)) {
           // 404 or 401 still indicates host reachable (server responded)
-          setApiBase(normalized);
           setBackendError(null);
           console.log('🔍 Resolved API base to', normalized);
           return;
@@ -136,7 +135,6 @@ const getEndpoint = (path) => {
     }
 
     // Nothing reachable: fall back to relative proxy and set backend error
-    setApiBase('/api');
     setBackendError('Backend unreachable. Using relative `/api` proxy. Start backend or set REACT_APP_API_BASE.');
     console.warn('⚠️  Backend not reachable at configured hosts; using /api fallback');
   }, [getEndpoint]);
