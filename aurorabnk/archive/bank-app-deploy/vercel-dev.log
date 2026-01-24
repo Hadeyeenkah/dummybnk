@@ -1,0 +1,4 @@
+nohup: ignoring input
+Vercel CLI 50.4.5
+Retrieving project…
+Error: request to https://api.vercel.com/v9/projects/prj_V63oQZSx4d3waeeLet5y7zW8t11E?teamId=team_3ak7ykz8NlFHllWwj1uN0D1I failed, reason: getaddrinfo EAI_AGAIN api.vercel.com

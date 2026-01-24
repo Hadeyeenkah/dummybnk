@@ -1,0 +1,51 @@
+
+> aurora-bank@1.0.0 dev:api
+> node dev-server.js
+
+Handler not a function for /home/hadeyeenkah/bank-app/bank-app-deploy/api/_lib/auth.js
+Mount /api/_lib/cors -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/_lib/cors.js
+Handler not a function for /home/hadeyeenkah/bank-app/bank-app-deploy/api/_lib/db.js
+Mount /api/admin/conversations -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/admin/conversations.js
+Mount /api/admin/users/:userId/balance -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/admin/users/[userId]/balance.js
+Mount /api/admin/users/:userId/messages -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/admin/users/[userId]/messages.js
+Mount /api/admin/users/:userId/transactions -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/admin/users/[userId]/transactions.js
+Mount /api/auth/change-password -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/change-password.js
+Mount /api/auth/confirm-2fa -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/confirm-2fa.js
+Mount /api/auth/enable-2fa -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/enable-2fa.js
+Mount /api/auth/forgot-password -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/forgot-password.js
+Mount /api/auth/login -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/login.js
+Mount /api/auth/logout -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/logout.js
+Mount /api/auth/lookup -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/lookup.js
+Mount /api/auth/profile -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/profile.js
+Mount /api/auth/register -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/register.js
+Mount /api/auth/reset-password -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/reset-password.js
+Mount /api/auth/verify-2fa -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/verify-2fa.js
+Mount /api/auth/verify-email -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/verify-email.js
+Mount /api/chat/messages/:conversationId -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/chat/messages/[conversationId].js
+Mount /api/health -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/health.js
+node:events:502
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::4000
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at Function.listen (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/express/lib/application.js:635:24)
+    at Object.<anonymous> (/home/hadeyeenkah/bank-app/bank-app-deploy/dev-server.js:99:5)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1944:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 4000
+}
+
+Node.js v20.19.5

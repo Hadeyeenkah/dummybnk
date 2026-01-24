@@ -1,0 +1,18 @@
+[debug] [2026-01-16T21:34:32.710Z] ----------------------------------------------------------------------
+[debug] [2026-01-16T21:34:32.713Z] Command:       /home/hadeyeenkah/.nvm/versions/node/v20.19.5/bin/node /home/hadeyeenkah/.nvm/versions/node/v20.19.5/bin/firebase login
+[debug] [2026-01-16T21:34:32.713Z] CLI Version:   14.19.1
+[debug] [2026-01-16T21:34:32.713Z] Platform:      linux
+[debug] [2026-01-16T21:34:32.713Z] Node Version:  v20.19.5
+[debug] [2026-01-16T21:34:32.714Z] Time:          Fri Jan 16 2026 15:34:32 GMT-0600 (Central Standard Time)
+[debug] [2026-01-16T21:34:32.714Z] ----------------------------------------------------------------------
+[debug] 
+[info] i  The Firebase CLI’s MCP server feature can optionally make use of Gemini in Firebase. Learn more about Gemini in Firebase and how it uses your data: https://firebase.google.com/docs/gemini-in-firebase#how-gemini-in-firebase-uses-your-data 
+[info] 
+[info] i  Firebase optionally collects CLI and Emulator Suite usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you. 
+[info] 
+[info] i  To change your preferences at any time, run `firebase logout` and `firebase login` again. 
+[info] 
+[info] Visit this URL on this device to log in:
+[info] https://accounts.google.com/o/oauth2/auth?client_id=563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com&scope=email%20openid%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloudplatformprojects.readonly%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Ffirebase%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcloud-platform&response_type=code&state=634701514&redirect_uri=http%3A%2F%2Flocalhost%3A9005
+[info] 
+[info] Waiting for authentication...

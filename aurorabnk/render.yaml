@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: aurora-bank
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: |
+      # Install backend deps, build frontend, and prepare server
+      cd backend && npm install
+      cd ../frontend && npm install && npm run build
+    startCommand: node backend/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"
+      - key: MONGODB_URI
+        value: ""
+      - key: JWT_SECRET
+        value: ""
+      - key: CLIENT_ORIGIN
+        value: "https://aurora-bank.onrender.com"
+      - key: API_BASE
+        value: "https://aurora-bank.onrender.com"
+    healthCheckPath: /api/health
+    autoDeploy: true
+    manualDeploy: false

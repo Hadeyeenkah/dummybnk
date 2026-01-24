@@ -1,0 +1,115 @@
+nohup: ignoring input
+Handler not a function for /home/hadeyeenkah/bank-app/bank-app-deploy/api/_lib/auth.js
+Mount /api/_lib/cors -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/_lib/cors.js
+Handler not a function for /home/hadeyeenkah/bank-app/bank-app-deploy/api/_lib/db.js
+Handler not a function for /home/hadeyeenkah/bank-app/bank-app-deploy/api/_models/Account.js
+Mount /api/_models/Bill -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/_models/Bill.js
+Handler not a function for /home/hadeyeenkah/bank-app/bank-app-deploy/api/_models/Chat.js
+Mount /api/_models/LoginAttempt -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/_models/LoginAttempt.js
+Mount /api/_models/Transaction -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/_models/Transaction.js
+Mount /api/_models/User -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/_models/User.js
+Mount /api/admin/conversations -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/admin/conversations.js
+Mount /api/admin/users/:userId/balance -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/admin/users/[userId]/balance.js
+Mount /api/admin/users/:userId/messages -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/admin/users/[userId]/messages.js
+Mount /api/admin/users/:userId/transactions -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/admin/users/[userId]/transactions.js
+Mount /api/auth/change-password -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/change-password.js
+Mount /api/auth/confirm-2fa -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/confirm-2fa.js
+Mount /api/auth/enable-2fa -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/enable-2fa.js
+Mount /api/auth/forgot-password -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/forgot-password.js
+Mount /api/auth/login -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/login.js
+Mount /api/auth/logout -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/logout.js
+Mount /api/auth/lookup -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/lookup.js
+Mount /api/auth/profile -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/profile.js
+Mount /api/auth/register -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/register.js
+Mount /api/auth/reset-password -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/reset-password.js
+Mount /api/auth/verify-2fa -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/verify-2fa.js
+Mount /api/auth/verify-email -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/verify-email.js
+Mount /api/chat/messages/:conversationId -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/chat/messages/[conversationId].js
+Mount /api/health -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/health.js
+API dev server listening on http://localhost:4000
+❌ Database error: MongoServerError: bad auth : Authentication failed.
+    at Connection.sendCommand (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongodb/lib/cmap/connection.js:306:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Connection.command (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongodb/lib/cmap/connection.js:334:26)
+    at async executeScram (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongodb/lib/cmap/auth/scram.js:79:22)
+    at async ScramSHA256.auth (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongodb/lib/cmap/auth/scram.js:39:16)
+    at async performInitialHandshake (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongodb/lib/cmap/connect.js:104:13)
+    at async connect (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongodb/lib/cmap/connect.js:24:9) {
+  errorLabelSet: Set(2) { 'HandshakeError', 'ResetPool' },
+  errorResponse: {
+    ok: 0,
+    errmsg: 'bad auth : Authentication failed.',
+    code: 8000,
+    codeName: 'AtlasError'
+  },
+  ok: 0,
+  code: 8000,
+  codeName: 'AtlasError',
+  connectionGeneration: 0
+}
+Register error: bad auth : Authentication failed.
+❌ Database error: MongoServerError: bad auth : Authentication failed.
+    at Connection.sendCommand (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongodb/lib/cmap/connection.js:306:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async Connection.command (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongodb/lib/cmap/connection.js:334:26)
+    at async executeScram (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongodb/lib/cmap/auth/scram.js:79:22)
+    at async ScramSHA256.auth (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongodb/lib/cmap/auth/scram.js:39:16)
+    at async performInitialHandshake (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongodb/lib/cmap/connect.js:104:13)
+    at async connect (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongodb/lib/cmap/connect.js:24:9) {
+  errorLabelSet: Set(2) { 'HandshakeError', 'ResetPool' },
+  errorResponse: {
+    ok: 0,
+    errmsg: 'bad auth : Authentication failed.',
+    code: 8000,
+    codeName: 'AtlasError'
+  },
+  ok: 0,
+  code: 8000,
+  codeName: 'AtlasError',
+  connectionGeneration: 0
+}
+Login error: bad auth : Authentication failed.
+❌ Database error: MongooseServerSelectionError: Could not connect to any servers in your MongoDB Atlas cluster. One common reason is that you're trying to access the database from an IP that isn't whitelisted. Make sure your current IP address is on your Atlas cluster's IP whitelist: https://www.mongodb.com/docs/atlas/security-whitelist/
+    at _handleConnectionErrors (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongoose/lib/connection.js:1169:11)
+    at NativeConnection.openUri (/home/hadeyeenkah/bank-app/bank-app-deploy/node_modules/mongoose/lib/connection.js:1100:11)
+    at async connectDB (/home/hadeyeenkah/bank-app/bank-app-deploy/api/_lib/db.js:11:18)
+    at async loginHandler (/home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/login.js:12:5)
+    at async /home/hadeyeenkah/bank-app/bank-app-deploy/dev-server.js:66:9 {
+  errorLabelSet: Set(0) {},
+  reason: TopologyDescription {
+    type: 'ReplicaSetNoPrimary',
+    servers: Map(3) {
+      'ac-9xtcugm-shard-00-00.0am4siz.mongodb.net:27017' => [ServerDescription],
+      'ac-9xtcugm-shard-00-01.0am4siz.mongodb.net:27017' => [ServerDescription],
+      'ac-9xtcugm-shard-00-02.0am4siz.mongodb.net:27017' => [ServerDescription]
+    },
+    stale: false,
+    compatible: true,
+    heartbeatFrequencyMS: 10000,
+    localThresholdMS: 15,
+    setName: 'atlas-35ohbx-shard-0',
+    maxElectionId: null,
+    maxSetVersion: null,
+    commonWireVersion: 0,
+    logicalSessionTimeoutMinutes: null
+  },
+  code: undefined,
+  cause: TopologyDescription {
+    type: 'ReplicaSetNoPrimary',
+    servers: Map(3) {
+      'ac-9xtcugm-shard-00-00.0am4siz.mongodb.net:27017' => [ServerDescription],
+      'ac-9xtcugm-shard-00-01.0am4siz.mongodb.net:27017' => [ServerDescription],
+      'ac-9xtcugm-shard-00-02.0am4siz.mongodb.net:27017' => [ServerDescription]
+    },
+    stale: false,
+    compatible: true,
+    heartbeatFrequencyMS: 10000,
+    localThresholdMS: 15,
+    setName: 'atlas-35ohbx-shard-0',
+    maxElectionId: null,
+    maxSetVersion: null,
+    commonWireVersion: 0,
+    logicalSessionTimeoutMinutes: null
+  }
+}
+Login error: Could not connect to any servers in your MongoDB Atlas cluster. One common reason is that you're trying to access the database from an IP that isn't whitelisted. Make sure your current IP address is on your Atlas cluster's IP whitelist: https://www.mongodb.com/docs/atlas/security-whitelist/

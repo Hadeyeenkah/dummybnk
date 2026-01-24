@@ -1,0 +1,13 @@
+nohup: ignoring input
+
+> bank-app-backend@1.0.0 start
+> node server.js
+
+[dotenv@17.2.3] injecting env (13) from .env -- tip: ⚙️  suppress all logs with { quiet: true }
+🗄️  MongoDB URI (sanitized): mongodb+srv://****:****@securebnk.0am4siz.mongodb.net/securebank
+🚀 Server running on port 5001
+📍 Environment: development
+✅ MongoDB connected (attempt 1/5)
+⚠️  DEMO MODE: Seeding demo users (development only)
+✅ Demo users seeded to MongoDB
+🗄️  Database connected (app.js)

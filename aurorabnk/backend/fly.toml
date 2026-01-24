@@ -1,0 +1,39 @@
+# fly.toml app configuration generated for your backend
+app = "securebank-backend"
+primary_region = "iad"
+
+[build]
+  builder = "heroku"
+
+[env]
+  PORT = "5001"
+  NODE_ENV = "production"
+
+[[services]]
+  internal_port = 5001
+  processes = ["app"]
+  
+  [services.http_checks]
+    enabled = true
+    interval = 10000
+    timeout = 5000
+    grace_period = "5s"
+    method = "get"
+    path = "/api/health"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+[checks]
+  [checks.alive]
+    type = "http"
+    interval = "10s"
+    timeout = "5s"
+    grace_period = "5s"
+    method = "get"
+    path = "/api/health"

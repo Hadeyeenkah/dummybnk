@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "functions": {
+    "api/**/*.js": { "memory": 256, "maxDuration": 10 }
+  },
+  "builds": [
+    { "src": "bank/package.json", "use": "@vercel/static-build", "config": { "distDir": "build" } },
+    { "src": "api/**/*.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/bank/$1" }
+  ],
+  "env": {
+    "BACKEND_URL": "https://api.example.com",
+    "REACT_APP_API_URL": "https://api.example.com",
+    "CORS_ORIGIN": "https://your-site.vercel.app"
+  }
+}
+    "REACT_APP_API_URL": "https://api.example.com",

@@ -1,0 +1,4 @@
+nohup: ignoring input
+[dotenv@17.2.3] injecting env (6) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+🚀 Server running on port 10000
+📍 Environment: production

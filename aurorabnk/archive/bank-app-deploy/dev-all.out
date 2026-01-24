@@ -1,0 +1,34 @@
+
+> aurora-bank@1.0.0 dev:all
+> concurrently "node dev-server.js" "npm start --prefix bank"
+
+[0] Handler not a function for /home/hadeyeenkah/bank-app/bank-app-deploy/api/_lib/auth.js
+[0] Handler not a function for /home/hadeyeenkah/bank-app/bank-app-deploy/api/_lib/db.js
+[0] Mount /api/_lib/cors -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/_lib/cors.js
+[0] Mount /api/admin/conversations -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/admin/conversations.js
+[0] Mount /api/admin/users/:userId/balance -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/admin/users/[userId]/balance.js
+[0] Mount /api/admin/users/:userId/messages -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/admin/users/[userId]/messages.js
+[0] Mount /api/admin/users/:userId/transactions -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/admin/users/[userId]/transactions.js
+[0] Mount /api/auth/change-password -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/change-password.js
+[0] Mount /api/auth/confirm-2fa -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/confirm-2fa.js
+[0] Mount /api/auth/enable-2fa -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/enable-2fa.js
+[0] Mount /api/auth/forgot-password -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/forgot-password.js
+[0] Mount /api/auth/login -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/login.js
+[0] Mount /api/auth/logout -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/logout.js
+[1] 
+[1] > bank@0.1.0 start
+[1] > react-scripts start
+[1] 
+[0] Mount /api/auth/lookup -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/lookup.js
+[0] Mount /api/auth/profile -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/profile.js
+[0] Mount /api/auth/register -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/register.js
+[0] Mount /api/auth/reset-password -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/reset-password.js
+[0] Mount /api/auth/verify-2fa -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/verify-2fa.js
+[0] Mount /api/auth/verify-email -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/auth/verify-email.js
+[0] Mount /api/chat/messages/:conversationId -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/chat/messages/[conversationId].js
+[0] Mount /api/health -> /home/hadeyeenkah/bank-app/bank-app-deploy/api/health.js
+[0] API dev server listening on http://localhost:4000
+[1] Something is already running on port 3000.
+[1] npm start --prefix bank exited with code 0
+[0] Killed
+[0] node dev-server.js exited with code 137

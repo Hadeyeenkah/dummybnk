@@ -1,0 +1,25 @@
+[build]
+  # Install root deps, backend deps (for serverless functions), and frontend deps then build
+  command = "npm ci && npm ci --prefix backend && npm ci --prefix frontend && npm run build --prefix frontend"
+  publish = "frontend/build"
+
+# Exclude node_modules and markdown docs from secret scanning (false positives)
+[build.environment]
+  SECRETS_SCAN_OMIT_PATHS = "frontend/node_modules/**,backend/node_modules/**,*.md,backend/.env.example,backend/.env.production.example"
+  SECRETS_SCAN_OMIT_KEYS = "NODE_ENV,CI"
+
+[functions]
+  directory = "netlify/functions"
+
+# API routes must come FIRST, before the catch-all React redirect
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+  force = true
+
+# Catch-all for React Router (must be last)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -1,0 +1,25 @@
+{
+  "functions": {
+    "source": "firebase/functions",
+    "runtime": "nodejs18",
+    "predeploy": [
+      "npm --prefix firebase/functions install"
+    ]
+  },
+  "hosting": {
+    "public": "frontend/build",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      { "source": "/api/**", "function": { "functionId": "api", "region": "us-central1" } },
+      { "source": "**", "destination": "/index.html" }
+    ],
+    "predeploy": [
+      "npm ci --prefix frontend",
+      "npm run build --prefix frontend"
+    ]
+  }
+}

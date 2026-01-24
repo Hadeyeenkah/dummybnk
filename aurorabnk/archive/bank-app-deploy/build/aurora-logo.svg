@@ -1,0 +1,60 @@
+<svg viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="256" height="256" fill="#0f172a"/>
+  
+  <!-- Background circle -->
+  <circle cx="128" cy="128" r="120" fill="url(#gradient)" opacity="0.15" stroke="#06b6d4" strokeWidth="2" />
+  
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="waveGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#22d3ee;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Wave/flow element -->
+  <path
+    d="M 50 128 Q 90 70 128 100 T 206 120"
+    stroke="url(#waveGradient)"
+    strokeWidth="16"
+    fill="none"
+    strokeLinecap="round"
+    opacity="0.9"
+  />
+  
+  <!-- Second wave -->
+  <path
+    d="M 50 160 Q 90 120 128 145 T 206 165"
+    stroke="url(#waveGradient)"
+    strokeWidth="12"
+    fill="none"
+    strokeLinecap="round"
+    opacity="0.6"
+  />
+  
+  <!-- Shield outline -->
+  <path
+    d="M 128 50 L 180 85 L 180 140 C 180 200 128 220 128 220 C 128 220 76 200 76 140 L 76 85 Z"
+    stroke="#06b6d4"
+    strokeWidth="8"
+    fill="none"
+    strokeLinejoin="round"
+  />
+  
+  <!-- Check mark -->
+  <g opacity="0.8">
+    <path
+      d="M 110 145 L 125 160 L 155 120"
+      stroke="#06b6d4"
+      strokeWidth="8"
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </g>
+</svg>

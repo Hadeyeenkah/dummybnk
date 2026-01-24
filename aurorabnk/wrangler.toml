@@ -1,0 +1,23 @@
+name = "bank-app-api"
+main = "workers/api.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables (non-secret)
+[vars]
+NODE_ENV = "production"
+DEMO_SEED = "false"
+
+# Production environment
+[env.production]
+name = "bank-app-api-prod"
+# Note: Set account_id via: wrangler whoami
+
+[env.production.vars]
+NODE_ENV = "production"
+DEMO_SEED = "false"
+
+# Secrets are set via CLI (do NOT commit secrets):
+# wrangler secret put MONGODB_URI
+# wrangler secret put JWT_SECRET
+# wrangler secret put JWT_REFRESH_SECRET

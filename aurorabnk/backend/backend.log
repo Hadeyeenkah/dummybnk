@@ -1,0 +1,199 @@
+🚀 Starting Aurora Bank Backend...
+📍 Port: 5000
+
+[dotenv@17.2.3] injecting env (13) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+📍 Server environment: development isDevelopment= true
+🔒 Allowed CORS origins (from env): [ 'http://localhost:3000' ]
+🚀 Server running on port 5001
+📍 Environment: development
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: []
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+🔐 Auth middleware - cookies: [
+  '_ga',
+  '_ga_8MTTJ3X1D4',
+  'MicrosoftApplicationsTelemetryDeviceId',
+  'MSFPC',
+  'brcap',
+  '_ga_J4GELN0ZD7',
+  'refreshToken'
+]
+🔐 Auth middleware - headers: No bearer token
+❌ No token found in cookies or headers
+👋 SIGTERM received, shutting down gracefully
