@@ -1,13 +1,13 @@
 
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+// import config if needed in future
+
 // Set API base for local vs production
 const API_BASE = process.env.NODE_ENV === 'production'
   ? '/api'
   : 'http://localhost:5001/api';
 console.log('🌍 Environment:', process.env.NODE_ENV);
 console.log('🔗 API_BASE:', API_BASE);
-
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-// import config if needed in future
 
 const BankContext = createContext();
 
