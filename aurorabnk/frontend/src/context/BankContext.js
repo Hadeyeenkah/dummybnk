@@ -1,3 +1,11 @@
+
+// Set API base for local vs production
+const API_BASE = process.env.NODE_ENV === 'production'
+  ? '/api'
+  : 'http://localhost:5001/api';
+console.log('🌍 Environment:', process.env.NODE_ENV);
+console.log('🔗 API_BASE:', API_BASE);
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 // import config if needed in future
 
@@ -55,14 +63,36 @@ export const BankProvider = ({ children }) => {
   // Admin pending approvals
   const [pendingApprovals, setPendingApprovals] = useState([]);
 
-  // Backend: helper to call API with cookies
-  // Start with configured API URL (from frontend/src/config.js) or env override
+
+  // Helper to get API base (for local dev or env override)
   const getApiBase = () => {
-    // Prefer an explicit env override, otherwise use local backend during development
     return process.env.REACT_APP_API_BASE || 'http://localhost:5001/api';
   };
 
   const [apiBase, setApiBase] = useState(getApiBase());
+
+  // Helper to map Express-style endpoints to Netlify Functions in production
+  const getEndpoint = (path) => {
+    // If running on Netlify (production), map to /.netlify/functions/{functionName}
+    // Otherwise, use apiBase as normal
+    const isNetlify = typeof window !== 'undefined' && window.location.hostname &&
+      (window.location.hostname.endsWith('.netlify.app') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    // If running on Netlify (production build, not local dev server)
+    if (isNetlify && process.env.NODE_ENV === 'production') {
+      // Map /auth/login -> /.netlify/functions/login, /dashboard -> /.netlify/functions/dashboard, etc.
+      // Remove leading /api if present
+      let clean = path.replace(/^\/api/, '');
+      // Remove leading slash
+      clean = clean.replace(/^\//, '');
+      // Only keep first segment (function name)
+      const [fn, ...rest] = clean.split('/');
+      // Rebuild path: /.netlify/functions/{fn}/{rest...}
+      return `/.netlify/functions/${fn}${rest.length ? '/' + rest.join('/') : ''}`;
+    }
+    // Default: use apiBase
+    return `${apiBase}${path.startsWith('/') ? '' : '/'}${path}`;
+  };
 
   // Try to detect a reachable backend and fall back to relative `/api` if unreachable.
   const tryResolveApiBase = useCallback(async () => {
@@ -114,7 +144,7 @@ export const BankProvider = ({ children }) => {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const profileUrl = `${apiBase}/auth/profile`;
+      const profileUrl = getEndpoint('/auth/profile');
       // Rely on httpOnly cookies for auth during development/production.
       // Avoid sending Authorization header from localStorage to prevent
       // stale/malformed token errors. Use credentials to include cookies.
@@ -217,7 +247,7 @@ export const BankProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       console.log('🔐 Login attempt:', email);
-      const loginUrl = `${apiBase}/auth/login`;
+      const loginUrl = getEndpoint('/auth/login');
       console.log('📡 Calling:', loginUrl);
       
       const res = await fetch(loginUrl, {
@@ -283,7 +313,7 @@ export const BankProvider = ({ children }) => {
       const firstName = nameParts[0] || userData.firstName || '';
       const lastName = nameParts.slice(1).join(' ') || userData.lastName || 'User';
       
-      const res = await fetch(`${apiBase}/auth/register`, {
+      const res = await fetch(getEndpoint('/auth/register'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -315,7 +345,7 @@ export const BankProvider = ({ children }) => {
   // Logout function
   const logout = async () => {
     try {
-      await fetch(`${apiBase}/auth/logout`, {
+      await fetch(getEndpoint('/auth/logout'), {
         method: 'POST',
         credentials: 'include',
       });
@@ -327,7 +357,7 @@ export const BankProvider = ({ children }) => {
   // Update profile
   const updateProfile = async (profileData) => {
     try {
-      const res = await fetch(`${apiBase}/auth/profile`, {
+      const res = await fetch(getEndpoint('/auth/profile'), {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -584,7 +614,7 @@ export const BankProvider = ({ children }) => {
       };
 
       // Save debit transaction to backend
-      const saveDebit = fetch(`${apiBase}/transactions`, {
+      const saveDebit = fetch(getEndpoint('/transactions'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -601,7 +631,7 @@ export const BankProvider = ({ children }) => {
       }).catch(err => console.error('Failed to save debit:', err));
 
       // Save credit transaction to backend
-      const saveCredit = fetch(`${apiBase}/transactions`, {
+      const saveCredit = fetch(getEndpoint('/transactions'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -683,7 +713,7 @@ export const BankProvider = ({ children }) => {
     };
 
     // Save pending transaction to backend
-    fetch(`${apiBase}/transactions`, {
+    fetch(getEndpoint('/transactions'), {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
@@ -742,7 +772,7 @@ export const BankProvider = ({ children }) => {
   // Pay bill - call backend API
   const payBill = async (userId, billData) => {
     try {
-      const res = await fetch(`${apiBase}/bills`, {
+      const res = await fetch(getEndpoint('/bills'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

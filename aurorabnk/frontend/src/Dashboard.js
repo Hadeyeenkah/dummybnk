@@ -1,9 +1,15 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useBankContext } from './context/BankContext';
 import AuroraBankLogo from './components/AuroraBankLogo';
 import SupportChatWidget from './components/SupportChatWidget';
 import './App.css';
+
+// API base for all fetch calls
+const API_BASE = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api';
+console.log('🌍 Environment:', process.env.NODE_ENV);
+console.log('🔗 API Base:', API_BASE);
 
 function Dashboard() {
   const { currentUser, logout, updateProfile, updateTransactions } = useBankContext();
@@ -69,19 +75,19 @@ function Dashboard() {
       setNotifications((existing) => existing.map((n) => ({ ...n, read: true })));
 
       try {
-        const apiBase = process.env.REACT_APP_API_BASE || '/api';
+        // Use unified API_BASE
         // For admin-sourced notifications, call API to mark as read
         const unreadAdmin = adminMessages.filter((m) => !m.read && m._id);
         await Promise.all(
           unreadAdmin.map((m) =>
-            fetch(`${apiBase}/admin/users/${currentUser.id}/messages/${m._id}/read`, {
+            fetch(`${API_BASE}/admin/users/${currentUser.id}/messages/${m._id}/read`, {
               method: 'PATCH',
               credentials: 'include',
             })
           )
         );
         // Refresh admin messages after marking
-        const res = await fetch(`${apiBase}/admin/users/${currentUser.id}/messages`, {
+        const res = await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages`, {
           credentials: 'include',
         });
         if (res.ok) {
@@ -112,8 +118,7 @@ function Dashboard() {
     
     const fetchTransactions = async () => {
       try {
-        const apiBase = process.env.REACT_APP_API_BASE || '/api';
-        const res = await fetch(`${apiBase}/transactions?limit=100`, {
+        const res = await fetch(`${API_BASE}/transactions?limit=100`, {
           credentials: 'include',
         });
         if (res.ok) {
@@ -241,7 +246,7 @@ function Dashboard() {
         console.log('🔍 Fetching admin messages for user:', currentUser.id);
         console.log('🔍 API Base:', apiBase);
         
-        const res = await fetch(`${apiBase}/admin/users/${currentUser.id}/messages`, {
+        const res = await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages`, {
           credentials: 'include',
         });
         

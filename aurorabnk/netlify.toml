@@ -25,10 +25,65 @@
   included_files = ["backend/**"]
   external_node_modules = ["mongoose", "jsonwebtoken", "bcryptjs", "dotenv"]
 
+
 # API routes must come FIRST, before the catch-all React redirect
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  from = "/api/auth/login"
+  to = "/.netlify/functions/auth-login"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/register"
+  to = "/.netlify/functions/auth-register"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/auth/profile"
+  to = "/.netlify/functions/dashboard-user"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/transfers"
+  to = "/.netlify/functions/transfers"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/transactions"
+  to = "/.netlify/functions/transactions"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/bills"
+  to = "/.netlify/functions/bills"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/notifications"
+  to = "/.netlify/functions/notifications"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/chat/conversation"
+  to = "/.netlify/functions/chat-conversation"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/dashboard"
+  to = "/.netlify/functions/dashboard"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/admin/users"
+  to = "/.netlify/functions/admin-users"
   status = 200
   force = true
 
