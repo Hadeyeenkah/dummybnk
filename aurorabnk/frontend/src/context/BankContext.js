@@ -69,7 +69,7 @@ export const BankProvider = ({ children }) => {
     return process.env.REACT_APP_API_BASE || 'http://localhost:5001/api';
   };
 
-  const [apiBase, setApiBase] = useState(getApiBase());
+
 
 
 // Map logical API paths to Netlify function endpoints for production
@@ -139,7 +139,7 @@ const getEndpoint = (path) => {
     setApiBase('/api');
     setBackendError('Backend unreachable. Using relative `/api` proxy. Start backend or set REACT_APP_API_BASE.');
     console.warn('⚠️  Backend not reachable at configured hosts; using /api fallback');
-  }, []);
+  }, [getEndpoint]);
 
 
   const fetchProfile = useCallback(async () => {
