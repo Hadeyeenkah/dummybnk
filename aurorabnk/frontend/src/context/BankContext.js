@@ -73,24 +73,13 @@ export const BankProvider = ({ children }) => {
 
   // Helper to map Express-style endpoints to Netlify Functions in production
   const getEndpoint = (path) => {
-    // If running on Netlify (production), map to /.netlify/functions/{functionName}
-    // Otherwise, use apiBase as normal
-    const isNetlify = typeof window !== 'undefined' && window.location.hostname &&
-      (window.location.hostname.endsWith('.netlify.app') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-    // If running on Netlify (production build, not local dev server)
-    if (isNetlify && process.env.NODE_ENV === 'production') {
-      // Map /auth/login -> /.netlify/functions/login, /dashboard -> /.netlify/functions/dashboard, etc.
-      // Remove leading /api if present
-      let clean = path.replace(/^\/api/, '');
-      // Remove leading slash
-      clean = clean.replace(/^\//, '');
-      // Only keep first segment (function name)
-      const [fn, ...rest] = clean.split('/');
-      // Rebuild path: /.netlify/functions/{fn}/{rest...}
-      return `/.netlify/functions/${fn}${rest.length ? '/' + rest.join('/') : ''}`;
+    // Always use /api/* in production and rely on Netlify redirects
+    if (process.env.NODE_ENV === 'production') {
+      // Ensure path starts with /api
+      let apiPath = path.startsWith('/api') ? path : `/api${path.startsWith('/') ? '' : '/'}${path}`;
+      return apiPath;
     }
-    // Default: use apiBase
+    // In development, use apiBase
     return `${apiBase}${path.startsWith('/') ? '' : '/'}${path}`;
   };
 
