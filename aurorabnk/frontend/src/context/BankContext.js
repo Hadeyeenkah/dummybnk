@@ -137,7 +137,7 @@ const getEndpoint = (path) => {
     // Nothing reachable: fall back to relative proxy and set backend error
     setBackendError('Backend unreachable. Using relative `/api` proxy. Start backend or set REACT_APP_API_BASE.');
     console.warn('⚠️  Backend not reachable at configured hosts; using /api fallback');
-  }, [getEndpoint]);
+  }, []);
 
 
   const fetchProfile = useCallback(async () => {
@@ -227,7 +227,7 @@ const getEndpoint = (path) => {
       setCurrentUser(null);
       return false;
     }
-  }, []);
+  }, [getEndpoint]);
 
   // Initialize auth on mount - check if user has an active session
   useEffect(() => {
