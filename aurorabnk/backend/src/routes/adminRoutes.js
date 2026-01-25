@@ -398,6 +398,75 @@ router.patch('/users/:userId/messages/:messageId/read', protect, async (req, res
   }
 });
 
+// Edit user info (admin only)
+router.patch('/users/:userId', protect, requireRole('admin'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const updateFields = req.body;
+    // Prevent password change here; use password endpoint
+    if (updateFields.password) delete updateFields.password;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    // Update basic fields
+    ['firstName', 'lastName', 'email', 'phone', 'dateOfBirth'].forEach(field => {
+      if (updateFields[field] !== undefined) user[field] = updateFields[field];
+    });
+    // Update balances if provided
+    if (typeof updateFields.checking === 'number' || typeof updateFields.savings === 'number') {
+      const checking = typeof updateFields.checking === 'number' ? updateFields.checking : user.accounts?.find(a => a.accountType === 'checking')?.balance || 0;
+      const savings = typeof updateFields.savings === 'number' ? updateFields.savings : user.accounts?.find(a => a.accountType === 'savings')?.balance || 0;
+      user.accounts = [
+        { accountType: 'checking', accountNumber: user.accounts?.find(a => a.accountType === 'checking')?.accountNumber || `CHK${Date.now()}`, balance: checking },
+        { accountType: 'savings', accountNumber: user.accounts?.find(a => a.accountType === 'savings')?.accountNumber || `SAV${Date.now()}`, balance: savings },
+      ];
+      user.balance = checking + savings;
+    }
+    await user.save();
+    res.json({ message: 'User updated successfully', user });
+  } catch (error) {
+    console.error('Admin edit user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete user account (admin only)
+router.delete('/users/:userId', protect, requireRole('admin'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Admin delete user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+// Change any user's password (admin only)
+const bcrypt = require('bcryptjs');
+router.patch('/users/:userId/password', protect, requireRole('admin'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+    }
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const salt = await bcrypt.genSalt(12);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+    res.json({ message: 'Password changed successfully for user.' });
+  } catch (error) {
+    console.error('Admin change password error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 // Get all conversations for admin
 router.get('/conversations', protect, requireRole('admin'), async (req, res) => {
   try {

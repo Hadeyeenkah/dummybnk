@@ -26,6 +26,8 @@ export const BankProvider = ({ children }) => {
   const [isInitializing, setIsInitializing] = useState(true);
   // Network/backend availability
   const [, setBackendError] = useState(null);
+  // Prevent repeated initialization
+  const [hasInitialized, setHasInitialized] = useState(false);
   
   // All users data
   const [users, setUsers] = useState([
@@ -231,6 +233,8 @@ const getEndpoint = (path) => {
 
   // Initialize auth on mount - check if user has an active session
   useEffect(() => {
+    if (hasInitialized) return;
+    setHasInitialized(true);
     const initializeAuth = async () => {
       setIsInitializing(true);
       // Resolve API base before attempting profile fetch
@@ -239,7 +243,8 @@ const getEndpoint = (path) => {
       setIsInitializing(false);
     };
     initializeAuth();
-  }, [fetchProfile, tryResolveApiBase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchProfile, tryResolveApiBase, hasInitialized]);
 
   // Login function via backend
   const login = async (email, password) => {
@@ -814,7 +819,6 @@ const getEndpoint = (path) => {
     users,
     pendingApprovals,
     login,
-    signup,
     logout,
     updateProfile,
     addTransaction,
@@ -824,6 +828,16 @@ const getEndpoint = (path) => {
     transferMoney,
     payBill,
     updateTransactions,
+    fetchAdminData: async () => {
+      // TODO: Implement actual admin data fetch logic
+      console.warn('fetchAdminData called (stub)');
+      return [];
+    },
+    fetchConversations: async () => {
+      // TODO: Implement actual conversations fetch logic
+      console.warn('fetchConversations called (stub)');
+      return [];
+    },
   };
 
   return <BankContext.Provider value={value}>{children}</BankContext.Provider>;
