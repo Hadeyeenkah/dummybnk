@@ -304,41 +304,6 @@ const getEndpoint = (path) => {
     }
   };
 
-  // Signup function
-  const signup = async (userData) => {
-    try {
-      const nameParts = userData.name?.trim().split(/\s+/) || [];
-      const firstName = nameParts[0] || userData.firstName || '';
-      const lastName = nameParts.slice(1).join(' ') || userData.lastName || 'User';
-      
-      const res = await fetch(getEndpoint('/auth/register'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: userData.email,
-          password: userData.password,
-          firstName,
-          lastName,
-          phone: userData.phone || undefined,
-        }),
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        return { success: false, message: errorData.message || errorData.errors?.[0]?.msg || 'Registration failed' };
-      }
-      
-      const data = await res.json();
-
-      // Server now sets auth cookies on register; fetch profile to hydrate state.
-      await fetchProfile();
-
-      return { success: true, message: data.message, verificationLink: data.verificationLink };
-    } catch (err) {
-      return { success: false, message: 'Network error. Please try again.' };
-    }
-  };
 
   // Logout function
   const logout = async () => {
