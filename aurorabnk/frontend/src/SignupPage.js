@@ -24,8 +24,8 @@ function SignupPage() {
       <main className="flex flex-col items-center justify-center flex-1">
         <div className="max-w-lg w-full bg-slate-900 rounded-xl p-8 shadow-lg border border-cyan-900/30">
           <h2 className="text-2xl font-bold text-center text-cyan-400 mb-4">Sign Up Disabled</h2>
-          <p className="text-center text-slate-200 mb-2">Account creation is restricted. Only an admin can set up user accounts.</p>
-          <p className="text-center text-slate-400">Please contact your bank administrator to receive your login credentials.</p>
+          <p className="text-center text-slate-200 mb-2">Account creation is restricted.</p>
+          <p className="text-center text-slate-400">To open an account, please visit your nearest bank branch.</p>
           <div className="mt-6 text-center">
             <Link to="/login" className="font-semibold text-cyan-200 hover:text-cyan-100">Go to Login</Link>
           </div>
