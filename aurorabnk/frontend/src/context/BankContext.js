@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+
 // import config if needed in future
 
 // Set API base for local vs production
@@ -89,9 +90,8 @@ const FUNCTION_MAP = {
 };
 
 
-// getEndpoint is now wrapped in useCallback for stability
-import { useCallback } from 'react';
 
+// getEndpoint is now wrapped in useCallback for stability
 const getEndpoint = useCallback(
   (path) => {
     if (process.env.NODE_ENV === 'production') {
