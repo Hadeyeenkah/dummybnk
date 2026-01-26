@@ -88,13 +88,19 @@ const FUNCTION_MAP = {
   '/admin/users': '/admin-users'
 };
 
-// getEndpoint is now a stable function outside the component
-const getEndpoint = (path) => {
-  if (process.env.NODE_ENV === 'production') {
-    return `/api${FUNCTION_MAP[path] || path}`;
-  }
-  return `${API_BASE}${path}`;
-};
+
+// getEndpoint is now wrapped in useCallback for stability
+import { useCallback } from 'react';
+
+const getEndpoint = useCallback(
+  (path) => {
+    if (process.env.NODE_ENV === 'production') {
+      return `/api${FUNCTION_MAP[path] || path}`;
+    }
+    return `${API_BASE}${path}`;
+  },
+  [API_BASE]
+);
 
   // Try to detect a reachable backend and fall back to relative `/api` if unreachable.
   const tryResolveApiBase = useCallback(async () => {

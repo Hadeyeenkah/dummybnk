@@ -1,6 +1,4 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useBankContext } from './context/BankContext';
+import { Link } from 'react-router-dom';
 import AuroraBankLogo from './components/AuroraBankLogo';
 import './App.css';
 
