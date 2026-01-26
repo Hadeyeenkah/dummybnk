@@ -9,6 +9,7 @@ import WireTransferPage from './pages/WireTransferPage';
 import BillsPage from './pages/BillsPage';
 import TransactionsPage from './pages/TransactionsPage';
 import AdminPage from './pages/AdminPage';
+import AdminUserManagementPage from './pages/AdminUserManagementPage';
 import DepositPage from './pages/DepositPage';
 import CardsPage from './pages/CardsPage';
 import SecurityPage from './pages/SecurityPage';
@@ -73,6 +74,7 @@ function App() {
         <Route path="/bills" element={<RequireAuth><BillsPage /></RequireAuth>} />
         <Route path="/transactions" element={<RequireAuth><TransactionsPage /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
+        <Route path="/admin/users" element={<RequireAuth><AdminUserManagementPage /></RequireAuth>} />
         <Route path="/deposit" element={<RequireAuth><DepositPage /></RequireAuth>} />
         <Route path="/cards" element={<RequireAuth><CardsPage /></RequireAuth>} />
         <Route path="/security" element={<RequireAuth><SecurityPage /></RequireAuth>} />
