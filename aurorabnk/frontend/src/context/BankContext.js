@@ -77,9 +77,9 @@ export const BankProvider = ({ children }) => {
 
 // Map logical API paths to Netlify function endpoints for production
 const FUNCTION_MAP = {
-  '/auth/login': '/auth-login',
+  '/auth/login': '/auth/login',
   '/auth/register': '/auth-register',
-  '/auth/profile': '/dashboard-user',
+  '/auth/profile': '/auth/profile',
   '/transfers': '/transfers',
   '/transactions': '/transactions',
   '/bills': '/bills',
