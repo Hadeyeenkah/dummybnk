@@ -36,8 +36,9 @@ exports.connectDB = async () => {
     try {
       await mongoose.connect(uri, {
         autoIndex: true,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
         // keep server selection timeout short in serverless environments
-        serverSelectionTimeoutMS: Number(process.env.DB_SERVER_SELECTION_TIMEOUT_MS || 3000),
       });
       isConnected = true;
       console.log(`✅ MongoDB connected (attempt ${attempt}/${maxRetries})`);
