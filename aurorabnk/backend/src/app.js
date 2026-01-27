@@ -18,7 +18,19 @@ const transferRoutes = require(path.join(__dirname, "routes", "transferRoutes"))
 const chatRoutes = require(path.join(__dirname, "routes", "chatRoutes"));
 const { seedDemoUsers } = require(path.join(__dirname, "utils", "seedDemoUsers"));
 
+
+console.log('🔍 MONGODB_URI exists:', !!process.env.MONGODB_URI);
 const app = express();
+
+// Health and ping routes at the VERY TOP (before all middleware)
+app.get('/ping', (req, res) => res.json({ status: 'alive' }));
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'success',
+    message: 'SecureBank API is running',
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // Dynamic CORS handling: read allowed origins from env or fallbacks
 const rawOrigins = process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN || '';
@@ -93,6 +105,7 @@ app.use(limiter);
 
 // --- Lazy DB connection middleware (before routes) ---
 app.use(async (req, res, next) => {
+  // Skip DB connection for health, ping, and root/info routes
   if ([
     '/api/health', '/api', '/auth', '/ping', '/'
   ].includes(req.path)) return next();
