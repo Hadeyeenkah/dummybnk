@@ -37,7 +37,10 @@ app.get('/api', (req, res) => {
     message: "Aurora Bank Backend API"
   });
 });
-app.get('/', (req, res) => res.send('Authenticated'));
+app.get('/', (req, res) => {
+  res.send('Authenticated');
+  return;
+});
 
 // Dynamic CORS handling: read allowed origins from env or fallbacks
 const rawOrigins = process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN || '';
@@ -170,6 +173,7 @@ app.use((err, req, res, next) => {
   }
   res.status(err.status || 500).json({ status: 'error', message: err.message || 'Internal server error' });
 });
+
 
 module.exports = app;
 
