@@ -1,5 +1,7 @@
+../frontend
+../../frontend
+**/frontend/**
 node_modules
-.git
+.env
 .env.local
 *.log
-# Force fresh build
