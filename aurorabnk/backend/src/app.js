@@ -27,8 +27,9 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// TODO: Mount your routes here, e.g.:
-// const authRoutes = require('./routes/authRoutes');
-// app.use('/api/auth', authRoutes);
+
+// Mount authentication routes
+const authRoutes = require('./routes/authRoutes');
+app.use('/api/auth', authRoutes);
 
 module.exports = app;
