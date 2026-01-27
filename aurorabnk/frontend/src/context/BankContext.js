@@ -6,7 +6,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 // Set API base for local vs production
 const API_BASE = process.env.NODE_ENV === 'production'
   ? '/api'
-  : 'http://localhost:5001/api';
+  : 'http://localhost:5001/api'; // Only use localhost in dev
 console.log('🌍 Environment:', process.env.NODE_ENV);
 console.log('🔗 API_BASE:', API_BASE);
 
@@ -69,7 +69,7 @@ export const BankProvider = ({ children }) => {
 
   // Helper to get API base (for local dev or env override)
   const getApiBase = () => {
-    return process.env.REACT_APP_API_BASE || 'http://localhost:5001/api';
+    return process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api';
   };
 
 
@@ -227,7 +227,7 @@ const getEndpoint = useCallback(
       console.error('❌ Profile fetch error:', err);
       // If network failure, set backendError so UI can inform user
       if (err instanceof TypeError) {
-        setBackendError('Unable to contact backend server. Please ensure the backend is running on the configured host (usually http://localhost:5001).');
+        setBackendError('Unable to contact backend server. Please ensure the backend is running on the configured host (usually http://localhost:5001 in development).');
       } else {
         setBackendError(String(err));
       }
@@ -307,7 +307,7 @@ const getEndpoint = useCallback(
     } catch (err) {
       console.error('❌ Login error:', err);
       if (err instanceof TypeError) {
-        setBackendError('Unable to contact backend server. Please ensure the backend is running on the configured host (usually http://localhost:5001).');
+        setBackendError('Unable to contact backend server. Please ensure the backend is running on the configured host (usually http://localhost:5001 in development).');
         return { success: false, message: 'Network error: cannot reach backend server.' };
       }
       setBackendError(String(err));

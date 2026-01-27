@@ -40,7 +40,7 @@ function AdminPage() {
     date: new Date().toISOString().split('T')[0],
   });
 
-  const API_BASE = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api';
+  const API_BASE = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api'; // Always use /api in production
   console.log('🌍 Environment:', process.env.NODE_ENV);
   console.log('🔗 API Base:', API_BASE);
 

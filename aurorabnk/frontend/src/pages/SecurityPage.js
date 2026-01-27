@@ -11,7 +11,7 @@ function SecurityPage() {
       const baseUrl = process.env.REACT_APP_API_URL || '';
       return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
     }
-    const baseUrl = process.env.REACT_APP_API_BASE || 'http://localhost:5001';
+    const baseUrl = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001';
     return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
   };
   const apiBase = getApiBase();

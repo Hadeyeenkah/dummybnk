@@ -39,7 +39,7 @@ function ResetPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      const apiBase = process.env.REACT_APP_API_BASE || 'http://localhost:5001/api';
+      const apiBase = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api';
       const res = await fetch(`${apiBase}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
