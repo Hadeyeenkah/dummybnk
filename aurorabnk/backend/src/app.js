@@ -22,18 +22,22 @@ const { seedDemoUsers } = require(path.join(__dirname, "utils", "seedDemoUsers")
 console.log('🔍 MONGODB_URI exists:', !!process.env.MONGODB_URI);
 
 const app = express();
-// /ping route at the VERY TOP
-app.get('/ping', (req, res) => res.json({ status: 'alive' }));
-
-// Health and ping routes at the VERY TOP (before all middleware)
+// Health checks FIRST - no DB needed
 app.get('/ping', (req, res) => res.json({ status: 'alive' }));
 app.get('/api/health', (req, res) => {
   res.json({
-    status: 'success',
-    message: 'SecureBank API is running',
+    status: "success",
+    message: "API is running",
     timestamp: new Date().toISOString(),
   });
 });
+app.get('/api', (req, res) => {
+  res.json({
+    status: "success",
+    message: "Aurora Bank Backend API"
+  });
+});
+app.get('/', (req, res) => res.send('Authenticated'));
 
 // Dynamic CORS handling: read allowed origins from env or fallbacks
 const rawOrigins = process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN || '';
@@ -65,18 +69,11 @@ const isLocalOrigin = (o) => {
     return false;
   }
 };
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && (isDevelopment && isLocalOrigin(origin) || allowedOrigins.includes(origin))) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Vary', 'Origin');
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  if (req.method === 'OPTIONS') return res.sendStatus(200);
-  next();
-});
+// app.use(async (req, res, next) => {
+//   // Lazy DB connection middleware (DISABLED for serverless)
+//   // await connectDB();
+//   // next();
+// });
 app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({
