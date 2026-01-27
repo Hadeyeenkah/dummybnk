@@ -9,11 +9,11 @@ dotenv.config();
 const app = express();
 
 
-// CORS configuration (URGENT: allow frontend and local dev)
+
+// CORS - MUST BE FIRST MIDDLEWARE
 app.use(cors({
   origin: [
-    'https://aurora-9px4dd76f-auroras-projects-c3211c64.vercel.app',
-    'https://aurorabnk.vercel.app',
+    'https://aurora-isq0obdv4-auroras-projects-c3211c64.vercel.app',
     'http://localhost:3000',
     'http://localhost:5173'
   ],
@@ -22,6 +22,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   exposedHeaders: ['Set-Cookie']
 }));
+// Handle preflight requests
+app.options('*', cors());
 
 // Parse JSON and cookies
 app.use(express.json());
