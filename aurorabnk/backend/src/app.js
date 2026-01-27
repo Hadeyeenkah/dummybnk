@@ -31,25 +31,27 @@ const isDevelopment = process.env.NODE_ENV !== 'production';
 console.log('📍 Server environment:', process.env.NODE_ENV || 'development', 'isDevelopment=', isDevelopment);
 console.log('🔒 Allowed CORS origins (from env):', allowedOrigins);
 
+
+// --- CORS and Middleware Setup ---
+const isLocalOrigin = (o) => {
+  try {
+    const u = new URL(o);
+    const h = u.hostname;
+    if (h === 'localhost' || h === '127.0.0.1') return true;
+    if (/^10\./.test(h)) return true;
+    if (/^192\.168\./.test(h)) return true;
+    const m = h.match(/^172\.(\d+)\./);
+    if (m) {
+      const octet = Number(m[1]);
+      if (octet >= 16 && octet <= 31) return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+};
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const isLocalOrigin = (o) => {
-    try {
-      const u = new URL(o);
-      const h = u.hostname;
-      if (h === 'localhost' || h === '127.0.0.1') return true;
-      if (/^10\./.test(h)) return true;
-      if (/^192\.168\./.test(h)) return true;
-      const m = h.match(/^172\.(\d+)\./);
-      if (m) {
-        const octet = Number(m[1]);
-        if (octet >= 16 && octet <= 31) return true;
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  };
   if (origin && (isDevelopment && isLocalOrigin(origin) || allowedOrigins.includes(origin))) {
     res.header('Access-Control-Allow-Origin', origin);
     res.header('Vary', 'Origin');
@@ -60,7 +62,6 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') return res.sendStatus(200);
   next();
 });
-
 app.set('trust proxy', 1);
 app.use(helmet());
 app.use(cors({
@@ -90,9 +91,11 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Lazy DB connection middleware for serverless environments (before routes)
+// --- Lazy DB connection middleware (before routes) ---
 app.use(async (req, res, next) => {
-  if (req.path === '/api/health' || req.path === '/api' || req.path === '/auth' || req.path === '/ping' || req.path === '/') return next();
+  if ([
+    '/api/health', '/api', '/auth', '/ping', '/'
+  ].includes(req.path)) return next();
   try {
     if (!isDBConnected()) {
       const connected = await connectDB();
@@ -111,50 +114,49 @@ app.use(async (req, res, next) => {
   }
 });
 
-// Health and root routes
+// --- Health and root routes ---
 app.get('/ping', (req, res) => res.json({ status: 'alive' }));
-app.get('/', (req, res) => { res.send('Authenticated'); });
-app.get("/api/health", (req, res) => {
+app.get('/', (req, res) => res.send('Authenticated'));
+app.get('/api/health', (req, res) => {
   res.json({
-    status: "success",
-    message: "SecureBank API is running",
+    status: 'success',
+    message: 'SecureBank API is running',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
 });
-app.get("/api", (req, res) => {
+app.get('/api', (req, res) => {
   res.json({
-    status: "success",
-    message: "Aurora Bank Backend API",
-    docs: "https://github.com/your-org/your-repo#readme"
+    status: 'success',
+    message: 'Aurora Bank Backend API',
+    docs: 'https://github.com/your-org/your-repo#readme'
   });
 });
-app.get("/auth", (req, res) => {
+app.get('/auth', (req, res) => {
   res.json({
-    status: "success",
-    message: "Aurora Bank Backend API (auth root)",
+    status: 'success',
+    message: 'Aurora Bank Backend API (auth root)'
   });
 });
 
-// API routes
-app.use("/api/auth", authRoutes);
-app.use("/api/transactions", transactionRoutes);
-app.use("/api/transfers", transferRoutes);
-app.use("/api/bills", billRoutes);
-app.use("/api/notifications", notificationRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/chat", chatRoutes);
-app.use("/auth", authRoutes);
-app.use("/transactions", transactionRoutes);
-app.use("/transfers", transferRoutes);
-app.use("/bills", billRoutes);
-app.use("/notifications", notificationRoutes);
-app.use("/admin", adminRoutes);
-app.use("/chat", chatRoutes);
+// --- API routes ---
+app.use('/api/auth', authRoutes);
+app.use('/api/transactions', transactionRoutes);
+app.use('/api/transfers', transferRoutes);
+app.use('/api/bills', billRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/auth', authRoutes);
+app.use('/transactions', transactionRoutes);
+app.use('/transfers', transferRoutes);
+app.use('/bills', billRoutes);
+app.use('/notifications', notificationRoutes);
+app.use('/admin', adminRoutes);
+app.use('/chat', chatRoutes);
 
-// Serve frontend build in production
+// --- Static file serving (production) ---
 if (process.env.NODE_ENV === 'production') {
-  const path = require('path');
   const frontendBuildPath = path.join(__dirname, '..', '..', 'frontend', 'build');
   app.use(express.static(frontendBuildPath));
   app.get('*', (req, res) => {
@@ -169,7 +171,7 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// Global error handler
+// --- Error handlers ---
 app.use((err, req, res, next) => {
   console.error('❌ Error:', err.message);
   if (err.message && err.message.includes('CORS')) {
@@ -179,53 +181,6 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
-
-// Dynamic CORS handling: read allowed origins from env or fallbacks
-const rawOrigins = process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN || '';
-const allowedOrigins = rawOrigins.split(',').map(s => s.trim()).filter(Boolean);
-// sensible defaults to avoid accidentally blocking common dev hosts
-if (allowedOrigins.length === 0) {
-  allowedOrigins.push('https://aurorabank-beryl.vercel.app', 'http://localhost:3000', 'http://localhost:5173');
-}
-
-const isDevelopment = process.env.NODE_ENV !== 'production';
-console.log('📍 Server environment:', process.env.NODE_ENV || 'development', 'isDevelopment=', isDevelopment);
-console.log('🔒 Allowed CORS origins (from env):', allowedOrigins);
-
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  // In development allow requests from localhost and common LAN ranges only.
-  const isLocalOrigin = (o) => {
-    try {
-      const u = new URL(o);
-      const h = u.hostname;
-      if (h === 'localhost' || h === '127.0.0.1') return true;
-      // 10.x.x.x
-      if (/^10\./.test(h)) return true;
-      // 192.168.x.x
-      if (/^192\.168\./.test(h)) return true;
-      // 172.16.0.0 - 172.31.255.255
-      const m = h.match(/^172\.(\d+)\./);
-      if (m) {
-        const octet = Number(m[1]);
-        if (octet >= 16 && octet <= 31) return true;
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  };
-
-  if (origin && (isDevelopment && isLocalOrigin(origin) || allowedOrigins.includes(origin))) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Vary', 'Origin');
-  }
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  if (req.method === 'OPTIONS') return res.sendStatus(200);
-  next();
-});
 
 // Trust proxy (needed on Vercel and other proxy environments)
 app.set('trust proxy', 1);
