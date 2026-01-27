@@ -3,10 +3,9 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 // import config if needed in future
 
-// Set API base for local vs production
-const API_BASE = process.env.NODE_ENV === 'production'
-  ? '/api'
-  : 'http://localhost:5001/api'; // Only use localhost in dev
+
+// Set API base from environment variable (Vercel/CRA/Vite compatible)
+const API_BASE = process.env.REACT_APP_API_BASE || process.env.VITE_API_URL || process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api');
 console.log('🌍 Environment:', process.env.NODE_ENV);
 console.log('🔗 API_BASE:', API_BASE);
 
@@ -67,9 +66,10 @@ export const BankProvider = ({ children }) => {
   const [pendingApprovals, setPendingApprovals] = useState([]);
 
 
+
   // Helper to get API base (for local dev or env override)
   const getApiBase = () => {
-    return process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api';
+    return API_BASE;
   };
 
 
@@ -94,10 +94,11 @@ const FUNCTION_MAP = {
 // getEndpoint is now wrapped in useCallback for stability
 const getEndpoint = useCallback(
   (path) => {
-    if (process.env.NODE_ENV === 'production') {
-      return `/api${FUNCTION_MAP[path] || path}`;
+    // Always use API_BASE from env, fallback to relative /api
+    if (API_BASE && !API_BASE.startsWith('/')) {
+      return `${API_BASE}${path}`;
     }
-    return `${API_BASE}${path}`;
+    return `/api${FUNCTION_MAP[path] || path}`;
   },
   [API_BASE]
 );
@@ -261,7 +262,6 @@ const getEndpoint = useCallback(
       console.log('📡 Calling:', loginUrl);
       
       const res = await fetch(loginUrl, {
-        credentials: 'include',
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

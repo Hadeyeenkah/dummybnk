@@ -18,11 +18,11 @@ exports.generateTokens = (userId) => {
 
 exports.setAuthCookies = (res, { accessToken, refreshToken }) => {
 	const isProd = process.env.NODE_ENV === 'production';
-	// Always use lax and secure: false in development
+	// Use secure: true and sameSite: 'none' for cross-domain in production
 	const cookieOptions = {
 		httpOnly: true,
-		secure: false,
-		sameSite: 'lax',
+		secure: isProd,
+		sameSite: isProd ? 'none' : 'lax',
 		path: '/',
 		domain: undefined,
 	};
