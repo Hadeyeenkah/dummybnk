@@ -108,30 +108,7 @@ app.use(limiter);
 
 // (Lazy DB middleware removed for serverless compatibility)
 
-// --- Health and root routes ---
-app.get('/ping', (req, res) => res.json({ status: 'alive' }));
-app.get('/', (req, res) => res.send('Authenticated'));
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'success',
-    message: 'SecureBank API is running',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
-});
-app.get('/api', (req, res) => {
-  res.json({
-    status: 'success',
-    message: 'Aurora Bank Backend API',
-    docs: 'https://github.com/your-org/your-repo#readme'
-  });
-});
-app.get('/auth', (req, res) => {
-  res.json({
-    status: 'success',
-    message: 'Aurora Bank Backend API (auth root)'
-  });
-});
+// (Duplicate health and root routes removed)
 
 // --- API routes ---
 app.use('/api/auth', authRoutes);
@@ -149,21 +126,10 @@ app.use('/notifications', notificationRoutes);
 app.use('/admin', adminRoutes);
 app.use('/chat', chatRoutes);
 
-// --- Static file serving (production) ---
-if (process.env.NODE_ENV === 'production') {
-  const frontendBuildPath = path.join(__dirname, '..', '..', 'frontend', 'build');
-  app.use(express.static(frontendBuildPath));
-  app.get('*', (req, res) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/auth')) {
-      return res.status(404).json({ status: 'error', message: 'Route not found' });
-    }
-    return res.sendFile(path.join(frontendBuildPath, 'index.html'));
-  });
-} else {
-  app.use((req, res) => {
-    res.status(404).json({ status: 'error', message: 'Route not found' });
-  });
-}
+// 404 handler for undefined routes
+app.use((req, res) => {
+  res.status(404).json({ status: 'error', message: 'Route not found' });
+});
 
 // --- Error handlers ---
 app.use((err, req, res, next) => {
