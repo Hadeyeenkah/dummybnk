@@ -333,8 +333,6 @@ function AdminPage() {
 
     try {
       const res = await fetch(
-        // ...existing code...
-        , { credentials: 'include' }
         `${API_BASE}/admin/users/${selectedTransaction.userId}/transactions/${selectedTransaction.id}`,
         {
           method: 'PATCH',
