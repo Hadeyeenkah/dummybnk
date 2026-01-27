@@ -50,6 +50,7 @@ function LoginPage() {
       const apiBase = getApiBase();
       
       const res = await fetch(`${apiBase}/auth/forgot-password`, {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail }),

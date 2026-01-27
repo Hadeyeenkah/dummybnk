@@ -81,6 +81,7 @@ function Dashboard() {
         await Promise.all(
           unreadAdmin.map((m) =>
             fetch(`${API_BASE}/admin/users/${currentUser.id}/messages/${m._id}/read`, {
+              credentials: 'include',
               method: 'PATCH',
               credentials: 'include',
             })
@@ -88,6 +89,7 @@ function Dashboard() {
         );
         // Refresh admin messages after marking
         const res = await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages`, {
+          credentials: 'include',
           credentials: 'include',
         });
         if (res.ok) {
@@ -119,6 +121,7 @@ function Dashboard() {
     const fetchTransactions = async () => {
       try {
         const res = await fetch(`${API_BASE}/transactions?limit=100`, {
+          credentials: 'include',
           credentials: 'include',
         });
         if (res.ok) {
@@ -247,6 +250,7 @@ function Dashboard() {
         console.log('🔍 API Base:', apiBase);
         
         const res = await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages`, {
+          credentials: 'include',
           credentials: 'include',
         });
         

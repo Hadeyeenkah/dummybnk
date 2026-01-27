@@ -17,6 +17,7 @@ function SupportChatWidget() {
     try {
       const res = await fetch(`${apiBase}/chat/messages/${convId}`, {
         credentials: 'include',
+        credentials: 'include',
       });
       if (res.ok) {
         const data = await res.json();
@@ -24,6 +25,7 @@ function SupportChatWidget() {
         
         // Mark as read
         await fetch(`${apiBase}/chat/messages/${convId}/read`, {
+          credentials: 'include',
           method: 'PUT',
           credentials: 'include',
         });
@@ -38,6 +40,7 @@ function SupportChatWidget() {
     const initializeChat = async () => {
       try {
         const res = await fetch(`${apiBase}/chat/conversation`, {
+          credentials: 'include',
           credentials: 'include',
         });
         if (res.ok) {
@@ -78,7 +81,8 @@ function SupportChatWidget() {
 
     setLoading(true);
     try {
-      const res = await fetch(`${apiBase}/chat/messages`, {
+        const res = await fetch(`${apiBase}/chat/messages`, {
+          credentials: 'include',
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

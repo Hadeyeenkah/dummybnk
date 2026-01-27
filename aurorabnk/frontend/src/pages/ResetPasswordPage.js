@@ -41,6 +41,7 @@ function ResetPasswordPage() {
     try {
       const apiBase = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api';
       const res = await fetch(`${apiBase}/auth/reset-password`, {
+        credentials: 'include',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

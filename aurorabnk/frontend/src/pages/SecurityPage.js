@@ -68,6 +68,7 @@ function SecurityPage() {
     try {
       setMfaError('');
       const res = await fetch(`${apiBase}/auth/enable-2fa`, {
+        credentials: 'include',
         method: 'POST',
         credentials: 'include',
       });
@@ -99,6 +100,7 @@ function SecurityPage() {
     
     try {
       const res = await fetch(`${apiBase}/auth/confirm-2fa`, {
+        credentials: 'include',
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -155,6 +157,7 @@ function SecurityPage() {
     
     try {
       const res = await fetch(`${apiBase}/auth/change-password`, {
+        credentials: 'include',
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

@@ -114,7 +114,7 @@ const getEndpoint = useCallback(
       try {
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), timeoutMs);
-        const res = await fetch(url, { method: 'GET', mode: 'cors', signal: controller.signal });
+        const res = await fetch(url, { method: 'GET', mode: 'cors', signal: controller.signal, credentials: 'include' });
         clearTimeout(id);
         return res;
       } catch (e) {
@@ -157,6 +157,7 @@ const getEndpoint = useCallback(
       const headers = { 'Content-Type': 'application/json' };
       console.log('📡 Fetching profile from:', profileUrl);
       const res = await fetch(profileUrl, {
+        credentials: 'include',
         method: 'GET',
         headers,
         credentials: 'include',
@@ -260,6 +261,7 @@ const getEndpoint = useCallback(
       console.log('📡 Calling:', loginUrl);
       
       const res = await fetch(loginUrl, {
+        credentials: 'include',
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -320,6 +322,7 @@ const getEndpoint = useCallback(
   const logout = async () => {
     try {
       await fetch(getEndpoint('/auth/logout'), {
+        credentials: 'include',
         method: 'POST',
         credentials: 'include',
       });
@@ -332,6 +335,7 @@ const getEndpoint = useCallback(
   const updateProfile = async (profileData) => {
     try {
       const res = await fetch(getEndpoint('/auth/profile'), {
+        credentials: 'include',
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -589,6 +593,7 @@ const getEndpoint = useCallback(
 
       // Save debit transaction to backend
       const saveDebit = fetch(getEndpoint('/transactions'), {
+        credentials: 'include',
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

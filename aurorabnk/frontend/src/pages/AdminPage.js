@@ -52,6 +52,7 @@ function AdminPage() {
       // Fetch all users
       const usersRes = await fetch(`${API_BASE}/admin/users`, {
         credentials: 'include',
+        credentials: 'include',
       });
       
       console.log('Users response status:', usersRes.status);
@@ -73,6 +74,7 @@ function AdminPage() {
 
       // Fetch pending approvals
       const approvalsRes = await fetch(`${API_BASE}/admin/pending-approvals`, {
+        credentials: 'include',
         credentials: 'include',
       });
       
@@ -97,6 +99,7 @@ function AdminPage() {
     try {
       const res = await fetch(`${API_BASE}/admin/conversations`, {
         credentials: 'include',
+        credentials: 'include',
       });
       if (res.ok) {
         const data = await res.json();
@@ -111,6 +114,7 @@ function AdminPage() {
   const fetchConversationMessages = async (convId) => {
     try {
       const res = await fetch(`${API_BASE}/chat/messages/${convId}`, {
+        credentials: 'include',
         credentials: 'include',
       });
       if (res.ok) {
@@ -128,6 +132,7 @@ function AdminPage() {
 
     try {
       const res = await fetch(`${API_BASE}/chat/messages`, {
+        credentials: 'include',
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -168,6 +173,7 @@ function AdminPage() {
   const handleApprove = async (transactionId) => {
     try {
       const res = await fetch(`${API_BASE}/transactions/${transactionId}/approve`, {
+        credentials: 'include',
         method: 'PATCH',
         credentials: 'include',
       });
@@ -186,6 +192,7 @@ function AdminPage() {
   const handleReject = async (transactionId) => {
     try {
       const res = await fetch(`${API_BASE}/transactions/${transactionId}/reject`, {
+        credentials: 'include',
         method: 'PATCH',
         credentials: 'include',
       });
@@ -212,6 +219,7 @@ function AdminPage() {
   const handleSave = async (userId) => {
     try {
       const res = await fetch(`${API_BASE}/admin/users/${userId}/balance`, {
+        credentials: 'include',
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -248,6 +256,7 @@ function AdminPage() {
 
     try {
       const res = await fetch(`${API_BASE}/admin/users/${selectedUserId}/transactions`, {
+        credentials: 'include',
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -287,6 +296,7 @@ function AdminPage() {
 
     try {
       const res = await fetch(`${API_BASE}/admin/users/${userId}/transactions/${transactionId}`, {
+        credentials: 'include',
         method: 'DELETE',
         credentials: 'include',
       });
@@ -323,6 +333,8 @@ function AdminPage() {
 
     try {
       const res = await fetch(
+        // ...existing code...
+        , { credentials: 'include' }
         `${API_BASE}/admin/users/${selectedTransaction.userId}/transactions/${selectedTransaction.id}`,
         {
           method: 'PATCH',
@@ -364,6 +376,7 @@ function AdminPage() {
 
     try {
       const res = await fetch(`${API_BASE}/admin/users/${selectedUserId}/messages`, {
+        credentials: 'include',
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

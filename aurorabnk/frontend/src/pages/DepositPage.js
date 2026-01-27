@@ -74,6 +74,7 @@ function DepositPage() {
       const needsApproval = amount > 1000;
 
       const response = await fetch(`${apiBase}/transactions`, {
+        credentials: 'include',
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
