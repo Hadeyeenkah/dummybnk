@@ -20,7 +20,10 @@ const { seedDemoUsers } = require(path.join(__dirname, "utils", "seedDemoUsers")
 
 
 console.log('🔍 MONGODB_URI exists:', !!process.env.MONGODB_URI);
+
 const app = express();
+// /ping route at the VERY TOP
+app.get('/ping', (req, res) => res.json({ status: 'alive' }));
 
 // Health and ping routes at the VERY TOP (before all middleware)
 app.get('/ping', (req, res) => res.json({ status: 'alive' }));
@@ -103,29 +106,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// --- Lazy DB connection middleware (before routes) ---
-app.use(async (req, res, next) => {
-  // Skip DB connection for health, ping, and root/info routes
-  if ([
-    '/api/health', '/api', '/auth', '/ping', '/'
-  ].includes(req.path)) return next();
-  try {
-    if (!isDBConnected()) {
-      const connected = await connectDB();
-      const isDevelopment = process.env.NODE_ENV !== 'production';
-      const shouldSeedDemo = isDevelopment && process.env.DEMO_SEED === 'true';
-      if (connected && shouldSeedDemo) {
-        console.warn('⚠️  DEMO MODE: Seeding demo users (development only)');
-        await seedDemoUsers();
-      }
-      if (connected) console.log('🗄️  Database connected (lazy middleware)');
-    }
-    return next();
-  } catch (e) {
-    console.warn('⚠️  DB connect (lazy) failed:', e.message || e);
-    return next();
-  }
-});
+// (Lazy DB middleware removed for serverless compatibility)
 
 // --- Health and root routes ---
 app.get('/ping', (req, res) => res.json({ status: 'alive' }));
