@@ -31,6 +31,7 @@ const authenticateToken = (req, res, next) => {
 
 // Handle GET request (for browser testing)
 router.get('/login', (req, res) => {
+  console.log('[AUTH] GET /login', { ip: req.ip, time: new Date().toISOString() });
   res.json({
     status: 'error',
     message: 'Please use POST method for login',
@@ -66,12 +67,28 @@ const loginValidation = [
 ];
 
 // Routes
-router.post('/register', registerValidation, handleValidationErrors, authController.register);
-router.get('/verify-email', authController.verifyEmail);
-router.post('/login', loginValidation, handleValidationErrors, authController.login);
-router.post('/refresh-token', authController.refreshToken);
-router.post('/logout', protect, authController.logout);
+router.post('/register', registerValidation, handleValidationErrors, (req, res, next) => {
+  console.log('[AUTH] POST /register', { ip: req.ip, time: new Date().toISOString(), body: req.body });
+  authController.register(req, res, next);
+});
+router.get('/verify-email', (req, res, next) => {
+  console.log('[AUTH] GET /verify-email', { ip: req.ip, time: new Date().toISOString(), query: req.query });
+  authController.verifyEmail(req, res, next);
+});
+router.post('/login', loginValidation, handleValidationErrors, (req, res, next) => {
+  console.log('[AUTH] POST /login', { ip: req.ip, time: new Date().toISOString(), body: req.body });
+  authController.login(req, res, next);
+});
+router.post('/refresh-token', (req, res, next) => {
+  console.log('[AUTH] POST /refresh-token', { ip: req.ip, time: new Date().toISOString() });
+  authController.refreshToken(req, res, next);
+});
+router.post('/logout', protect, (req, res, next) => {
+  console.log('[AUTH] POST /logout', { ip: req.ip, time: new Date().toISOString() });
+  authController.logout(req, res, next);
+});
 router.get('/profile', protect, async (req, res) => {
+  console.log('[AUTH] GET /profile', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id });
   try {
     res.json({
       status: 'success',
@@ -99,20 +116,44 @@ router.get('/profile', protect, async (req, res) => {
     });
   }
 });
-router.put('/profile', protect, authController.updateProfile);
-router.post('/change-password', protect, authController.changePassword);
+router.put('/profile', protect, (req, res, next) => {
+  console.log('[AUTH] PUT /profile', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id });
+  authController.updateProfile(req, res, next);
+});
+router.post('/change-password', protect, (req, res, next) => {
+  console.log('[AUTH] POST /change-password', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id });
+  authController.changePassword(req, res, next);
+});
 
 // Password reset routes
-router.post('/forgot-password', authController.forgotPassword);
-router.post('/reset-password', authController.resetPassword);
+router.post('/forgot-password', (req, res, next) => {
+  console.log('[AUTH] POST /forgot-password', { ip: req.ip, time: new Date().toISOString(), body: req.body });
+  authController.forgotPassword(req, res, next);
+});
+router.post('/reset-password', (req, res, next) => {
+  console.log('[AUTH] POST /reset-password', { ip: req.ip, time: new Date().toISOString(), body: req.body });
+  authController.resetPassword(req, res, next);
+});
 
 // User lookup (for transfers)
-router.get('/lookup', protect, authController.lookupUser);
+router.get('/lookup', protect, (req, res, next) => {
+  console.log('[AUTH] GET /lookup', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id, query: req.query });
+  authController.lookupUser(req, res, next);
+});
 
 // 2FA routes
-router.post('/enable-2fa', protect, authController.enable2FA);
-router.post('/confirm-2fa', protect, authController.confirm2FA);
-router.post('/verify-2fa', authController.verify2FA);
+router.post('/enable-2fa', protect, (req, res, next) => {
+  console.log('[AUTH] POST /enable-2fa', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id });
+  authController.enable2FA(req, res, next);
+});
+router.post('/confirm-2fa', protect, (req, res, next) => {
+  console.log('[AUTH] POST /confirm-2fa', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id });
+  authController.confirm2FA(req, res, next);
+});
+router.post('/verify-2fa', (req, res, next) => {
+  console.log('[AUTH] POST /verify-2fa', { ip: req.ip, time: new Date().toISOString() });
+  authController.verify2FA(req, res, next);
+});
 
 // Example: protect an admin-only endpoint (placeholder)
 // router.get('/admin-only', protect, requireRole('admin'), (req, res) => {

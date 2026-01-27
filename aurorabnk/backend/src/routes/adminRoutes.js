@@ -7,6 +7,7 @@ const { ChatConversation } = require('../models/Chat');
 
 // Get all users
 router.get('/users', protect, requireRole('admin'), async (req, res) => {
+  console.log('[ADMIN] GET /users', { ip: req.ip, time: new Date().toISOString(), user: req.userId });
   try {
     console.log('Admin: Fetching all users...');
     const users = await User.find().select('-password');
@@ -61,6 +62,7 @@ router.get('/users', protect, requireRole('admin'), async (req, res) => {
 
 // Update user balance
 router.patch('/users/:userId/balance', protect, requireRole('admin'), async (req, res) => {
+  console.log('[ADMIN] PATCH /users/:userId/balance', { ip: req.ip, time: new Date().toISOString(), user: req.userId, params: req.params, body: req.body });
   try {
     const { userId } = req.params;
     const { checking, savings } = req.body;
@@ -100,6 +102,7 @@ router.patch('/users/:userId/balance', protect, requireRole('admin'), async (req
 
 // Get all pending approvals
 router.get('/pending-approvals', protect, requireRole('admin'), async (req, res) => {
+  console.log('[ADMIN] GET /pending-approvals', { ip: req.ip, time: new Date().toISOString(), user: req.userId });
   try {
     console.log('Admin: Fetching pending approvals...');
     const pendingTransactions = await Transaction.find({ status: 'pending' })
@@ -129,6 +132,7 @@ router.get('/pending-approvals', protect, requireRole('admin'), async (req, res)
 
 // Add transaction for a user (with backdating support)
 router.post('/users/:userId/transactions', protect, requireRole('admin'), async (req, res) => {
+  console.log('[ADMIN] POST /users/:userId/transactions', { ip: req.ip, time: new Date().toISOString(), user: req.userId, params: req.params, body: req.body });
   try {
     const { userId } = req.params;
     const { description, amount, category, accountType, date, note } = req.body;
@@ -192,6 +196,7 @@ router.post('/users/:userId/transactions', protect, requireRole('admin'), async 
 
 // Edit transaction
 router.patch('/users/:userId/transactions/:transactionId', protect, requireRole('admin'), async (req, res) => {
+  console.log('[ADMIN] PATCH /users/:userId/transactions/:transactionId', { ip: req.ip, time: new Date().toISOString(), user: req.userId, params: req.params, body: req.body });
   try {
     const { userId, transactionId } = req.params;
     const { description, amount, category, accountType, date } = req.body;
@@ -271,6 +276,7 @@ router.patch('/users/:userId/transactions/:transactionId', protect, requireRole(
 
 // Delete transaction
 router.delete('/users/:userId/transactions/:transactionId', protect, requireRole('admin'), async (req, res) => {
+  console.log('[ADMIN] DELETE /users/:userId/transactions/:transactionId', { ip: req.ip, time: new Date().toISOString(), user: req.userId, params: req.params });
   try {
     const { userId, transactionId } = req.params;
 
@@ -306,6 +312,7 @@ router.delete('/users/:userId/transactions/:transactionId', protect, requireRole
 
 // Send message to user
 router.post('/users/:userId/messages', protect, requireRole('admin'), async (req, res) => {
+  console.log('[ADMIN] POST /users/:userId/messages', { ip: req.ip, time: new Date().toISOString(), user: req.userId, params: req.params, body: req.body });
   try {
     const { userId } = req.params;
     const { message } = req.body;
@@ -350,6 +357,7 @@ router.post('/users/:userId/messages', protect, requireRole('admin'), async (req
 
 // Get user messages
 router.get('/users/:userId/messages', protect, async (req, res) => {
+  console.log('[ADMIN] GET /users/:userId/messages', { ip: req.ip, time: new Date().toISOString(), user: req.userId, params: req.params });
   try {
     const { userId } = req.params;
     console.log('📬 User fetching messages. userId:', userId, 'requestUser:', req.userId);
@@ -374,6 +382,7 @@ router.get('/users/:userId/messages', protect, async (req, res) => {
 
 // Mark message as read
 router.patch('/users/:userId/messages/:messageId/read', protect, async (req, res) => {
+  console.log('[ADMIN] PATCH /users/:userId/messages/:messageId/read', { ip: req.ip, time: new Date().toISOString(), user: req.userId, params: req.params });
   try {
     const { userId, messageId } = req.params;
 
@@ -400,6 +409,7 @@ router.patch('/users/:userId/messages/:messageId/read', protect, async (req, res
 
 // Edit user info (admin only)
 router.patch('/users/:userId', protect, requireRole('admin'), async (req, res) => {
+  console.log('[ADMIN] PATCH /users/:userId', { ip: req.ip, time: new Date().toISOString(), user: req.userId, params: req.params, body: req.body });
   try {
     const { userId } = req.params;
     const updateFields = req.body;
@@ -433,6 +443,7 @@ router.patch('/users/:userId', protect, requireRole('admin'), async (req, res) =
 
 // Delete user account (admin only)
 router.delete('/users/:userId', protect, requireRole('admin'), async (req, res) => {
+  console.log('[ADMIN] DELETE /users/:userId', { ip: req.ip, time: new Date().toISOString(), user: req.userId, params: req.params });
   try {
     const { userId } = req.params;
     const user = await User.findByIdAndDelete(userId);
@@ -448,6 +459,7 @@ router.delete('/users/:userId', protect, requireRole('admin'), async (req, res) 
 // Change any user's password (admin only)
 const bcrypt = require('bcryptjs');
 router.patch('/users/:userId/password', protect, requireRole('admin'), async (req, res) => {
+  console.log('[ADMIN] PATCH /users/:userId/password', { ip: req.ip, time: new Date().toISOString(), user: req.userId, params: req.params });
   try {
     const { userId } = req.params;
     const { newPassword } = req.body;
@@ -469,6 +481,7 @@ router.patch('/users/:userId/password', protect, requireRole('admin'), async (re
 });
 // Get all conversations for admin
 router.get('/conversations', protect, requireRole('admin'), async (req, res) => {
+  console.log('[ADMIN] GET /conversations', { ip: req.ip, time: new Date().toISOString(), user: req.userId });
   try {
     const conversations = await ChatConversation.find()
       .sort({ lastMessageTime: -1, createdAt: -1 });

@@ -5,6 +5,7 @@ const { protect } = require('../middleware/authMiddleware');
 
 // Get notifications stream (Server-Sent Events)
 router.get('/stream', protect, (req, res) => {
+  console.log('[NOTIFICATION] GET /stream', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id });
   try {
     // Set SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -41,6 +42,7 @@ router.get('/stream', protect, (req, res) => {
 
 // Get all notifications for user
 router.get('/', protect, (req, res) => {
+  console.log('[NOTIFICATION] GET /', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id });
   try {
     // Return empty array - can be extended to fetch from database
     res.json({
