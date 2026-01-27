@@ -100,8 +100,6 @@ router.post('/messages', protect, async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to send message', error: err.message });
   }
 });
-  }
-});
 
 // Mark messages as read
 router.put('/messages/:conversationId/read', protect, async (req, res) => {
