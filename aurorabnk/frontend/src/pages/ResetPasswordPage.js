@@ -39,7 +39,10 @@ function ResetPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      const apiBase = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api';
+      const apiBase = process.env.NODE_ENV === 'production'
+        ? (process.env.REACT_APP_API_BASE || '/api')
+        : 'http://localhost:5001/api';
+      // For Vercel, set REACT_APP_API_BASE to your backend deployment URL if needed
       const res = await fetch(`${apiBase}/auth/reset-password`, {
         credentials: 'include',
         method: 'POST',

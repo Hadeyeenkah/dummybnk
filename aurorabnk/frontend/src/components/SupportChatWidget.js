@@ -10,7 +10,10 @@ function SupportChatWidget() {
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState(null);
   const messagesEndRef = useRef(null);
-  const apiBase = process.env.REACT_APP_API_BASE || '/api';
+  const apiBase = process.env.NODE_ENV === 'production'
+    ? (process.env.REACT_APP_API_BASE || '/api')
+    : 'http://localhost:5001/api';
+  // For Vercel, set REACT_APP_API_BASE to your backend deployment URL if needed
 
   // Fetch messages
   const fetchMessages = useCallback(async (convId) => {

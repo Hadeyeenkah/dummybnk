@@ -11,12 +11,14 @@ const app = express();
 
 
 // CORS - MUST BE FIRST MIDDLEWARE
+const allowedOrigins = (process.env.CLIENT_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
 app.use(cors({
-  origin: [
-    'https://aurora-isq0obdv4-auroras-projects-c3211c64.vercel.app',
-    'http://localhost:3000',
-    'http://localhost:5173'
-  ],
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],

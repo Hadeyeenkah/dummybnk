@@ -23,7 +23,10 @@ function DepositPage() {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receipt, setReceipt] = useState(null);
 
-  const apiBase = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api';
+  const apiBase = process.env.NODE_ENV === 'production'
+    ? (process.env.REACT_APP_API_BASE || '/api')
+    : 'http://localhost:5001/api';
+  // For Vercel, set REACT_APP_API_BASE to your backend deployment URL if needed
 
   const formatCurrency = (value) => `$${Number(value || 0).toFixed(2)}`;
 

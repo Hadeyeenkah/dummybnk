@@ -7,7 +7,10 @@ import SupportChatWidget from './components/SupportChatWidget';
 import './App.css';
 
 // API base for all fetch calls
-const API_BASE = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api'; // Always use /api in production
+const API_BASE = process.env.NODE_ENV === 'production'
+  ? (process.env.REACT_APP_API_BASE || '/api')
+  : 'http://localhost:5001/api';
+// For Vercel, set REACT_APP_API_BASE to your backend deployment URL if needed
 console.log('🌍 Environment:', process.env.NODE_ENV);
 console.log('🔗 API Base:', API_BASE);
 

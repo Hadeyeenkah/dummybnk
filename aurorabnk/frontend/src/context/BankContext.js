@@ -5,7 +5,10 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 
 // Set API base from environment variable (Vercel/CRA/Vite compatible)
-const API_BASE = process.env.REACT_APP_API_BASE || process.env.VITE_API_URL || process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api');
+const API_BASE = process.env.NODE_ENV === 'production'
+  ? (process.env.REACT_APP_API_BASE || '/api')
+  : 'http://localhost:5001/api';
+// For Vercel, set REACT_APP_API_BASE to your backend deployment URL if needed
 console.log('🌍 Environment:', process.env.NODE_ENV);
 console.log('🔗 API_BASE:', API_BASE);
 
