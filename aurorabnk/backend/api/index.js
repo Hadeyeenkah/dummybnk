@@ -1,3 +1,7 @@
+// Health check endpoint for /api/health
+app.get('/api/health', (req, res) => {
+	res.status(200).json({ status: 'ok', message: 'AuroraBNK backend API is healthy.' });
+});
 
 
 const app = require("../src/app");
