@@ -11,6 +11,10 @@
     {
       "source": "/api/(.*)",
       "destination": "https://dummyback.vercel.app/api/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/"
     }
   ]
 }
