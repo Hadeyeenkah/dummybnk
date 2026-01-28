@@ -11,12 +11,21 @@ const app = express();
 
 
 // CORS - MUST BE FIRST MIDDLEWARE
+
+// Enhanced CORS with logging for debugging
 const allowedOrigins = (process.env.CLIENT_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
 app.use(cors({
   origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (!origin) {
+      console.log('[CORS] No origin header, allowing request');
+      return callback(null, true);
+    }
+    if (allowedOrigins.includes(origin)) {
+      console.log(`[CORS] Allowed origin: ${origin}`);
+      return callback(null, true);
+    }
+    console.warn(`[CORS] Blocked origin: ${origin}`);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -31,6 +40,12 @@ app.options('*', cors());
 app.use(express.json());
 app.use(cookieParser());
 
+
+
+// Health check route
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'API is healthy' });
+});
 
 // Mount authentication routes
 const authRoutes = require('./routes/authRoutes');
