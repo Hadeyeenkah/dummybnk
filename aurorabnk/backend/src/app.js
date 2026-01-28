@@ -1,8 +1,3 @@
-// Root route for backend health/debug
-app.get('/', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Aurora Bank backend root. Use /api/* for API endpoints.' });
-});
-
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -12,7 +7,10 @@ dotenv.config();
 
 const app = express();
 
-
+// Root route for backend health/debug
+app.get('/', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Aurora Bank backend root. Use /api/* for API endpoints.' });
+});
 
 // CORS - MUST BE FIRST MIDDLEWARE
 
