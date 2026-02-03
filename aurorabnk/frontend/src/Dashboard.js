@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useBankContext } from './context/BankContext';
@@ -281,10 +282,10 @@ function Dashboard() {
 
   if (!currentUser) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-white">
         <div className="text-center">
-          <p className="text-slate-700">Please log in to access your dashboard</p>
-          <Link to="/login" className="mt-4 inline-block text-blue-900 hover:text-blue-950 font-medium">
+          <p>Please log in to access your dashboard</p>
+          <Link to="/login" className="mt-4 inline-block text-cyan-400 hover:text-cyan-300">
             Go to Login
           </Link>
         </div>
@@ -297,11 +298,11 @@ function Dashboard() {
   const recentTransactions = currentUser.transactions.slice(0, 5);
 
   const quickActions = [
-    { title: 'Transfer Money', icon: '↗️', link: '/transfer', gradient: 'from-blue-600 to-blue-900' },
-    { title: 'Wire Transfer', icon: '🌐', link: '/wire-transfer', gradient: 'from-blue-500 to-cyan-600' },
-    { title: 'Pay Bills', icon: '💳', link: '/bills', gradient: 'from-emerald-500 to-teal-600' },
-    { title: 'Deposit Check', icon: '📄', link: '/deposit', gradient: 'from-amber-500 to-orange-600' },
-    { title: 'Card Controls', icon: '🔒', link: '/cards', gradient: 'from-rose-500 to-pink-600' },
+    { title: 'Transfer Money', icon: '→', link: '/transfer' },
+    { title: 'Wire Transfer', icon: '🌐', link: '/wire-transfer' },
+    { title: 'Pay Bills', icon: '💳', link: '/bills' },
+    { title: 'Deposit Check', icon: '📄', link: '/deposit' },
+    { title: 'Card Controls', icon: '🔒', link: '/cards' },
   ];
 
   const handleLogout = () => {
@@ -421,61 +422,63 @@ function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="min-h-screen bg-slate-950 text-slate-50">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/80 backdrop-blur-xl shadow-sm">
+      <header className="border-b border-white/5 bg-slate-900/50 backdrop-blur relative z-30">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-4 gap-3 flex-wrap">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 text-cyan-400">
               <AuroraBankLogo />
-              <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent">Aurora Bank</span>
+              <span className="text-lg font-semibold tracking-tight text-slate-50">Aurora Bank, FSB</span>
             </div>
+            
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <div className="relative">
               <button
                 onClick={handleToggleNotifications}
-                className="relative rounded-full p-2.5 hover:bg-slate-100 transition-colors"
+                className="rounded-full border border-white/10 p-2 hover:border-cyan-200/50 transition"
               >
-                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-                {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
+                <span className="relative inline-flex items-center justify-center text-lg">
+                  🔔
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white text-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </span>
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-slate-200 bg-white shadow-2xl z-50 overflow-hidden">
-                  <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 bg-gradient-to-r from-slate-50 to-white">
-                    <span className="text-sm font-semibold text-slate-900">Notifications</span>
+                <div className="absolute right-0 mt-2 w-80 rounded-xl border border-white/10 bg-slate-900 shadow-2xl z-50">
+                  <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+                    <span className="text-sm font-semibold text-white">Notifications</span>
                     <button
-                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      className="text-xs text-cyan-300 hover:text-cyan-200"
                       onClick={() => setNotifications([])}
                     >
                       Clear all
                     </button>
                   </div>
-                  <div className="max-h-80 overflow-y-auto">
+                  <div className="max-h-80 overflow-y-auto divide-y divide-white/5">
                     {notifications.length === 0 && (
-                      <div className="p-6 text-center text-sm text-slate-500">No new notifications</div>
+                      <div className="p-4 text-sm text-slate-400">No new notifications</div>
                     )}
                     {notifications.map((n) => {
-                      let bgColor = "bg-white hover:bg-slate-50";
-                      let borderColor = "border-slate-100";
+                      // Determine notification color
+                      let notificationBg = "bg-slate-800";
+                      let notificationBorder = "border-white/10";
                       if (n.title?.toLowerCase().includes("on hold") || n.detail?.toLowerCase().includes("on hold")) {
-                        bgColor = "bg-amber-50 hover:bg-amber-100";
-                        borderColor = "border-amber-200";
+                        notificationBg = "bg-yellow-400/20";
+                        notificationBorder = "border-yellow-400/50";
                       } else if (n.title?.toLowerCase().includes("blocked by") || n.detail?.toLowerCase().includes("blocked by")) {
-                        bgColor = "bg-rose-50 hover:bg-rose-100";
-                        borderColor = "border-rose-200";
+                        notificationBg = "bg-red-500/20";
+                        notificationBorder = "border-red-500/50";
                       }
                       return (
                         <div
                           key={n.id}
-                          className={`px-5 py-4 border-b ${borderColor} ${bgColor} transition cursor-pointer`}
+                          className={`p-4 hover:bg-white/5 transition cursor-pointer rounded-lg mb-2 border ${notificationBg} ${notificationBorder}`}
                           onClick={() => {
                             setShowNotifications(false);
                             const targetFilter = n.source === 'admin' ? 'admin' : (n.type || 'all');
@@ -484,17 +487,17 @@ function Dashboard() {
                             });
                           }}
                         >
-                          <div className="text-sm font-semibold text-slate-900">{n.title}</div>
-                          <div className="text-xs text-slate-600 mt-1">{n.detail}</div>
-                          <div className="text-[11px] text-slate-400 mt-1">{formatTime(n.time)}</div>
+                          <div className="text-sm font-semibold text-white">{n.title}</div>
+                          <div className="text-xs text-slate-400 mt-1">{n.detail}</div>
+                          <div className="text-[11px] text-slate-500 mt-1">{formatTime(n.time)}</div>
                         </div>
                       );
                     })}
                   </div>
-                  <div className="border-t border-slate-100 px-5 py-3 text-right bg-slate-50">
+                  <div className="border-t border-white/10 px-4 py-3 text-right">
                     <button
                       onClick={() => handleNavigate('/notifications')}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      className="text-sm text-cyan-300 hover:text-cyan-200"
                     >
                       View all
                     </button>
@@ -505,44 +508,44 @@ function Dashboard() {
             <div className="relative">
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center gap-3 transition hover:opacity-80 rounded-full hover:bg-slate-100 pr-3 py-1"
+                className="flex items-center gap-3 transition hover:opacity-80"
               >
                 {user.avatarUrl ? (
                   <img
                     src={user.avatarUrl}
                     alt="Profile avatar"
-                    className="h-10 w-10 rounded-full object-cover border-2 border-slate-200"
+                    className="h-10 w-10 rounded-full object-cover border border-white/10"
                   />
                 ) : (
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-blue-900 flex items-center justify-center text-white font-semibold shadow-md">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-semibold">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <div className="hidden md:block text-left">
-                  <div className="text-sm font-semibold text-slate-900">{user.name}</div>
-                  <div className="text-xs text-slate-500 font-mono">{user.accountNumber || 'Loading...'}</div>
+                <div className="hidden md:block">
+                  <div className="text-sm font-semibold text-white">{user.name}</div>
+                  <div className="text-xs text-slate-400 font-mono">{user.accountNumber || 'Loading...'}</div>
                 </div>
               </button>
 
               {/* Profile Dropdown Menu */}
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-slate-200 bg-white shadow-2xl z-50 overflow-hidden">
-                  <div className="border-b border-slate-100 p-4 bg-gradient-to-br from-slate-50 to-white">
+                <div className="absolute right-0 mt-2 w-64 rounded-xl border border-white/10 bg-slate-900 shadow-2xl z-50">
+                  <div className="border-b border-white/10 p-4">
                     <div className="flex items-center gap-3">
                       {user.avatarUrl ? (
                         <img
                           src={user.avatarUrl}
                           alt="Profile avatar"
-                          className="h-12 w-12 rounded-full object-cover border-2 border-slate-200"
+                          className="h-12 w-12 rounded-full object-cover border border-white/10"
                         />
                       ) : (
-                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-600 to-blue-900 flex items-center justify-center text-white font-semibold text-lg shadow-md">
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-semibold text-lg">
                           {user.name.charAt(0).toUpperCase()}
                         </div>
                       )}
                       <div>
-                        <div className="font-semibold text-slate-900">{user.name}</div>
-                        <div className="text-xs text-slate-600">{user.email}</div>
+                        <div className="font-semibold text-white">{user.name}</div>
+                        <div className="text-xs text-slate-400">{user.email}</div>
                       </div>
                     </div>
                   </div>
@@ -552,50 +555,34 @@ function Dashboard() {
                         setShowSettingsModal(true);
                         setShowProfileMenu(false);
                       }}
-                      className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 transition text-sm flex items-center gap-3 font-medium"
+                      className="w-full text-left px-4 py-2 rounded-lg hover:bg-white/5 text-slate-200 transition text-sm flex items-center gap-2"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      Profile Settings
+                      <span>⚙️</span> Profile Settings
                     </button>
                     <button
                       onClick={() => handleNavigate('/security')}
-                      className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 transition text-sm flex items-center gap-3 font-medium"
+                      className="w-full text-left px-4 py-2 rounded-lg hover:bg-white/5 text-slate-200 transition text-sm flex items-center gap-2"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                      Security
+                      <span>🔐</span> Security
                     </button>
                     <button
                       onClick={() => handleNavigate('/notifications')}
-                      className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 transition text-sm flex items-center gap-3 font-medium"
+                      className="w-full text-left px-4 py-2 rounded-lg hover:bg-white/5 text-slate-200 transition text-sm flex items-center gap-2"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                      </svg>
-                      Notifications
+                      <span>🔔</span> Notifications
                     </button>
                     <button
                       onClick={() => handleNavigate('/transactions')}
-                      className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-slate-50 text-slate-700 transition text-sm flex items-center gap-3 font-medium"
+                      className="w-full text-left px-4 py-2 rounded-lg hover:bg-white/5 text-slate-200 transition text-sm flex items-center gap-2"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                      Transactions
+                      <span>💸</span> Transactions
                     </button>
-                    <div className="border-t border-slate-100 my-1"></div>
+                    <div className="border-t border-white/10 my-1"></div>
                     <button
                       onClick={handleLogout}
-                      className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-rose-50 text-rose-600 transition text-sm flex items-center gap-3 font-medium"
+                      className="w-full text-left px-4 py-2 rounded-lg hover:bg-red-500/10 text-red-400 transition text-sm flex items-center gap-2"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                      Logout
+                      <span>🚪</span> Logout
                     </button>
                   </div>
                 </div>
@@ -608,28 +595,24 @@ function Dashboard() {
       <main className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">Welcome back, {user.name.split(' ')[0]}</h1>
-          <p className="mt-2 text-slate-600">Here's what's happening with your accounts today.</p>
+          <h1 className="text-3xl font-semibold text-white">Welcome back, {user.name.split(' ')[0]}</h1>
+          <p className="mt-2 text-slate-300">Here's what's happening with your accounts today.</p>
         </div>
 
-        {/* Admin Messages - Slim Container */}
+        {/* Admin Messages - Slim Container (shows latest message only) */}
         {adminMessages.length > 0 && adminMessages.filter(m => !m.read).length > 0 && (() => {
           const latestUnread = adminMessages.filter(m => !m.read).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
           const unreadCount = adminMessages.filter(m => !m.read).length;
           return (
-            <div className="mb-6 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 px-5 py-4 flex items-center justify-between gap-3 shadow-sm">
+            <div className="mb-6 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-                  </svg>
-                </div>
+                <span className="text-xl flex-shrink-0">📢</span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-blue-900 truncate">
+                  <p className="text-sm font-semibold text-cyan-200 truncate">
                     {latestUnread.message}
                   </p>
                   {unreadCount > 1 && (
-                    <p className="text-xs text-blue-700 mt-0.5">
+                    <p className="text-xs text-cyan-300/70 mt-0.5">
                       +{unreadCount - 1} more message{unreadCount - 1 !== 1 ? 's' : ''}
                     </p>
                   )}
@@ -637,160 +620,111 @@ function Dashboard() {
               </div>
               <button
                 onClick={() => navigate('/notifications', { state: { filter: 'admin' } })}
-                className="text-sm font-semibold text-blue-700 hover:text-blue-800 whitespace-nowrap flex-shrink-0 flex items-center gap-1"
+                className="text-sm font-medium text-cyan-300 hover:text-cyan-200 whitespace-nowrap flex-shrink-0"
               >
-                View
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
+                View →
               </button>
             </div>
           );
         })()}
 
+        {/* Admin Messages Alert removed: message content not shown on dashboard */}
+
         {/* Account Balance Cards */}
         <div className="mb-8 grid gap-6 md:grid-cols-3">
-          <div className="md:col-span-2 rounded-3xl bg-gradient-to-br from-blue-700 via-blue-800 to-blue-900 p-8 text-white shadow-xl">
-            <div className="flex items-center justify-between mb-6">
+          <div className="card primary md:col-span-2">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex-1">
-                <p className="text-xs uppercase tracking-widest text-blue-200 font-semibold">Total Balance</p>
-                <div className="flex items-center gap-3 mt-4">
-                  <p className={`font-bold text-white leading-tight break-words ${getBalanceSizeClass(user.balance)}`}>
+                <p className="text-xs uppercase tracking-[0.2em] text-cyan-100">Total Balance</p>
+                <div className="flex items-center gap-3 mt-3">
+                  <p className={`font-semibold text-white leading-tight break-words ${getBalanceSizeClass(user.balance)}`}>
                     {showBalance 
                       ? formatCurrency(user.balance)
                       : '$ •••••••'}
                   </p>
                   <button
                     onClick={() => setShowBalance(!showBalance)}
-                    className="text-white/80 hover:text-white transition"
+                    className="text-cyan-200 hover:text-white transition text-xl"
                     title={showBalance ? 'Hide balance' : 'Show balance'}
                   >
-                    {showBalance ? (
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    ) : (
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                      </svg>
-                    )}
+                    {showBalance ? '🔓' : '🔒'}
                   </button>
                 </div>
               </div>
-              <span className="rounded-full bg-white/20 backdrop-blur-sm px-4 py-2 text-xs text-white font-semibold">Premium</span>
+              <span className="rounded-full bg-white/10 px-4 py-2 text-xs text-cyan-50">Premium Account</span>
             </div>
             
-            {/* Account Details */}
-            <div className="mb-6 rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-5">
+            {/* Account Details - Prominently displayed */}
+            <div className="mb-6 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-blue-200 mb-2 font-medium">Account Number</p>
+                  <p className="text-xs text-cyan-200 mb-1">Account Number</p>
                   <div className="flex items-center gap-2">
-                    <p className="text-base font-mono font-semibold text-white">
+                    <p className="text-lg font-mono font-semibold text-white">
                       {showAccountNumber 
                         ? (user.accountNumber || 'Loading...') 
                         : '••••••••••••'}
                     </p>
                     <button
                       onClick={() => setShowAccountNumber(!showAccountNumber)}
-                      className="text-white/70 hover:text-white transition"
+                      className="text-cyan-300 hover:text-cyan-100 transition text-sm"
                       title={showAccountNumber ? 'Hide account number' : 'Show account number'}
                     >
-                      {showAccountNumber ? (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                        </svg>
-                      )}
+                      {showAccountNumber ? '�' : '🔒'}
                     </button>
                     {user.accountNumber && showAccountNumber && (
                       <button
                         onClick={() => handleCopyToClipboard(user.accountNumber, 'account')}
-                        className="text-white/70 hover:text-white transition"
+                        className="text-cyan-300 hover:text-cyan-100 transition"
                         title="Copy account number"
                       >
-                        {copiedField === 'account' ? (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                        )}
+                        {copiedField === 'account' ? '✓' : '📋'}
                       </button>
                     )}
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-blue-200 mb-2 font-medium">Routing Number</p>
+                  <p className="text-xs text-cyan-200 mb-1">Routing Number</p>
                   <div className="flex items-center gap-2">
-                    <p className="text-base font-mono font-semibold text-white">
+                    <p className="text-lg font-mono font-semibold text-white">
                       {showRoutingNumber 
                         ? (user.routingNumber || '026009593') 
                         : '•••••••••'}
                     </p>
                     <button
                       onClick={() => setShowRoutingNumber(!showRoutingNumber)}
-                      className="text-white/70 hover:text-white transition"
+                      className="text-cyan-300 hover:text-cyan-100 transition text-sm"
                       title={showRoutingNumber ? 'Hide routing number' : 'Show routing number'}
                     >
-                      {showRoutingNumber ? (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                        </svg>
-                      )}
+                      {showRoutingNumber ? '�' : '🔒'}
                     </button>
                     {showRoutingNumber && (
                       <button
                         onClick={() => handleCopyToClipboard(user.routingNumber || '026009593', 'routing')}
-                        className="text-white/70 hover:text-white transition"
+                        className="text-cyan-300 hover:text-cyan-100 transition"
                         title="Copy routing number"
                       >
-                        {copiedField === 'routing' ? (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                        )}
+                        {copiedField === 'routing' ? '✓' : '📋'}
                       </button>
                     )}
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-blue-200 mt-3 flex items-center gap-1">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Share these details to receive transfers
-              </p>
+              <p className="text-xs text-cyan-300 mt-2">💡 Share these details to receive transfers</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-5">
-                <p className="text-xs text-blue-200 font-medium">Checking</p>
-                <p className="mt-2 text-2xl font-bold text-white">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-xs text-slate-300">Checking</p>
+                <p className="mt-2 text-2xl font-semibold text-white">
                   {showBalance 
                     ? `$${user.checking.toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
                     : '$ ••••••'}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-5">
-                <p className="text-xs text-blue-200 font-medium">Savings</p>
-                <p className="mt-2 text-2xl font-bold text-white">
+              <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p className="text-xs text-slate-300">Savings</p>
+                <p className="mt-2 text-2xl font-semibold text-white">
                   {showBalance 
                     ? `$${user.savings.toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
                     : '$ ••••••'}
@@ -799,20 +733,20 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="rounded-3xl bg-white border border-slate-200 p-6 shadow-lg">
-            <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold">Quick Transfer</p>
-            <form className="mt-6 space-y-4">
+          <div className="card secondary">
+            <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Quick Transfer</p>
+            <form className="mt-4 space-y-4">
               <input
                 type="text"
                 placeholder="Recipient"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
               />
               <input
                 type="number"
                 placeholder="Amount"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
               />
-              <button type="submit" className="w-full rounded-xl bg-gradient-to-r from-blue-700 to-blue-900 py-3 text-sm font-semibold text-white transition hover:from-blue-800 hover:to-blue-950 shadow-lg shadow-blue-700/30">
+              <button type="submit" className="w-full rounded-xl bg-cyan-400 py-3 text-sm font-semibold text-slate-900 transition hover:bg-cyan-300">
                 Send Money
               </button>
             </form>
@@ -821,83 +755,71 @@ function Dashboard() {
 
         {/* Quick Actions */}
         <div className="mb-8">
-          <h2 className="mb-6 text-xl font-bold text-slate-900">Quick Actions</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <h2 className="mb-4 text-xl font-semibold text-white">Quick Actions</h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {quickActions.map((action) => (
               <Link
                 key={action.title}
                 to={action.link}
-                className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 text-left transition hover:shadow-xl hover:-translate-y-1"
+                className="group rounded-2xl border border-white/5 bg-white/5 p-6 text-left transition hover:-translate-y-1 hover:border-cyan-200/50"
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-5 transition-opacity`}></div>
-                <div className="relative">
-                  <div className="mb-3 text-3xl">{action.icon}</div>
-                  <div className="text-sm font-semibold text-slate-900">{action.title}</div>
-                </div>
+                <div className="mb-3 text-3xl">{action.icon}</div>
+                <div className="text-sm font-semibold text-white">{action.title}</div>
               </Link>
             ))}
           </div>
         </div>
 
+        {/* Messages Section removed: message content not shown on dashboard */}
+
         {/* Recent Transactions */}
         <div className="mb-8">
-          <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <h2 className="text-xl font-bold text-slate-900">Recent Transactions</h2>
-            <Link to="/transactions" className="text-sm text-blue-700 hover:text-blue-800 font-semibold flex items-center gap-1">
-              View all
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
+          <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold text-white">Recent Transactions</h2>
+            <Link to="/transactions" className="text-sm text-cyan-200 hover:text-cyan-100">View all →</Link>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-lg">
-            <div className="divide-y divide-slate-100">
+          <div className="rounded-2xl border border-white/5 bg-white/5 overflow-hidden">
+            <div className="divide-y divide-white/5">
               {recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="px-6 py-5 hover:bg-slate-50 transition">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4 min-w-0 flex-1">
-                      <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-semibold shadow-sm ${
+                <div key={transaction.id} className="px-4 py-4 sm:px-6 hover:bg-white/[0.03] transition">
+                  <div className="flex items-start justify-between gap-3">
+                    {/* Left side: Icon + Description */}
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-lg font-semibold ${
                         transaction.amount < 0 
-                          ? 'bg-rose-100 text-rose-600' 
-                          : 'bg-emerald-100 text-emerald-600'
+                          ? 'bg-red-500/20 text-red-400' 
+                          : 'bg-green-500/20 text-green-400'
                       }`}>
-                        {transaction.amount < 0 ? (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                          </svg>
-                        ) : (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-                          </svg>
-                        )}
+                        {transaction.amount < 0 ? '−' : '+'}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-semibold text-slate-900 truncate">
+                        <div className="text-sm font-semibold text-white truncate">
                           {transaction.description}
                         </div>
-                        <div className="flex flex-wrap gap-2 mt-1 text-xs text-slate-500">
+                        <div className="flex flex-wrap gap-1 mt-1 text-xs text-slate-400">
                           <span>{transaction.date}</span>
                           <span>•</span>
                           <span className="capitalize">{transaction.category}</span>
                           {transaction.status === 'pending' && (
                             <>
                               <span>•</span>
-                              <span className="text-amber-600 font-medium">Pending</span>
+                              <span className="text-yellow-400">Pending</span>
                             </>
                           )}
                           {transaction.status === 'rejected' && (
                             <>
                               <span>•</span>
-                              <span className="text-rose-600 font-medium">Rejected</span>
+                              <span className="text-red-400">Rejected</span>
                             </>
                           )}
                         </div>
                       </div>
                     </div>
                     
+                    {/* Right side: Amount */}
                     <div className="flex-shrink-0 text-right">
-                      <div className={`text-base font-bold whitespace-nowrap ${
-                        transaction.amount < 0 ? 'text-rose-600' : 'text-emerald-600'
+                      <div className={`text-sm sm:text-base font-semibold whitespace-nowrap ${
+                        transaction.amount < 0 ? 'text-red-400' : 'text-green-400'
                       }`}>
                         {transaction.amount < 0 ? '−' : '+'}${Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </div>
@@ -909,22 +831,24 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Spending Overview & Insights */}
+        {/* Spending Overview */}
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
-            <h3 className="mb-6 text-lg font-bold text-slate-900">Spending This Month</h3>
-            <div className="space-y-5">
+          <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
+            <h3 className="mb-4 text-lg font-semibold text-white">Spending This Month</h3>
+            <div className="space-y-4">
               {(() => {
                 const now = new Date();
                 const currentMonth = now.getMonth();
                 const currentYear = now.getFullYear();
                 
+                // Calculate spending by category for current month
                 const spendingByCategory = {};
                 let totalSpending = 0;
                 
                 if (currentUser?.transactions && currentUser.transactions.length > 0) {
                   currentUser.transactions.forEach((tx) => {
                     const txDate = new Date(tx.date);
+                    // Only include expenses (negative amounts) from current month
                     if (tx.amount < 0 && txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear) {
                       const category = tx.category || 'Other';
                       spendingByCategory[category] = (spendingByCategory[category] || 0) + Math.abs(tx.amount);
@@ -933,14 +857,16 @@ function Dashboard() {
                   });
                 }
                 
+                // If no transactions this month, show zero
                 if (totalSpending === 0) {
                   return (
-                    <div className="text-slate-500 text-sm">
+                    <div className="text-slate-400 text-sm">
                       <p>No spending recorded this month</p>
                     </div>
                   );
                 }
                 
+                // Convert to array and sort by amount descending
                 const categories = Object.entries(spendingByCategory)
                   .map(([cat, amt]) => ({
                     category: cat,
@@ -952,11 +878,11 @@ function Dashboard() {
                 return categories.map((item) => (
                   <div key={item.category}>
                     <div className="mb-2 flex justify-between text-sm">
-                      <span className="text-slate-700 font-medium">{item.category}</span>
-                      <span className="text-slate-900 font-semibold">${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-slate-200">{item.category}</span>
+                      <span className="text-white">${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                     </div>
-                    <div className="h-2 rounded-full bg-slate-100">
-                      <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-900" style={{ width: `${item.percent}%` }} />
+                    <div className="h-2 rounded-full bg-white/10">
+                      <div className="h-full rounded-full bg-cyan-400" style={{ width: `${item.percent}%` }} />
                     </div>
                   </div>
                 ));
@@ -964,41 +890,29 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
-            <h3 className="mb-6 text-lg font-bold text-slate-900">Financial Insights</h3>
+          <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
+            <h3 className="mb-4 text-lg font-semibold text-white">Financial Insights</h3>
             <div className="space-y-4">
-              <div className="rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-5">
+              <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-4">
                 <div className="mb-2 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span className="text-sm font-bold text-emerald-900">On Track</span>
+                  <span className="text-xl">✓</span>
+                  <span className="text-sm font-semibold text-green-400">On Track</span>
                 </div>
-                <p className="text-sm text-emerald-800">You're spending 15% less than last month. Great job!</p>
+                <p className="text-sm text-slate-300">You're spending 15% less than last month. Great job!</p>
               </div>
-              <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-5">
+              <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4">
                 <div className="mb-2 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                  </div>
-                  <span className="text-sm font-bold text-blue-900">Tip</span>
+                  <span className="text-xl">💡</span>
+                  <span className="text-sm font-semibold text-blue-400">Tip</span>
                 </div>
-                <p className="text-sm text-blue-800">Set up automatic transfers to savings to reach your $50K goal faster.</p>
+                <p className="text-sm text-slate-300">Set up automatic transfers to savings to reach your $50K goal faster.</p>
               </div>
-              <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-slate-100 p-5">
+              <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-4">
                 <div className="mb-2 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                  <span className="text-sm font-bold text-blue-900">Forecast</span>
+                  <span className="text-xl">📊</span>
+                  <span className="text-sm font-semibold text-cyan-400">Forecast</span>
                 </div>
-                <p className="text-sm text-blue-800">At this rate, you'll save $3,200 by the end of the quarter.</p>
+                <p className="text-sm text-slate-300">At this rate, you'll save $3,200 by the end of the quarter.</p>
               </div>
             </div>
           </div>
@@ -1007,26 +921,24 @@ function Dashboard() {
 
       {/* Settings Modal */}
       {showSettingsModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 rounded-2xl border border-white/10 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="sticky top-0 border-b border-slate-200 bg-white px-6 py-5 flex items-center justify-between rounded-t-3xl">
-              <h2 className="text-2xl font-bold text-slate-900">Profile Settings</h2>
+            <div className="sticky top-0 border-b border-white/10 bg-slate-900 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-2xl font-semibold text-white">Profile Settings</h2>
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="text-slate-400 hover:text-slate-600 transition"
+                className="text-slate-400 hover:text-white transition text-2xl"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                ✕
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="p-6 space-y-8">
+            <div className="p-6 space-y-6">
               {/* Error Message */}
               {saveError && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-400">
                   {saveError}
                 </div>
               )}
@@ -1037,28 +949,28 @@ function Dashboard() {
                   <img
                     src={formData.avatarUrl}
                     alt="Avatar"
-                    className="h-24 w-24 rounded-full object-cover border-4 border-slate-200"
+                    className="h-24 w-24 rounded-full object-cover border border-white/10"
                   />
                 ) : (
-                  <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-600 to-blue-900 flex items-center justify-center text-white font-bold text-4xl shadow-lg">
+                  <div className="h-24 w-24 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white font-bold text-4xl">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <label className="px-5 py-2.5 rounded-xl bg-blue-100 text-blue-800 hover:bg-blue-200 transition text-sm font-semibold cursor-pointer">
+                <label className="px-4 py-2 rounded-lg bg-cyan-400/20 text-cyan-300 hover:bg-cyan-400/30 transition text-sm font-medium cursor-pointer">
                   Change Picture
                   <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
                 </label>
-                <p className="text-xs text-slate-500">JPG, PNG up to 5MB (auto-compressed)</p>
+                <p className="text-xs text-slate-400">JPG, PNG up to 5MB (auto-compressed)</p>
               </div>
 
               {/* Personal Information */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-slate-900">Personal Information</h3>
+                  <h3 className="text-lg font-semibold text-white">Personal Information</h3>
                   {!editMode && (
                     <button
                       onClick={() => setEditMode(true)}
-                      className="text-blue-700 hover:text-blue-800 text-sm font-semibold transition"
+                      className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition"
                     >
                       Edit
                     </button>
@@ -1066,84 +978,91 @@ function Dashboard() {
                 </div>
 
                 {editMode ? (
-                  <div className="space-y-4 bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                  // Edit Form
+                  <div className="space-y-4 bg-white/5 p-4 rounded-xl border border-white/10">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm text-slate-700 font-medium block mb-2">First Name</label>
+                        <label className="text-sm text-slate-300 block mb-2">First Name</label>
                         <input
                           type="text"
                           value={formData.firstName}
                           onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
+                          className="w-full rounded-lg border border-white/10 bg-slate-800 px-4 py-2 text-white outline-none focus:border-cyan-400 transition"
                           placeholder="First name"
                         />
                       </div>
                       <div>
-                        <label className="text-sm text-slate-700 font-medium block mb-2">Last Name</label>
+                        <label className="text-sm text-slate-300 block mb-2">Last Name</label>
                         <input
                           type="text"
                           value={formData.lastName}
                           onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
+                          className="w-full rounded-lg border border-white/10 bg-slate-800 px-4 py-2 text-white outline-none focus:border-cyan-400 transition"
                           placeholder="Last name"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm text-slate-700 font-medium block mb-2">Email Address</label>
+                      <label className="text-sm text-slate-300 block mb-2">Email Address</label>
                       <input
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({...formData, email: e.target.value})}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
+                        className="w-full rounded-lg border border-white/10 bg-slate-800 px-4 py-2 text-white outline-none focus:border-cyan-400 transition"
                         placeholder="Email"
                       />
                     </div>
                     <div>
-                      <label className="text-sm text-slate-700 font-medium block mb-2">Phone Number</label>
+                      <label className="text-sm text-slate-300 block mb-2">Phone Number</label>
                       <input
                         type="tel"
                         value={formData.phone}
                         onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
+                        className="w-full rounded-lg border border-white/10 bg-slate-800 px-4 py-2 text-white outline-none focus:border-cyan-400 transition"
                         placeholder="Phone number"
                       />
                     </div>
                     <div className="flex gap-3 pt-2">
                       <button
                         onClick={handleSaveProfile}
-                        className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-700 to-blue-900 text-white rounded-xl font-semibold hover:from-blue-800 hover:to-blue-950 transition disabled:opacity-50 shadow-lg shadow-blue-700/30"
+                        className="flex-1 px-4 py-2 bg-cyan-400 text-slate-900 rounded-lg font-semibold hover:bg-cyan-300 transition disabled:opacity-50"
                         disabled={savingProfile}
                       >
                         {savingProfile ? 'Saving...' : 'Save Changes'}
                       </button>
                       <button
                         onClick={() => setEditMode(false)}
-                        className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition"
+                        className="flex-1 px-4 py-2 bg-white/10 text-slate-200 rounded-lg font-semibold hover:bg-white/20 transition"
                       >
                         Cancel
                       </button>
                     </div>
                   </div>
                 ) : (
+                  // View Mode
                   <div className="space-y-3">
+                    {saveError && (
+                      <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
+                        {saveError}
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                        <p className="text-xs text-slate-500 mb-1 font-medium">First Name</p>
-                        <p className="text-slate-900 font-semibold">{user.name.split(' ')[0]}</p>
+                      <div className="bg-white/5 p-3 rounded-lg border border-white/10">
+                        <p className="text-xs text-slate-400 mb-1">First Name</p>
+                        <p className="text-white font-medium">{user.name.split(' ')[0]}</p>
                       </div>
-                      <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                        <p className="text-xs text-slate-500 mb-1 font-medium">Last Name</p>
-                        <p className="text-slate-900 font-semibold">{user.name.split(' ').slice(1).join(' ')}</p>
+                      <div className="bg-white/5 p-3 rounded-lg border border-white/10">
+                        <p className="text-xs text-slate-400 mb-1">Last Name</p>
+                        <p className="text-white font-medium">{user.name.split(' ').slice(1).join(' ')}</p>
                       </div>
                     </div>
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                      <p className="text-xs text-slate-500 mb-1 font-medium">Email Address</p>
-                      <p className="text-slate-900 font-semibold">{user.email}</p>
+                    <div className="bg-white/5 p-3 rounded-lg border border-white/10">
+                      <p className="text-xs text-slate-400 mb-1">Email Address</p>
+                      <p className="text-white font-medium">{user.email}</p>
                     </div>
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                      <p className="text-xs text-slate-500 mb-1 font-medium">Phone Number</p>
-                      <p className="text-slate-900 font-semibold">{user.phone || 'Not provided'}</p>
+                    <div className="bg-white/5 p-3 rounded-lg border border-white/10">
+                      <p className="text-xs text-slate-400 mb-1">Phone Number</p>
+                      <p className="text-white font-medium">{user.phone || 'Not provided'}</p>
                     </div>
                   </div>
                 )}
@@ -1151,149 +1070,94 @@ function Dashboard() {
 
               {/* Account Information */}
               <div className="space-y-4">
-                <h3 className="text-lg font-bold text-slate-900">Account Information</h3>
+                <h3 className="text-lg font-semibold text-white">Account Information</h3>
                 
-                <div className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-6">
-                  <p className="text-sm font-bold text-blue-900 mb-4 flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                    Your Account Details
-                  </p>
-                  <div className="space-y-4">
+                {/* Highlighted Account Details */}
+                <div className="rounded-xl border-2 border-cyan-400/50 bg-cyan-400/10 p-5">
+                  <p className="text-sm font-semibold text-cyan-200 mb-4">🏦 Your Account Details</p>
+                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-xs text-blue-800 mb-2 font-medium">Account Number</p>
+                        <p className="text-xs text-cyan-300 mb-1">Account Number</p>
                         <div className="flex items-center gap-2">
-                          <p className="text-slate-900 font-mono font-bold text-base">
+                          <p className="text-white font-mono font-semibold text-lg">
                             {showAccountNumber 
                               ? (user.accountNumber || 'Generating...') 
                               : '••••••••••••'}
                           </p>
                           <button
                             onClick={() => setShowAccountNumber(!showAccountNumber)}
-                            className="text-blue-700 hover:text-blue-800 transition"
+                            className="text-cyan-300 hover:text-cyan-100 transition"
                             title={showAccountNumber ? 'Hide' : 'Show'}
                           >
-                            {showAccountNumber ? (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            ) : (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                              </svg>
-                            )}
+                            {showAccountNumber ? '�' : '🔒'}
                           </button>
                         </div>
                       </div>
                       {user.accountNumber && showAccountNumber && (
                         <button
                           onClick={() => handleCopyToClipboard(user.accountNumber, 'account-modal')}
-                          className="px-3 py-2 rounded-xl bg-blue-200 hover:bg-blue-300 text-blue-900 text-sm font-semibold transition flex items-center gap-1"
+                          className="px-3 py-2 rounded-lg bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-200 text-sm transition"
                         >
-                          {copiedField === 'account-modal' ? (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                              </svg>
-                              Copy
-                            </>
-                          )}
+                          {copiedField === 'account-modal' ? '✓ Copied' : '📋 Copy'}
                         </button>
                       )}
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-xs text-blue-800 mb-2 font-medium">Routing Number</p>
+                        <p className="text-xs text-cyan-300 mb-1">Routing Number</p>
                         <div className="flex items-center gap-2">
-                          <p className="text-slate-900 font-mono font-bold text-base">
+                          <p className="text-white font-mono font-semibold text-lg">
                             {showRoutingNumber 
                               ? (user.routingNumber || '026009593') 
                               : '•••••••••'}
                           </p>
                           <button
                             onClick={() => setShowRoutingNumber(!showRoutingNumber)}
-                            className="text-blue-700 hover:text-blue-800 transition"
+                            className="text-cyan-300 hover:text-cyan-100 transition"
                             title={showRoutingNumber ? 'Hide' : 'Show'}
                           >
-                            {showRoutingNumber ? (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            ) : (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                              </svg>
-                            )}
+                            {showRoutingNumber ? '�' : '🔒'}
                           </button>
                         </div>
                       </div>
                       {showRoutingNumber && (
                         <button
                           onClick={() => handleCopyToClipboard(user.routingNumber || '026009593', 'routing-modal')}
-                          className="px-3 py-2 rounded-xl bg-blue-200 hover:bg-blue-300 text-blue-900 text-sm font-semibold transition flex items-center gap-1"
+                          className="px-3 py-2 rounded-lg bg-cyan-400/20 hover:bg-cyan-400/30 text-cyan-200 text-sm transition"
                         >
-                          {copiedField === 'routing-modal' ? (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                              </svg>
-                              Copy
-                            </>
-                          )}
+                          {copiedField === 'routing-modal' ? '✓ Copied' : '📋 Copy'}
                         </button>
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-blue-800 mt-4 flex items-center gap-1">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Share these with others to receive transfers to your Aurora Bank account
-                  </p>
+                  <p className="text-xs text-cyan-300 mt-3">💡 Share these with others to receive transfers to your Aurora Bank account</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <p className="text-xs text-slate-500 mb-1 font-medium">Total Balance</p>
-                    <p className="text-slate-900 font-bold text-lg">
+                  <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                    <p className="text-xs text-slate-400 mb-1">Total Balance</p>
+                    <p className="text-white font-semibold text-lg">
                       {showBalance 
                         ? `$${user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
                         : '$ •••••••'}
                     </p>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <p className="text-xs text-slate-500 mb-1 font-medium">Account Type</p>
-                    <p className="text-slate-900 font-semibold">Personal Checking & Savings</p>
+                  <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                    <p className="text-xs text-slate-400 mb-1">Account Type</p>
+                    <p className="text-white font-semibold">Personal Checking & Savings</p>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <p className="text-xs text-slate-500 mb-1 font-medium">Checking Balance</p>
-                    <p className="text-slate-900 font-bold text-lg">
+                  <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                    <p className="text-xs text-slate-400 mb-1">Checking Balance</p>
+                    <p className="text-white font-semibold text-lg">
                       {showBalance 
                         ? `$${user.checking.toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
                         : '$ ••••••'}
                     </p>
                   </div>
-                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                    <p className="text-xs text-slate-500 mb-1 font-medium">Savings Balance</p>
-                    <p className="text-slate-900 font-bold text-lg">
+                  <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+                    <p className="text-xs text-slate-400 mb-1">Savings Balance</p>
+                    <p className="text-white font-semibold text-lg">
                       {showBalance 
                         ? `$${user.savings.toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
                         : '$ ••••••'}
@@ -1304,16 +1168,14 @@ function Dashboard() {
 
               {/* Security Section */}
               <div className="space-y-4">
-                <h3 className="text-lg font-bold text-slate-900">Security</h3>
-                <button className="w-full px-4 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition text-left flex items-center justify-between font-medium">
+                <h3 className="text-lg font-semibold text-white">Security</h3>
+                <button className="w-full px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 transition text-left flex items-center justify-between">
                   <span>Change Password</span>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                  <span>→</span>
                 </button>
-                <button className="w-full px-4 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition text-left flex items-center justify-between font-medium">
+                <button className="w-full px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 transition text-left flex items-center justify-between">
                   <span>Two-Factor Authentication</span>
-                  <span className="text-emerald-600 font-semibold">Enabled</span>
+                  <span className="text-cyan-400">Enabled</span>
                 </button>
               </div>
             </div>
