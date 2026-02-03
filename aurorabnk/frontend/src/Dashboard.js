@@ -284,7 +284,7 @@ function Dashboard() {
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
         <div className="text-center">
           <p className="text-slate-700">Please log in to access your dashboard</p>
-          <Link to="/login" className="mt-4 inline-block text-indigo-600 hover:text-indigo-700 font-medium">
+          <Link to="/login" className="mt-4 inline-block text-blue-900 hover:text-blue-950 font-medium">
             Go to Login
           </Link>
         </div>
@@ -297,7 +297,7 @@ function Dashboard() {
   const recentTransactions = currentUser.transactions.slice(0, 5);
 
   const quickActions = [
-    { title: 'Transfer Money', icon: '↗️', link: '/transfer', gradient: 'from-indigo-500 to-purple-600' },
+    { title: 'Transfer Money', icon: '↗️', link: '/transfer', gradient: 'from-blue-600 to-blue-900' },
     { title: 'Wire Transfer', icon: '🌐', link: '/wire-transfer', gradient: 'from-blue-500 to-cyan-600' },
     { title: 'Pay Bills', icon: '💳', link: '/bills', gradient: 'from-emerald-500 to-teal-600' },
     { title: 'Deposit Check', icon: '📄', link: '/deposit', gradient: 'from-amber-500 to-orange-600' },
@@ -428,7 +428,7 @@ function Dashboard() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               <AuroraBankLogo />
-              <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Aurora Bank</span>
+              <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-900 bg-clip-text text-transparent">Aurora Bank</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -452,7 +452,7 @@ function Dashboard() {
                   <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 bg-gradient-to-r from-slate-50 to-white">
                     <span className="text-sm font-semibold text-slate-900">Notifications</span>
                     <button
-                      className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                      className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                       onClick={() => setNotifications([])}
                     >
                       Clear all
@@ -494,7 +494,7 @@ function Dashboard() {
                   <div className="border-t border-slate-100 px-5 py-3 text-right bg-slate-50">
                     <button
                       onClick={() => handleNavigate('/notifications')}
-                      className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                     >
                       View all
                     </button>
@@ -514,7 +514,7 @@ function Dashboard() {
                     className="h-10 w-10 rounded-full object-cover border-2 border-slate-200"
                   />
                 ) : (
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold shadow-md">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-blue-900 flex items-center justify-center text-white font-semibold shadow-md">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                 )}
@@ -536,7 +536,7 @@ function Dashboard() {
                           className="h-12 w-12 rounded-full object-cover border-2 border-slate-200"
                         />
                       ) : (
-                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-lg shadow-md">
+                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-600 to-blue-900 flex items-center justify-center text-white font-semibold text-lg shadow-md">
                           {user.name.charAt(0).toUpperCase()}
                         </div>
                       )}
@@ -617,19 +617,19 @@ function Dashboard() {
           const latestUnread = adminMessages.filter(m => !m.read).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
           const unreadCount = adminMessages.filter(m => !m.read).length;
           return (
-            <div className="mb-6 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 px-5 py-4 flex items-center justify-between gap-3 shadow-sm">
+            <div className="mb-6 rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 px-5 py-4 flex items-center justify-between gap-3 shadow-sm">
               <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                   </svg>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-indigo-900 truncate">
+                  <p className="text-sm font-semibold text-blue-900 truncate">
                     {latestUnread.message}
                   </p>
                   {unreadCount > 1 && (
-                    <p className="text-xs text-indigo-600 mt-0.5">
+                    <p className="text-xs text-blue-700 mt-0.5">
                       +{unreadCount - 1} more message{unreadCount - 1 !== 1 ? 's' : ''}
                     </p>
                   )}
@@ -637,7 +637,7 @@ function Dashboard() {
               </div>
               <button
                 onClick={() => navigate('/notifications', { state: { filter: 'admin' } })}
-                className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 whitespace-nowrap flex-shrink-0 flex items-center gap-1"
+                className="text-sm font-semibold text-blue-700 hover:text-blue-800 whitespace-nowrap flex-shrink-0 flex items-center gap-1"
               >
                 View
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -650,10 +650,10 @@ function Dashboard() {
 
         {/* Account Balance Cards */}
         <div className="mb-8 grid gap-6 md:grid-cols-3">
-          <div className="md:col-span-2 rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 p-8 text-white shadow-xl">
+          <div className="md:col-span-2 rounded-3xl bg-gradient-to-br from-blue-700 via-blue-800 to-blue-900 p-8 text-white shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <div className="flex-1">
-                <p className="text-xs uppercase tracking-widest text-indigo-200 font-semibold">Total Balance</p>
+                <p className="text-xs uppercase tracking-widest text-blue-200 font-semibold">Total Balance</p>
                 <div className="flex items-center gap-3 mt-4">
                   <p className={`font-bold text-white leading-tight break-words ${getBalanceSizeClass(user.balance)}`}>
                     {showBalance 
@@ -685,7 +685,7 @@ function Dashboard() {
             <div className="mb-6 rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-indigo-200 mb-2 font-medium">Account Number</p>
+                  <p className="text-xs text-blue-200 mb-2 font-medium">Account Number</p>
                   <div className="flex items-center gap-2">
                     <p className="text-base font-mono font-semibold text-white">
                       {showAccountNumber 
@@ -728,7 +728,7 @@ function Dashboard() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-indigo-200 mb-2 font-medium">Routing Number</p>
+                  <p className="text-xs text-blue-200 mb-2 font-medium">Routing Number</p>
                   <div className="flex items-center gap-2">
                     <p className="text-base font-mono font-semibold text-white">
                       {showRoutingNumber 
@@ -771,7 +771,7 @@ function Dashboard() {
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-indigo-200 mt-3 flex items-center gap-1">
+              <p className="text-xs text-blue-200 mt-3 flex items-center gap-1">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -781,7 +781,7 @@ function Dashboard() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-5">
-                <p className="text-xs text-indigo-200 font-medium">Checking</p>
+                <p className="text-xs text-blue-200 font-medium">Checking</p>
                 <p className="mt-2 text-2xl font-bold text-white">
                   {showBalance 
                     ? `$${user.checking.toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
@@ -789,7 +789,7 @@ function Dashboard() {
                 </p>
               </div>
               <div className="rounded-2xl border border-white/20 bg-white/10 backdrop-blur-sm p-5">
-                <p className="text-xs text-indigo-200 font-medium">Savings</p>
+                <p className="text-xs text-blue-200 font-medium">Savings</p>
                 <p className="mt-2 text-2xl font-bold text-white">
                   {showBalance 
                     ? `$${user.savings.toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
@@ -805,14 +805,14 @@ function Dashboard() {
               <input
                 type="text"
                 placeholder="Recipient"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
               />
               <input
                 type="number"
                 placeholder="Amount"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
               />
-              <button type="submit" className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3 text-sm font-semibold text-white transition hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-500/30">
+              <button type="submit" className="w-full rounded-xl bg-gradient-to-r from-blue-700 to-blue-900 py-3 text-sm font-semibold text-white transition hover:from-blue-800 hover:to-blue-950 shadow-lg shadow-blue-700/30">
                 Send Money
               </button>
             </form>
@@ -843,7 +843,7 @@ function Dashboard() {
         <div className="mb-8">
           <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <h2 className="text-xl font-bold text-slate-900">Recent Transactions</h2>
-            <Link to="/transactions" className="text-sm text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1">
+            <Link to="/transactions" className="text-sm text-blue-700 hover:text-blue-800 font-semibold flex items-center gap-1">
               View all
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -956,7 +956,7 @@ function Dashboard() {
                       <span className="text-slate-900 font-semibold">${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div className="h-2 rounded-full bg-slate-100">
-                      <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500" style={{ width: `${item.percent}%` }} />
+                      <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-900" style={{ width: `${item.percent}%` }} />
                     </div>
                   </div>
                 ));
@@ -978,7 +978,7 @@ function Dashboard() {
                 </div>
                 <p className="text-sm text-emerald-800">You're spending 15% less than last month. Great job!</p>
               </div>
-              <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-5">
+              <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-5">
                 <div className="mb-2 flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
                     <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -989,16 +989,16 @@ function Dashboard() {
                 </div>
                 <p className="text-sm text-blue-800">Set up automatic transfers to savings to reach your $50K goal faster.</p>
               </div>
-              <div className="rounded-xl border border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50 p-5">
+              <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-slate-100 p-5">
                 <div className="mb-2 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                   </div>
-                  <span className="text-sm font-bold text-purple-900">Forecast</span>
+                  <span className="text-sm font-bold text-blue-900">Forecast</span>
                 </div>
-                <p className="text-sm text-purple-800">At this rate, you'll save $3,200 by the end of the quarter.</p>
+                <p className="text-sm text-blue-800">At this rate, you'll save $3,200 by the end of the quarter.</p>
               </div>
             </div>
           </div>
@@ -1040,11 +1040,11 @@ function Dashboard() {
                     className="h-24 w-24 rounded-full object-cover border-4 border-slate-200"
                   />
                 ) : (
-                  <div className="h-24 w-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-4xl shadow-lg">
+                  <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-600 to-blue-900 flex items-center justify-center text-white font-bold text-4xl shadow-lg">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <label className="px-5 py-2.5 rounded-xl bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition text-sm font-semibold cursor-pointer">
+                <label className="px-5 py-2.5 rounded-xl bg-blue-100 text-blue-800 hover:bg-blue-200 transition text-sm font-semibold cursor-pointer">
                   Change Picture
                   <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
                 </label>
@@ -1058,7 +1058,7 @@ function Dashboard() {
                   {!editMode && (
                     <button
                       onClick={() => setEditMode(true)}
-                      className="text-indigo-600 hover:text-indigo-700 text-sm font-semibold transition"
+                      className="text-blue-700 hover:text-blue-800 text-sm font-semibold transition"
                     >
                       Edit
                     </button>
@@ -1074,7 +1074,7 @@ function Dashboard() {
                           type="text"
                           value={formData.firstName}
                           onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
                           placeholder="First name"
                         />
                       </div>
@@ -1084,7 +1084,7 @@ function Dashboard() {
                           type="text"
                           value={formData.lastName}
                           onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
                           placeholder="Last name"
                         />
                       </div>
@@ -1095,7 +1095,7 @@ function Dashboard() {
                         type="email"
                         value={formData.email}
                         onChange={(e) => setFormData({...formData, email: e.target.value})}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
                         placeholder="Email"
                       />
                     </div>
@@ -1105,14 +1105,14 @@ function Dashboard() {
                         type="tel"
                         value={formData.phone}
                         onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition"
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 transition"
                         placeholder="Phone number"
                       />
                     </div>
                     <div className="flex gap-3 pt-2">
                       <button
                         onClick={handleSaveProfile}
-                        className="flex-1 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold hover:from-indigo-700 hover:to-purple-700 transition disabled:opacity-50 shadow-lg shadow-indigo-500/30"
+                        className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-700 to-blue-900 text-white rounded-xl font-semibold hover:from-blue-800 hover:to-blue-950 transition disabled:opacity-50 shadow-lg shadow-blue-700/30"
                         disabled={savingProfile}
                       >
                         {savingProfile ? 'Saving...' : 'Save Changes'}
@@ -1153,8 +1153,8 @@ function Dashboard() {
               <div className="space-y-4">
                 <h3 className="text-lg font-bold text-slate-900">Account Information</h3>
                 
-                <div className="rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50 p-6">
-                  <p className="text-sm font-bold text-indigo-900 mb-4 flex items-center gap-2">
+                <div className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 p-6">
+                  <p className="text-sm font-bold text-blue-900 mb-4 flex items-center gap-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
@@ -1163,7 +1163,7 @@ function Dashboard() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-xs text-indigo-700 mb-2 font-medium">Account Number</p>
+                        <p className="text-xs text-blue-800 mb-2 font-medium">Account Number</p>
                         <div className="flex items-center gap-2">
                           <p className="text-slate-900 font-mono font-bold text-base">
                             {showAccountNumber 
@@ -1172,7 +1172,7 @@ function Dashboard() {
                           </p>
                           <button
                             onClick={() => setShowAccountNumber(!showAccountNumber)}
-                            className="text-indigo-600 hover:text-indigo-700 transition"
+                            className="text-blue-700 hover:text-blue-800 transition"
                             title={showAccountNumber ? 'Hide' : 'Show'}
                           >
                             {showAccountNumber ? (
@@ -1191,7 +1191,7 @@ function Dashboard() {
                       {user.accountNumber && showAccountNumber && (
                         <button
                           onClick={() => handleCopyToClipboard(user.accountNumber, 'account-modal')}
-                          className="px-3 py-2 rounded-xl bg-indigo-200 hover:bg-indigo-300 text-indigo-900 text-sm font-semibold transition flex items-center gap-1"
+                          className="px-3 py-2 rounded-xl bg-blue-200 hover:bg-blue-300 text-blue-900 text-sm font-semibold transition flex items-center gap-1"
                         >
                           {copiedField === 'account-modal' ? (
                             <>
@@ -1213,7 +1213,7 @@ function Dashboard() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-xs text-indigo-700 mb-2 font-medium">Routing Number</p>
+                        <p className="text-xs text-blue-800 mb-2 font-medium">Routing Number</p>
                         <div className="flex items-center gap-2">
                           <p className="text-slate-900 font-mono font-bold text-base">
                             {showRoutingNumber 
@@ -1222,7 +1222,7 @@ function Dashboard() {
                           </p>
                           <button
                             onClick={() => setShowRoutingNumber(!showRoutingNumber)}
-                            className="text-indigo-600 hover:text-indigo-700 transition"
+                            className="text-blue-700 hover:text-blue-800 transition"
                             title={showRoutingNumber ? 'Hide' : 'Show'}
                           >
                             {showRoutingNumber ? (
@@ -1241,7 +1241,7 @@ function Dashboard() {
                       {showRoutingNumber && (
                         <button
                           onClick={() => handleCopyToClipboard(user.routingNumber || '026009593', 'routing-modal')}
-                          className="px-3 py-2 rounded-xl bg-indigo-200 hover:bg-indigo-300 text-indigo-900 text-sm font-semibold transition flex items-center gap-1"
+                          className="px-3 py-2 rounded-xl bg-blue-200 hover:bg-blue-300 text-blue-900 text-sm font-semibold transition flex items-center gap-1"
                         >
                           {copiedField === 'routing-modal' ? (
                             <>
@@ -1262,7 +1262,7 @@ function Dashboard() {
                       )}
                     </div>
                   </div>
-                  <p className="text-xs text-indigo-700 mt-4 flex items-center gap-1">
+                  <p className="text-xs text-blue-800 mt-4 flex items-center gap-1">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
