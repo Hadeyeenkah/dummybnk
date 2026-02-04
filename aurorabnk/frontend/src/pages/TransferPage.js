@@ -276,46 +276,46 @@ function TransferPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      <header className="border-b border-white/5 bg-slate-900/50 backdrop-blur">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
+      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-xl shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3 text-cyan-400">
+          <div className="flex items-center gap-3">
             <AuroraBankLogo />
-            <span className="text-lg font-semibold tracking-tight text-slate-50">Aurora Bank</span>
+            <span className="text-lg font-semibold tracking-tight bg-gradient-to-r from-indigo-900 to-slate-950 bg-clip-text text-transparent">Aurora Bank</span>
           </div>
-          <Link to="/dashboard" className="text-sm text-cyan-200 hover:text-white">
+          <Link to="/dashboard" className="text-sm text-indigo-800 hover:text-indigo-950">
             ← Back to Dashboard
           </Link>
         </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-12">
-        <h1 className="mb-2 text-3xl font-semibold text-white">Transfer Money</h1>
-        <p className="mb-8 text-slate-300">Send ACH-style transfers to external banks or move money between your accounts</p>
+        <h1 className="mb-2 text-3xl font-semibold text-slate-900">Transfer Money</h1>
+        <p className="mb-8 text-slate-600">Send ACH-style transfers to external banks or move money between your accounts</p>
 
         <div className="grid gap-6 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-6 md:col-span-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg md:col-span-2">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 cursor-pointer">
+                <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 cursor-pointer">
                   <input
                     type="radio"
                     name="transferType"
                     value="external"
                     checked={formData.transferType === 'external'}
                     onChange={() => setFormData({ ...formData, transferType: 'external' })}
-                    className="accent-cyan-400"
+                    className="accent-indigo-900"
                   />
                   External bank transfer (ACH)
                 </label>
-                <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200 cursor-pointer">
+                <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 cursor-pointer">
                   <input
                     type="radio"
                     name="transferType"
                     value="internal"
                     checked={formData.transferType === 'internal'}
                     onChange={() => setFormData({ ...formData, transferType: 'internal' })}
-                    className="accent-cyan-400"
+                    className="accent-indigo-900"
                   />
                   Between my accounts
                 </label>
@@ -323,7 +323,7 @@ function TransferPage() {
 
               {formData.transferType === 'external' && (
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm text-blue-200">
+                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900">
                     💡 Enter the recipient's Aurora Bank email or account details. Transfer will be pending until admin approval.
                   </div>
 
@@ -337,8 +337,8 @@ function TransferPage() {
                       }}
                       className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                         formData.lookupMethod === 'email'
-                          ? 'bg-cyan-400 text-slate-900'
-                          : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
+                          ? 'bg-indigo-900 text-white'
+                          : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                       }`}
                     >
                       📧 By Email
@@ -351,8 +351,8 @@ function TransferPage() {
                       }}
                       className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                         formData.lookupMethod === 'account'
-                          ? 'bg-cyan-400 text-slate-900'
-                          : 'border border-white/10 bg-white/5 text-slate-300 hover:bg-white/10'
+                          ? 'bg-indigo-900 text-white'
+                          : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                       }`}
                     >
                       🏦 By Account Number
@@ -361,7 +361,7 @@ function TransferPage() {
                   
                   {formData.lookupMethod === 'email' ? (
                     <div className="space-y-2">
-                      <label className="text-sm text-slate-200">Recipient Email *</label>
+                      <label className="text-sm text-slate-700">Recipient Email *</label>
                       <input
                         type="email"
                         value={formData.recipientEmail}
@@ -371,11 +371,11 @@ function TransferPage() {
                         }}
                         onBlur={(e) => handleRecipientLookup(e.target.value, null, null)}
                         placeholder="recipient@email.com"
-                        className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                         required
                       />
                       {recipientFound && (
-                        <div className="flex items-center gap-2 text-sm text-green-400">
+                        <div className="flex items-center gap-2 text-sm text-emerald-700">
                           <span>✓</span>
                           <span>Recipient found: {recipientFound.name}</span>
                         </div>
@@ -384,7 +384,7 @@ function TransferPage() {
                   ) : (
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-sm text-slate-200">Routing Number *</label>
+                        <label className="text-sm text-slate-700">Routing Number *</label>
                         <input
                           type="text"
                           inputMode="numeric"
@@ -395,14 +395,14 @@ function TransferPage() {
                           }}
                           placeholder="026009593 (Aurora Bank)"
                           maxLength="9"
-                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                           required
                         />
-                        <p className="text-xs text-slate-400">Aurora Bank Routing: 026009593</p>
+                        <p className="text-xs text-slate-500">Aurora Bank Routing: 026009593</p>
                       </div>
                       
                       <div className="space-y-2">
-                        <label className="text-sm text-slate-200">Account Number *</label>
+                        <label className="text-sm text-slate-700">Account Number *</label>
                         <input
                           type="text"
                           inputMode="numeric"
@@ -413,18 +413,18 @@ function TransferPage() {
                           }}
                           placeholder="Enter 12-digit account number"
                           maxLength="12"
-                          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                           required
                         />
                       </div>
                       
                       {recipientFound && (
-                        <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-3 text-sm text-green-400">
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
                           <div className="flex items-center gap-2 mb-1">
                             <span>✓</span>
                             <span className="font-semibold">Account Verified</span>
                           </div>
-                          <div className="text-xs text-green-300">
+                          <div className="text-xs text-emerald-700/80">
                             Recipient: {recipientFound.name} ({recipientFound.email})
                           </div>
                         </div>
@@ -434,29 +434,29 @@ function TransferPage() {
                   )}
 
                   <div className="space-y-2">
-                    <label className="text-sm text-slate-200">Recipient Name (auto-filled for Aurora users, editable)</label>
+                    <label className="text-sm text-slate-700">Recipient Name (auto-filled for Aurora users, editable)</label>
                     <input
                       type="text"
                       value={formData.recipientName}
                       onChange={(e) => setFormData({ ...formData, recipientName: e.target.value })}
                       placeholder={recipientFound?.isSameBank ? "Auto-filled from Aurora Bank" : "Enter recipient name"}
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-400 outline-none"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                     />
                   </div>
                 </div>
               )}
 
               <div className="space-y-2">
-                <label className="text-sm text-slate-200">Amount</label>
+                <label className="text-sm text-slate-700">Amount</label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">$</span>
                   <input
                     type="number"
                     step="0.01"
                     value={formData.amount}
                     onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                     placeholder="0.00"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pl-8 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pl-8 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                     required
                   />
                 </div>
@@ -464,11 +464,11 @@ function TransferPage() {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm text-slate-200">From Account</label>
+                  <label className="text-sm text-slate-700">From Account</label>
                   <select
                     value={formData.fromAccount}
                     onChange={(e) => setFormData({ ...formData, fromAccount: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                   >
                     <option value="checking">Checking - ${Number(currentUser?.checking ?? 0).toFixed(2)}</option>
                     <option value="savings">Savings - ${Number(currentUser?.savings ?? 0).toFixed(2)}</option>
@@ -477,11 +477,11 @@ function TransferPage() {
 
                 {formData.transferType === 'internal' && (
                   <div className="space-y-2">
-                    <label className="text-sm text-slate-200">To Account</label>
+                    <label className="text-sm text-slate-700">To Account</label>
                     <select
                       value={formData.toAccount}
                       onChange={(e) => setFormData({ ...formData, toAccount: e.target.value })}
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                     >
                       <option value="checking">Checking</option>
                       <option value="savings">Savings</option>
@@ -491,12 +491,12 @@ function TransferPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm text-slate-200">Note (Optional)</label>
+                <label className="text-sm text-slate-700">Note (Optional)</label>
                 <textarea
                   value={formData.note}
                   onChange={(e) => setFormData({ ...formData, note: e.target.value })}
                   placeholder="What's this for?"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                   rows="3"
                 />
               </div>
@@ -504,8 +504,8 @@ function TransferPage() {
               {message && (
                 <div
                   className={`rounded-xl p-4 ${messageType === 'success'
-                    ? 'border border-green-500/20 bg-green-500/10 text-green-400'
-                    : 'border border-red-500/20 bg-red-500/10 text-red-400'
+                    ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border border-rose-200 bg-rose-50 text-rose-700'
                   }`}
                 >
                   {message}
@@ -515,7 +515,7 @@ function TransferPage() {
               <button
                 type="submit"
                 disabled={loading || (formData.transferType === 'external' && formData.lookupMethod === 'email' && !formData.recipientEmail)}
-                className="w-full rounded-xl bg-cyan-400 py-3 text-sm font-semibold text-slate-900 transition hover:bg-cyan-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full rounded-xl bg-gradient-to-r from-indigo-900 to-slate-950 py-3 text-sm font-semibold text-white transition hover:from-indigo-950 hover:to-black disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Processing...' : 'Send Money'}
               </button>
@@ -523,11 +523,11 @@ function TransferPage() {
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
-              <h3 className="mb-3 text-sm font-semibold text-white">Available Balance</h3>
-              <p className="text-2xl font-semibold text-cyan-200">${Number(currentUser?.balance ?? 0).toFixed(2)}</p>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+              <h3 className="mb-3 text-sm font-semibold text-slate-900">Available Balance</h3>
+              <p className="text-2xl font-semibold text-indigo-900">${Number(currentUser?.balance ?? 0).toFixed(2)}</p>
             </div>
-            <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-4 space-y-2 text-sm text-slate-300">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2 text-sm text-slate-600">
               <p>💡 <strong>External transfers</strong> to other Aurora Bank users require admin approval before funds are released.</p>
               <p>↔️ <strong>Internal transfers</strong> between your Checking and Savings move instantly.</p>
               <p>🔒 Funds are deducted immediately but held pending approval for external transfers.</p>

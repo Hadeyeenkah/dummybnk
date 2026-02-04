@@ -2,8 +2,11 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
+const path = require('path');
 
-dotenv.config();
+// Load .env.local for local development, then fallback to .env
+dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 
@@ -52,6 +55,10 @@ app.get('/api/health', (req, res) => {
 // Mount admin routes
 const adminRoutes = require('./routes/adminRoutes');
 app.use('/api/admin', adminRoutes);
+
+// Mount chat routes
+const chatRoutes = require('./routes/chatRoutes');
+app.use('/api/chat', chatRoutes);
 
 // Mount authentication routes
 const authRoutes = require('./routes/authRoutes');

@@ -9,6 +9,8 @@ function SupportChatWidget() {
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState(null);
+  const [initializing, setInitializing] = useState(false);
+  const [sendError, setSendError] = useState('');
   const messagesEndRef = useRef(null);
   const apiBase = process.env.NODE_ENV === 'production'
     ? (process.env.REACT_APP_API_BASE || '/api')
@@ -20,7 +22,6 @@ function SupportChatWidget() {
     try {
       const res = await fetch(`${apiBase}/chat/messages/${convId}`, {
         credentials: 'include',
-        credentials: 'include',
       });
       if (res.ok) {
         const data = await res.json();
@@ -28,7 +29,6 @@ function SupportChatWidget() {
         
         // Mark as read
         await fetch(`${apiBase}/chat/messages/${convId}/read`, {
-          credentials: 'include',
           method: 'PUT',
           credentials: 'include',
         });
@@ -38,28 +38,41 @@ function SupportChatWidget() {
     }
   }, [apiBase]);
 
+  const ensureConversation = useCallback(async () => {
+    if (conversationId) return conversationId;
+
+    setInitializing(true);
+    setSendError('');
+    try {
+      const res = await fetch(`${apiBase}/chat/conversation`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const convId = data.conversation?._id;
+        if (convId) {
+          setConversationId(convId);
+          await fetchMessages(convId);
+          return convId;
+        }
+      }
+      setSendError('Unable to start chat. Please try again.');
+      return null;
+    } catch (err) {
+      console.error('Error initializing chat:', err);
+      setSendError('Unable to start chat. Please try again.');
+      return null;
+    } finally {
+      setInitializing(false);
+    }
+  }, [apiBase, conversationId, fetchMessages]);
+
   // Initialize conversation
   useEffect(() => {
-    const initializeChat = async () => {
-      try {
-        const res = await fetch(`${apiBase}/chat/conversation`, {
-          credentials: 'include',
-          credentials: 'include',
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setConversationId(data.conversation._id);
-          fetchMessages(data.conversation._id);
-        }
-      } catch (err) {
-        console.error('Error initializing chat:', err);
-      }
-    };
-
     if (currentUser && chatOpen) {
-      initializeChat();
+      ensureConversation();
     }
-  }, [chatOpen, currentUser, apiBase, fetchMessages]);
+  }, [chatOpen, currentUser, ensureConversation]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -80,41 +93,67 @@ function SupportChatWidget() {
   // Send message
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!inputMessage.trim() || !conversationId) return;
+    const trimmed = inputMessage.trim();
+    if (!trimmed) return;
+
+    const convId = await ensureConversation();
+    if (!convId) return;
+
+    const optimisticId = `optimistic-${Date.now()}`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        _optimisticId: optimisticId,
+        senderRole: 'user',
+        message: trimmed,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
+    setInputMessage('');
 
     setLoading(true);
     try {
-        const res = await fetch(`${apiBase}/chat/messages`, {
-          credentials: 'include',
+      const res = await fetch(`${apiBase}/chat/messages`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          conversationId,
-          message: inputMessage,
+          conversationId: convId,
+          message: trimmed,
         }),
       });
 
       if (res.ok) {
-        setInputMessage('');
-        await fetchMessages(conversationId);
+        await fetchMessages(convId);
+      } else {
+        setSendError('Message failed to send. Please try again.');
+        setMessages((prev) => prev.filter((msg) => msg._optimisticId !== optimisticId));
       }
     } catch (err) {
       console.error('Error sending message:', err);
+      setSendError('Message failed to send. Please try again.');
+      setMessages((prev) => prev.filter((msg) => msg._optimisticId !== optimisticId));
     } finally {
       setLoading(false);
     }
   };
+
+  const unreadCount = messages.filter((msg) => msg.senderRole === 'admin' && !msg.read).length;
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
       {!chatOpen ? (
         <button
           onClick={() => setChatOpen(true)}
-          className="flex items-center justify-center w-14 h-14 rounded-full bg-cyan-500 hover:bg-cyan-600 text-white shadow-lg transition transform hover:scale-110"
+          className="relative flex items-center justify-center w-14 h-14 rounded-full bg-cyan-500 hover:bg-cyan-600 text-white shadow-lg transition transform hover:scale-110"
           title="Chat with support"
         >
           💬
+          {messages.length > 0 && (
+            <span className="absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white border border-white">
+              {messages.length > 9 ? '9+' : messages.length}
+            </span>
+          )}
         </button>
       ) : (
         <div className="w-96 h-[500px] bg-slate-900 rounded-2xl border border-cyan-500/30 shadow-2xl flex flex-col overflow-hidden">
@@ -164,17 +203,23 @@ function SupportChatWidget() {
 
           {/* Input */}
           <form onSubmit={handleSendMessage} className="border-t border-slate-700 p-3 bg-slate-900">
+            {(initializing || sendError) && (
+              <div className={`mb-2 text-xs ${sendError ? 'text-rose-300' : 'text-cyan-200'}`}>
+                {sendError || 'Connecting to support...'}
+              </div>
+            )}
             <div className="flex gap-2">
               <input
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Type a message..."
+                placeholder={initializing ? 'Connecting...' : 'Type a message...'}
                 className="flex-1 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400"
+                disabled={initializing}
               />
               <button
                 type="submit"
-                disabled={loading || !inputMessage.trim()}
+                disabled={loading || initializing || !inputMessage.trim()}
                 className="rounded-lg bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 px-3 py-2 text-white font-semibold transition"
               >
                 {loading ? '...' : 'Send'}

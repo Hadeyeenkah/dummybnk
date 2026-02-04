@@ -42,6 +42,17 @@ exports.connectDB = async () => {
       });
       isConnected = true;
       console.log(`✅ MongoDB connected (attempt ${attempt}/${maxRetries})`);
+      
+      // Seed demo users if enabled
+      if (process.env.DEMO_SEED === 'true') {
+        try {
+          const { seedDemoUsers } = require('../utils/seedDemoUsers');
+          await seedDemoUsers();
+        } catch (err) {
+          console.error('❌ Failed to seed demo users:', err.message);
+        }
+      }
+      
       return true;
     } catch (err) {
       const canRetry = attempt < maxRetries;
@@ -57,5 +68,6 @@ exports.connectDB = async () => {
   console.warn('👉 Server will continue without database. Install MongoDB or set MONGODB_URI.');
   return false;
 };
+
 
 exports.isDBConnected = () => isConnected;

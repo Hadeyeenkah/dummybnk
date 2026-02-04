@@ -5,12 +5,13 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 
 // Set API base from environment variable (Vercel/CRA/Vite compatible)
-const API_BASE = process.env.NODE_ENV === 'production'
-  ? (process.env.REACT_APP_API_BASE || '/api')
-  : 'http://localhost:5001/api';
-// For Vercel, set REACT_APP_API_BASE to your backend deployment URL if needed
+// REACT_APP_API_BASE is set via .env.local for development, .env.production for production
+const API_BASE = process.env.REACT_APP_API_BASE 
+  || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api');
+
 console.log('🌍 Environment:', process.env.NODE_ENV);
 console.log('🔗 API_BASE:', API_BASE);
+console.log('📝 REACT_APP_API_BASE:', process.env.REACT_APP_API_BASE);
 
 const BankContext = createContext();
 
@@ -164,16 +165,14 @@ const getEndpoint = useCallback(
         credentials: 'include',
         method: 'GET',
         headers,
-        credentials: 'include',
       });
       // Clear previous backend error on successful network connection
       setBackendError(null);
       console.log('📡 Profile response status:', res.status);
-      console.log('📡 Profile response headers:', Array.from(res.headers.entries()));
 
-      // If unauthorized, handle explicitly
+      // If unauthorized, handle explicitly (expected when not logged in)
       if (res.status === 401 || res.status === 403) {
-        console.warn('⚠️  Profile fetch unauthorized:', res.status);
+        console.debug('No existing session (401 - expected when not logged in)');
         setIsAuthenticated(false);
         setCurrentUser(null);
         return false;

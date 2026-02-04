@@ -1,28 +1,29 @@
 const express = require('express');
 const { ChatMessage, ChatConversation } = require('../models/Chat');
-const { User } = require('../models/User');
+const User = require('../models/User');
 const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
+
+const withTimeout = (promise, ms) => {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error('DB operation timed out')), ms);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
+};
 
 // Get or create conversation for current user
 router.get('/conversation', protect, async (req, res) => {
   console.log('[CHAT] GET /conversation', { ip: req.ip, time: new Date().toISOString(), user: req.userId });
   const timeoutMs = 8000;
-  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('DB operation timed out')), timeoutMs));
   try {
     const userId = req.userId;
-    const user = await Promise.race([
-      User.findById(userId),
-      timeout
-    ]);
+    const user = await withTimeout(User.findById(userId), timeoutMs);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    let conversation = await Promise.race([
-      ChatConversation.findOne({ userId }),
-      timeout
-    ]);
+    let conversation = await withTimeout(ChatConversation.findOne({ userId }), timeoutMs);
     if (!conversation) {
       conversation = new ChatConversation({
         userId,
@@ -30,10 +31,7 @@ router.get('/conversation', protect, async (req, res) => {
         userEmail: user.email,
         status: 'active',
       });
-      await Promise.race([
-        conversation.save(),
-        timeout
-      ]);
+      await withTimeout(conversation.save(), timeoutMs);
     }
     res.json({ success: true, conversation });
   } catch (err) {
@@ -46,13 +44,12 @@ router.get('/conversation', protect, async (req, res) => {
 router.get('/messages/:conversationId', protect, async (req, res) => {
   console.log('[CHAT] GET /messages/:conversationId', { ip: req.ip, time: new Date().toISOString(), user: req.userId, params: req.params });
   const timeoutMs = 8000;
-  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('DB operation timed out')), timeoutMs));
   try {
     const { conversationId } = req.params;
-    const messages = await Promise.race([
+    const messages = await withTimeout(
       ChatMessage.find({ conversationId }).sort({ createdAt: 1 }),
-      timeout
-    ]);
+      timeoutMs
+    );
     res.json({ success: true, messages });
   } catch (err) {
     console.error('Error fetching messages:', err);
@@ -64,36 +61,37 @@ router.get('/messages/:conversationId', protect, async (req, res) => {
 router.post('/messages', protect, async (req, res) => {
   console.log('[CHAT] POST /messages', { ip: req.ip, time: new Date().toISOString(), user: req.userId, body: req.body });
   const timeoutMs = 8000;
-  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('DB operation timed out')), timeoutMs));
   try {
     const { conversationId, message } = req.body;
     const userId = req.userId;
-    const user = await Promise.race([
-      User.findById(userId),
-      timeout
-    ]);
+    const user = await withTimeout(User.findById(userId), timeoutMs);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    
+    // Determine if sender is admin
+    const senderRole = user.role === 'admin' ? 'admin' : 'user';
+    
     const newMessage = new ChatMessage({
       conversationId,
-      userId,
-      userName: `${user.firstName} ${user.lastName}`.trim(),
+      senderId: userId,
+      senderName: `${user.firstName} ${user.lastName}`.trim(),
+      senderRole,
       message,
-      createdAt: new Date(),
       read: false,
     });
-    await Promise.race([
-      newMessage.save(),
-      timeout
-    ]);
-    // Update conversation last message time
-    await Promise.race([
+    await withTimeout(newMessage.save(), timeoutMs);
+    // Update conversation last message time and content
+    await withTimeout(
       ChatConversation.findByIdAndUpdate(
         conversationId,
-        { lastMessageTime: new Date() },
+        { 
+          lastMessage: message,
+          lastMessageTime: new Date(),
+          unreadCount: senderRole === 'admin' ? 1 : 0
+        },
         { new: true }
       ),
-      timeout
-    ]);
+      timeoutMs
+    );
     res.status(201).json({ success: true, message: newMessage });
   } catch (err) {
     console.error('Error sending message:', err);

@@ -133,47 +133,47 @@ function DepositPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      <header className="border-b border-white/5 bg-slate-900/50 backdrop-blur">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
+      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-xl shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3 text-cyan-400">
+          <div className="flex items-center gap-3">
             <AuroraBankLogo />
-            <span className="text-lg font-semibold tracking-tight text-slate-50">Aurora Bank</span>
+            <span className="text-lg font-semibold tracking-tight bg-gradient-to-r from-indigo-900 to-slate-950 bg-clip-text text-transparent">Aurora Bank</span>
           </div>
-          <Link to="/dashboard" className="text-sm text-cyan-200 hover:text-white">
+          <Link to="/dashboard" className="text-sm text-indigo-800 hover:text-indigo-950">
             ← Back to Dashboard
           </Link>
         </div>
       </header>
 
       <main className="mx-auto max-w-3xl px-6 py-12">
-        <h1 className="mb-2 text-3xl font-semibold text-white">Deposit Check</h1>
-        <p className="mb-8 text-slate-300">Mobile check deposit - snap a photo and deposit instantly</p>
+        <h1 className="mb-2 text-3xl font-semibold text-slate-900">Deposit Check</h1>
+        <p className="mb-8 text-slate-600">Mobile check deposit - snap a photo and deposit instantly</p>
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          <div className="mb-6 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
         {step === 1 && (
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-8 text-center">
-            <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-full bg-cyan-400/20">
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-lg">
+            <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center rounded-full bg-indigo-100">
               <span className="text-6xl">📷</span>
             </div>
-            <h3 className="mb-2 text-xl font-semibold text-white">Mobile Deposit</h3>
-            <p className="mb-6 text-slate-300">
+            <h3 className="mb-2 text-xl font-semibold text-slate-900">Mobile Deposit</h3>
+            <p className="mb-6 text-slate-600">
               Take photos of the front and back of your check to deposit instantly
             </p>
             <button 
               onClick={() => setStep(2)}
-              className="rounded-xl bg-cyan-400 px-6 py-3 text-sm font-semibold text-slate-900 transition hover:bg-cyan-300"
+              className="rounded-xl bg-gradient-to-r from-indigo-900 to-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:from-indigo-950 hover:to-black"
             >
               Start Deposit
             </button>
             
-            <div className="mt-8 rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-left">
-              <p className="text-sm text-slate-300">
+            <div className="mt-8 rounded-xl border border-blue-200 bg-blue-50 p-4 text-left">
+              <p className="text-sm text-slate-700">
                 💡 <strong>Tips for best results:</strong><br />
                 • Ensure check is on a dark surface<br />
                 • Make sure all corners are visible<br />
@@ -185,41 +185,41 @@ function DepositPage() {
         )}
 
         {step === 2 && (
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm text-slate-200">Check Amount</label>
+                <label className="text-sm text-slate-700 font-semibold">Check Amount</label>
                 <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">$</span>
                   <input
                     type="number"
                     step="0.01"
                     value={depositData.amount}
                     onChange={(e) => setDepositData({ ...depositData, amount: e.target.value })}
                     placeholder="0.00"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 pl-8 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pl-8 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                     required
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm text-slate-200">Check Number (Optional)</label>
+                <label className="text-sm text-slate-700 font-semibold">Check Number (Optional)</label>
                 <input
                   type="text"
                   value={depositData.checkNumber}
                   onChange={(e) => setDepositData({ ...depositData, checkNumber: e.target.value })}
                   placeholder="e.g., 1234"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm text-slate-200">Deposit To</label>
+                <label className="text-sm text-slate-700 font-semibold">Deposit To</label>
                 <select
                   value={depositData.toAccount}
                   onChange={(e) => setDepositData({ ...depositData, toAccount: e.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                 >
                   <option value="checking">Checking - ${Number(currentUser?.checking ?? 0).toFixed(2)}</option>
                   <option value="savings">Savings - ${Number(currentUser?.savings ?? 0).toFixed(2)}</option>
@@ -227,8 +227,8 @@ function DepositPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm text-slate-200">Front of Check</label>
-                <div className="rounded-xl border-2 border-dashed border-white/10 bg-white/5 p-6">
+                <label className="text-sm text-slate-700 font-semibold">Front of Check</label>
+                <div className="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-6">
                   {frontPreview ? (
                     <div className="relative">
                       <img src={frontPreview} alt="Check front" className="w-full rounded-lg" />
@@ -246,7 +246,7 @@ function DepositPage() {
                   ) : (
                     <label className="flex cursor-pointer flex-col items-center">
                       <span className="mb-2 text-4xl">📸</span>
-                      <span className="text-sm text-slate-300">Click to upload front image</span>
+                      <span className="text-sm text-slate-600">Click to upload front image</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -259,8 +259,8 @@ function DepositPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm text-slate-200">Back of Check</label>
-                <div className="rounded-xl border-2 border-dashed border-white/10 bg-white/5 p-6">
+                <label className="text-sm text-slate-700 font-semibold">Back of Check</label>
+                <div className="rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-6">
                   {backPreview ? (
                     <div className="relative">
                       <img src={backPreview} alt="Check back" className="w-full rounded-lg" />
@@ -278,7 +278,7 @@ function DepositPage() {
                   ) : (
                     <label className="flex cursor-pointer flex-col items-center">
                       <span className="mb-2 text-4xl">📸</span>
-                      <span className="text-sm text-slate-300">Click to upload back image</span>
+                      <span className="text-sm text-slate-600">Click to upload back image</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -291,12 +291,12 @@ function DepositPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm text-slate-200">Memo (Optional)</label>
+                <label className="text-sm text-slate-700 font-semibold">Memo (Optional)</label>
                 <textarea
                   value={depositData.memo}
                   onChange={(e) => setDepositData({ ...depositData, memo: e.target.value })}
                   placeholder="Add a note about this deposit"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                   rows="3"
                 />
               </div>
@@ -305,14 +305,14 @@ function DepositPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 rounded-xl bg-cyan-400 py-3 text-sm font-semibold text-slate-900 transition hover:bg-cyan-300 disabled:opacity-50"
+                  className="flex-1 rounded-xl bg-gradient-to-r from-indigo-900 to-slate-950 py-3 text-sm font-semibold text-white transition hover:from-indigo-950 hover:to-black disabled:opacity-50"
                 >
                   {submitting ? 'Processing...' : 'Submit Deposit'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                  className="rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
                   Back
                 </button>
@@ -332,8 +332,8 @@ function DepositPage() {
       `}</style>
 
       {showReceiptModal && receipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="printable w-full max-w-lg rounded-2xl border border-white/10 bg-white text-slate-900 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="printable w-full max-w-lg rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <div className="flex items-center gap-2 text-green-600">
                 <span className="text-xl">✔</span>
@@ -345,7 +345,7 @@ function DepositPage() {
               <button
                 type="button"
                 onClick={handlePrint}
-                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:border-cyan-300 hover:text-cyan-700"
+                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:border-indigo-300 hover:text-indigo-700"
                 aria-label="Print receipt"
               >
                 <span className="text-sm">🖨</span>
@@ -355,47 +355,47 @@ function DepositPage() {
 
             <div className="space-y-4 px-5 py-5 text-sm text-slate-700">
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Reference</span>
+                <span className="text-slate-600">Reference</span>
                 <span className="font-semibold text-slate-900">{receipt.reference}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Date</span>
+                <span className="text-slate-600">Date</span>
                 <span className="font-semibold text-slate-900">{receipt.date}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Amount</span>
+                <span className="text-slate-600">Amount</span>
                 <span className="text-lg font-semibold text-slate-900">{formatCurrency(receipt.amount)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">Status</span>
-                <span className={`font-semibold capitalize ${receipt.status === 'pending' ? 'text-yellow-600' : 'text-green-600'}`}>
+                <span className="text-slate-600">Status</span>
+                <span className={`font-semibold capitalize ${receipt.status === 'pending' ? 'text-amber-600' : 'text-green-600'}`}>
                   {receipt.status}
                 </span>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.12em] text-slate-500 mb-1">Deposit To</div>
+                <div className="text-xs uppercase tracking-[0.12em] text-slate-600 mb-1">Deposit To</div>
                 <div className="font-semibold text-slate-900 capitalize">{receipt.toAccount}</div>
-                <div className="text-xs text-slate-500">{currentUser?.name}</div>
+                <div className="text-xs text-slate-600">{currentUser?.name}</div>
               </div>
               {receipt.checkNumber && receipt.checkNumber !== 'N/A' && (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div className="text-xs uppercase tracking-[0.12em] text-slate-500 mb-1">Check Number</div>
+                  <div className="text-xs uppercase tracking-[0.12em] text-slate-600 mb-1">Check Number</div>
                   <div className="font-semibold text-slate-900">{receipt.checkNumber}</div>
                 </div>
               )}
               {receipt.memo && (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div className="text-xs uppercase tracking-[0.12em] text-slate-500 mb-1">Memo</div>
+                  <div className="text-xs uppercase tracking-[0.12em] text-slate-600 mb-1">Memo</div>
                   <div className="text-slate-800">{receipt.memo}</div>
                 </div>
               )}
               {receipt.needsApproval && (
-                <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3">
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                   <div className="flex gap-2">
-                    <span className="text-yellow-600">⏳</span>
+                    <span className="text-amber-600">⏳</span>
                     <div>
-                      <div className="text-xs font-semibold text-yellow-800 mb-1">Pending Admin Approval</div>
-                      <div className="text-xs text-yellow-700">
+                      <div className="text-xs font-semibold text-amber-900 mb-1">Pending Admin Approval</div>
+                      <div className="text-xs text-amber-800">
                         Deposits over $1,000 require approval. You'll be notified once approved.
                       </div>
                     </div>

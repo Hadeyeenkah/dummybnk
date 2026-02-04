@@ -111,35 +111,33 @@ function TransactionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      <header className="border-b border-white/5 bg-slate-900/50 backdrop-blur sticky top-0 z-10">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      {/* Header */}
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/80 backdrop-blur-xl shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-4">
-          <div className="flex items-center gap-3 text-cyan-400">
+          <div className="flex items-center gap-3">
             <AuroraBankLogo />
-            <span className="text-base sm:text-lg font-semibold tracking-tight text-slate-50">Aurora Bank</span>
+            <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-900 to-slate-950 bg-clip-text text-transparent">Aurora Bank</span>
           </div>
-          <Link to="/dashboard" className="text-xs sm:text-sm text-cyan-200 hover:text-white flex items-center gap-1">
+          <Link to="/dashboard" className="text-sm px-4 py-2 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition border border-indigo-200 flex items-center gap-2">
             <span>←</span>
-            <span className="hidden sm:inline">Back to Dashboard</span>
-            <span className="sm:hidden">Back</span>
+            <span>Back</span>
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 sm:px-6 py-6 sm:py-12">
-        <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <main className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12">
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="mb-1 sm:mb-2 text-2xl sm:text-3xl font-semibold text-white">Transactions</h1>
-            <p className="text-sm text-slate-300">
+            <p className="text-xs sm:text-sm uppercase tracking-[0.2em] text-gray-500 font-semibold">Transaction History</p>
+            <h1 className="mb-2 text-3xl sm:text-4xl font-bold text-gray-900 mt-2">Your Transactions</h1>
+            <p className="text-sm text-gray-600">
               {filteredTransactions.length} transaction{filteredTransactions.length !== 1 ? 's' : ''}
-            </p>
-            <p className="mt-1 text-xs text-yellow-300">
-              All transactions are successful and pending admin approval.
             </p>
           </div>
           <button
             onClick={handleExport}
-            className="flex items-center justify-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-2.5 text-sm font-semibold text-cyan-400 transition hover:bg-cyan-400/20"
+            className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
           >
             <span>📊</span>
             <span>Export CSV</span>
@@ -149,22 +147,22 @@ function TransactionsPage() {
         {/* Filters */}
         <div className="mb-6 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-400">Search</label>
+            <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Search</label>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Description, category..."
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-slate-400 outline-none focus:border-cyan-300/50 transition"
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
             />
           </div>
           
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-400">Category</label>
+            <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Category</label>
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-300/50 transition appearance-none cursor-pointer"
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition appearance-none cursor-pointer"
             >
               <option value="all">All Categories</option>
               <option value="income">Income</option>
@@ -178,11 +176,11 @@ function TransactionsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-400">Account</label>
+            <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Account</label>
             <select
               value={accountFilter}
               onChange={(e) => setAccountFilter(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-300/50 transition appearance-none cursor-pointer"
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition appearance-none cursor-pointer"
             >
               <option value="all">All Accounts</option>
               <option value="checking">Checking</option>
@@ -191,11 +189,11 @@ function TransactionsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-400">Date Range</label>
+            <label className="text-xs font-medium text-gray-600 uppercase tracking-wide">Date Range</label>
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white outline-none focus:border-cyan-300/50 transition appearance-none cursor-pointer"
+              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition appearance-none cursor-pointer"
             >
               <option value="30">Last 30 Days</option>
               <option value="90">Last 90 Days</option>
@@ -206,79 +204,81 @@ function TransactionsPage() {
           </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="mb-6 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
-          <div className="rounded-xl border border-white/5 bg-white/5 p-4 sm:p-5">
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Income</p>
-            <p className="mt-2 text-xl sm:text-2xl font-semibold text-green-400">
-              ${stats.income.toFixed(2)}
-            </p>
-          </div>
-          <div className="rounded-xl border border-white/5 bg-white/5 p-4 sm:p-5">
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Expenses</p>
-            <p className="mt-2 text-xl sm:text-2xl font-semibold text-red-400">
-              ${stats.expenses.toFixed(2)}
-            </p>
-          </div>
-          <div className="rounded-xl border border-white/5 bg-white/5 p-4 sm:p-5">
-            <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Net Change</p>
-            <p className={`mt-2 text-xl sm:text-2xl font-semibold ${stats.net >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>
-              ${stats.net.toFixed(2)}
-            </p>
+        {/* Summary Section */}
+        <div className="mb-6 bg-white border border-gray-200 rounded-lg p-6">
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-3">
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Income</p>
+              <p className="mt-2 text-2xl sm:text-3xl font-bold text-green-600">
+                ${stats.income.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Expenses</p>
+              <p className="mt-2 text-2xl sm:text-3xl font-bold text-red-600">
+                ${stats.expenses.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Net Change</p>
+              <p className={`mt-2 text-2xl sm:text-3xl font-bold ${stats.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                ${stats.net.toFixed(2)}
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Transactions List */}
-        <div className="rounded-2xl border border-white/5 bg-white/5 overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           {filteredTransactions.length === 0 ? (
             <div className="py-12 text-center px-4">
-              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-white/5">
+              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
                 <span className="text-3xl">📭</span>
               </div>
-              <p className="text-lg font-semibold text-white">No transactions found</p>
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="text-lg font-semibold text-gray-900">No transactions found</p>
+              <p className="mt-1 text-sm text-gray-500">
                 {searchQuery || categoryFilter !== 'all' || dateFilter !== '30'
                   ? 'Try adjusting your filters'
                   : 'Your transactions will appear here'}
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-gray-200">
               {filteredTransactions.map((transaction) => (
                 <div
                   key={transaction.uniqueKey}
-                  className="px-4 py-4 sm:px-6 hover:bg-white/[0.03] transition-colors"
+                  className="px-4 py-4 sm:px-6 hover:bg-gray-50 transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center justify-between gap-3">
                     {/* Left side: Icon + Details */}
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div
-                        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-lg font-semibold ${
+                        className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-lg font-semibold ${
                           transaction.isPending
-                            ? 'bg-yellow-500/20 text-yellow-400'
+                            ? 'bg-yellow-100 text-yellow-700'
                             : transaction.amount < 0
-                            ? 'bg-red-500/20 text-red-400'
-                            : 'bg-green-500/20 text-green-400'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-green-100 text-green-700'
                         }`}
                       >
                         {transaction.isPending
-                          ? '⏱'
+                          ? '⏳'
                           : transaction.amount < 0
                           ? '−'
                           : '+'}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold text-white">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-900">
                             {transaction.description || 'Transaction'}
                           </span>
                           {transaction.isPending && (
-                            <span className="inline-flex items-center rounded-full bg-yellow-500/20 px-2 py-0.5 text-[10px] font-medium text-yellow-400">
-                              PENDING APPROVAL
+                            <span className="inline-flex items-center rounded px-2 py-0.5 text-[10px] font-semibold bg-yellow-100 text-yellow-700">
+                              PENDING
                             </span>
                           )}
                         </div>
-                        <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs text-slate-400">
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs text-gray-500">
                           <span>{transaction.date}</span>
                           {transaction.category && (
                             <>
@@ -293,11 +293,6 @@ function TransactionsPage() {
                             </>
                           )}
                         </div>
-                        {transaction.note && (
-                          <p className="mt-1.5 text-xs text-slate-500 line-clamp-1">
-                            {transaction.note}
-                          </p>
-                        )}
                       </div>
                     </div>
 
@@ -305,7 +300,7 @@ function TransactionsPage() {
                     <div className="flex-shrink-0 text-right">
                       <div
                         className={`text-sm sm:text-base font-semibold whitespace-nowrap ${
-                          transaction.amount < 0 ? 'text-red-400' : 'text-green-400'
+                          transaction.amount < 0 ? 'text-red-600' : 'text-green-600'
                         }`}
                       >
                         {transaction.amount < 0 ? '−' : '+'}$

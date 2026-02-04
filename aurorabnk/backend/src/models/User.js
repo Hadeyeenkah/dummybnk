@@ -126,6 +126,56 @@ const UserSchema = new mongoose.Schema(
       }
     ],
 
+    // Credit card info
+    creditAvailable: {
+      type: Number,
+      default: 15000
+    },
+    creditCardLastFour: {
+      type: String,
+      default: '4829'
+    },
+
+    // Savings goals
+    savingsPercentage: {
+      type: Number,
+      default: 68,
+      min: 0,
+      max: 100
+    },
+    savingsCurrent: {
+      type: Number,
+      default: 34200
+    },
+    savingsTarget: {
+      type: Number,
+      default: 50000
+    },
+
+    // Payment info
+    nextPaymentAmount: {
+      type: Number,
+      default: 1247
+    },
+    paymentDueDate: {
+      type: String,
+      default: 'Feb 15'
+    },
+    daysUntilPayment: {
+      type: Number,
+      default: 11
+    },
+
+    // Investment info
+    investmentReturn: {
+      type: Number,
+      default: 4821
+    },
+    investmentReturnPercent: {
+      type: Number,
+      default: 12.5
+    },
+
     // Admin messages/notifications for users
     messages: [
       {

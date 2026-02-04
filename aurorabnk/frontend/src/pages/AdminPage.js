@@ -40,12 +40,12 @@ function AdminPage() {
     date: new Date().toISOString().split('T')[0],
   });
 
-  const API_BASE = process.env.NODE_ENV === 'production'
-    ? (process.env.REACT_APP_API_BASE || '/api')
-    : 'http://localhost:5001/api';
-  // For Vercel, set REACT_APP_API_BASE to your backend deployment URL if needed
+  const API_BASE = process.env.REACT_APP_API_BASE 
+    || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api');
+  
   console.log('🌍 Environment:', process.env.NODE_ENV);
   console.log('🔗 API Base:', API_BASE);
+  console.log('📝 REACT_APP_API_BASE:', process.env.REACT_APP_API_BASE);
 
   // Fetch admin data in real-time
   const fetchAdminData = async () => {
@@ -101,7 +101,6 @@ function AdminPage() {
   const fetchConversations = async () => {
     try {
       const res = await fetch(`${API_BASE}/admin/conversations`, {
-        credentials: 'include',
         credentials: 'include',
       });
       if (res.ok) {

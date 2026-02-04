@@ -137,56 +137,56 @@ function WireTransferPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      <header className="border-b border-white/5 bg-slate-900/50 backdrop-blur">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
+      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-xl shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3 text-cyan-400">
+          <div className="flex items-center gap-3">
             <AuroraBankLogo />
-            <span className="text-lg font-semibold tracking-tight text-slate-50">Aurora Bank</span>
+            <span className="text-lg font-semibold tracking-tight bg-gradient-to-r from-indigo-900 to-slate-950 bg-clip-text text-transparent">Aurora Bank</span>
           </div>
-          <Link to="/dashboard" className="text-sm text-cyan-200 hover:text-white">
+          <Link to="/dashboard" className="text-sm text-indigo-800 hover:text-indigo-950">
             ← Back to Dashboard
           </Link>
         </div>
       </header>
 
       <main className="mx-auto max-w-4xl px-6 py-12">
-        <h1 className="mb-2 text-3xl font-semibold text-white">Wire Transfer</h1>
-        <p className="mb-8 text-slate-300">Send domestic and international wire transfers securely and quickly</p>
+        <h1 className="mb-2 text-3xl font-semibold text-slate-900">Wire Transfer</h1>
+        <p className="mb-8 text-slate-600">Send domestic and international wire transfers securely and quickly</p>
 
         <div className="grid gap-6 md:grid-cols-3">
           {/* Form Section */}
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-6 md:col-span-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg md:col-span-2">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Message Display */}
               {message && (
-                <div className={`rounded-lg p-4 text-sm ${messageType === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                <div className={`rounded-lg p-4 text-sm ${messageType === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
                   {message}
                 </div>
               )}
 
               {/* From Account */}
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-200">
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
                   From Account
                 </label>
                 <select
                   name="fromAccount"
                   value={formData.fromAccount}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50 transition"
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
                 >
                   <option value="checking">Checking - ${currentUser?.checking?.toFixed(2) || '0.00'}</option>
                   <option value="savings">Savings - ${currentUser?.savings?.toFixed(2) || '0.00'}</option>
                 </select>
               </div>
 
-              <div className="border-t border-white/10 pt-6">
-                <h3 className="mb-4 text-lg font-semibold text-white">Recipient Information</h3>
+              <div className="border-t border-slate-200 pt-6">
+                <h3 className="mb-4 text-lg font-semibold text-slate-900">Recipient Information</h3>
 
                 {/* Recipient Name */}
                 <div className="mb-4">
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
                     Recipient Full Name *
                   </label>
                   <input
@@ -195,13 +195,13 @@ function WireTransferPage() {
                     value={formData.recipientName}
                     onChange={handleChange}
                     placeholder="e.g., John Smith"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-cyan-300/50 transition"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
                   />
                 </div>
 
                 {/* Bank Name */}
                 <div className="mb-4">
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
                     Recipient Bank Name *
                   </label>
                   <input
@@ -210,13 +210,13 @@ function WireTransferPage() {
                     value={formData.recipientBankName}
                     onChange={handleChange}
                     placeholder="e.g., First National Bank"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-cyan-300/50 transition"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
                   />
                 </div>
 
                 {/* Bank Address */}
                 <div className="mb-4">
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">
+                  <label className="mb-2 block text-sm font-semibold text-slate-700">
                     Bank Address
                   </label>
                   <input
@@ -225,7 +225,7 @@ function WireTransferPage() {
                     value={formData.recipientBankAddress}
                     onChange={handleChange}
                     placeholder="e.g., 123 Main St, New York, NY 10001"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-cyan-300/50 transition"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
                   />
                 </div>
 
@@ -241,7 +241,7 @@ function WireTransferPage() {
                     onChange={handleChange}
                     placeholder="e.g., 021000021"
                     maxLength="9"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-cyan-300/50 transition"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
                   />
                   <p className="mt-1 text-xs text-slate-400">9-digit ABA routing number</p>
                 </div>
@@ -257,7 +257,7 @@ function WireTransferPage() {
                     value={formData.recipientAccountNumber}
                     onChange={handleChange}
                     placeholder="e.g., 123456789"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-cyan-300/50 transition"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
                   />
                 </div>
 
@@ -273,13 +273,13 @@ function WireTransferPage() {
                     onChange={handleChange}
                     placeholder="e.g., CHASUS33"
                     maxLength="11"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-cyan-300/50 transition"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
                   />
                 </div>
               </div>
 
-              <div className="border-t border-white/10 pt-6">
-                <h3 className="mb-4 text-lg font-semibold text-white">Transfer Details</h3>
+              <div className="border-t border-slate-200 pt-6">
+                <h3 className="mb-4 text-lg font-semibold text-slate-900">Transfer Details</h3>
 
                 {/* Amount */}
                 <div className="mb-4">
@@ -296,7 +296,7 @@ function WireTransferPage() {
                       placeholder="0.00"
                       step="0.01"
                       min="0"
-                      className="flex-1 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-cyan-300/50 transition"
+                      className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
                     />
                   </div>
                 </div>
@@ -310,7 +310,7 @@ function WireTransferPage() {
                     name="purpose"
                     value={formData.purpose}
                     onChange={handleChange}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50 transition"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
                   >
                     <option value="">Select a purpose</option>
                     <option value="payment">Payment</option>
@@ -332,7 +332,7 @@ function WireTransferPage() {
                     onChange={handleChange}
                     placeholder="Add any additional details about this transfer..."
                     rows="3"
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-500 outline-none focus:border-cyan-300/50 transition resize-none"
+                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition resize-none"
                   />
                 </div>
               </div>
@@ -342,13 +342,13 @@ function WireTransferPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 rounded-lg bg-cyan-400 py-3 text-sm font-semibold text-slate-900 hover:bg-cyan-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 rounded-lg bg-gradient-to-r from-indigo-900 to-slate-950 py-3 text-sm font-semibold text-white hover:from-indigo-950 hover:to-black transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? 'Processing...' : 'Send Wire Transfer'}
                 </button>
                 <Link
                   to="/dashboard"
-                  className="flex-1 rounded-lg border border-white/10 py-3 text-sm font-semibold text-white hover:bg-white/5 transition text-center"
+                  className="flex-1 rounded-lg border border-slate-200 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition text-center"
                 >
                   Cancel
                 </Link>
@@ -359,41 +359,41 @@ function WireTransferPage() {
           {/* Info Section */}
           <div className="space-y-6">
             {/* Wire Transfer Info */}
-            <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
-              <h3 className="mb-4 text-lg font-semibold text-white">Wire Transfer Info</h3>
-              <ul className="space-y-3 text-sm text-slate-300">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+              <h3 className="mb-4 text-lg font-semibold text-slate-900">Wire Transfer Info</h3>
+              <ul className="space-y-3 text-sm text-slate-600">
                 <li className="flex gap-3">
-                  <span className="text-cyan-400">⏱</span>
+                  <span className="text-indigo-700">⏱</span>
                   <span>Typically processed within 1-2 business days</span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="text-cyan-400">💰</span>
+                  <span className="text-indigo-700">💰</span>
                   <span>May require admin approval for amounts over $5,000</span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="text-cyan-400">🔒</span>
+                  <span className="text-indigo-700">🔒</span>
                   <span>All transfers are encrypted and secure</span>
                 </li>
                 <li className="flex gap-3">
-                  <span className="text-cyan-400">📋</span>
+                  <span className="text-indigo-700">📋</span>
                   <span>Keep your confirmation number for reference</span>
                 </li>
               </ul>
             </div>
 
             {/* Account Balance */}
-            <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
-              <h3 className="mb-4 text-lg font-semibold text-white">Your Accounts</h3>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+              <h3 className="mb-4 text-lg font-semibold text-slate-900">Your Accounts</h3>
               <div className="space-y-3">
-                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                   <p className="text-xs text-slate-400">Checking</p>
-                  <p className="mt-1 text-lg font-semibold text-white">
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
                     ${currentUser?.checking?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
                   </p>
                 </div>
-                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                   <p className="text-xs text-slate-400">Savings</p>
-                  <p className="mt-1 text-lg font-semibold text-white">
+                  <p className="mt-1 text-lg font-semibold text-slate-900">
                     ${currentUser?.savings?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
                   </p>
                 </div>
@@ -401,27 +401,27 @@ function WireTransferPage() {
             </div>
 
             {/* Requirements */}
-            <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
-              <h3 className="mb-4 text-lg font-semibold text-white">Requirements</h3>
-              <ul className="space-y-2 text-xs text-slate-300">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+              <h3 className="mb-4 text-lg font-semibold text-slate-900">Requirements</h3>
+              <ul className="space-y-2 text-xs text-slate-600">
                 <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 mt-1">✓</span>
+                  <span className="text-indigo-700 mt-1">✓</span>
                   <span>Valid recipient name</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 mt-1">✓</span>
+                  <span className="text-indigo-700 mt-1">✓</span>
                   <span>Bank name and routing number</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 mt-1">✓</span>
+                  <span className="text-indigo-700 mt-1">✓</span>
                   <span>Recipient account number</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 mt-1">✓</span>
+                  <span className="text-indigo-700 mt-1">✓</span>
                   <span>Valid transfer amount</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-cyan-400 mt-1">✓</span>
+                  <span className="text-indigo-700 mt-1">✓</span>
                   <span>Sufficient funds in selected account</span>
                 </li>
               </ul>
@@ -433,13 +433,13 @@ function WireTransferPage() {
       {/* Receipt Modal */}
       {showReceiptModal && receipt && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 rounded-2xl border border-white/10 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             {/* Modal Header */}
-            <div className="sticky top-0 border-b border-white/10 bg-slate-900 px-6 py-4 flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-white">Wire Transfer Confirmation</h2>
+            <div className="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
+              <h2 className="text-2xl font-semibold text-slate-900">Wire Transfer Confirmation</h2>
               <button
                 onClick={handleReceiptClose}
-                className="text-slate-400 hover:text-white transition text-2xl"
+                className="text-slate-400 hover:text-slate-900 transition text-2xl"
               >
                 ✕
               </button>
@@ -451,7 +451,7 @@ function WireTransferPage() {
               <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-slate-300">Status</p>
+                    <p className="text-sm text-slate-500">Status</p>
                     <p className="text-2xl font-semibold text-yellow-400 mt-1">Pending Approval</p>
                   </div>
                   <span className="text-4xl">⏱</span>
@@ -460,20 +460,20 @@ function WireTransferPage() {
 
               {/* Transfer Details */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-white">Transfer Details</h3>
+                <h3 className="text-lg font-semibold text-slate-900">Transfer Details</h3>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs text-slate-400">From</p>
-                    <p className="mt-2 text-lg font-semibold text-white">
+                    <p className="mt-2 text-lg font-semibold text-slate-900">
                       {currentUser?.name}
                     </p>
                     <p className="text-sm text-slate-400 mt-1">
                       {receipt.fromAccount === 'checking' ? 'Checking' : 'Savings'} Account
                     </p>
                   </div>
-                  <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                     <p className="text-xs text-slate-400">To</p>
-                    <p className="mt-2 text-lg font-semibold text-white">
+                    <p className="mt-2 text-lg font-semibold text-slate-900">
                       {receipt.recipientName}
                     </p>
                     <p className="text-sm text-slate-400 mt-1">
@@ -484,7 +484,7 @@ function WireTransferPage() {
               </div>
 
               {/* Amount */}
-              <div className="rounded-lg border border-white/10 bg-white/5 p-4">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <p className="text-sm text-slate-400">Amount</p>
                 <p className="mt-2 text-4xl font-semibold text-green-400">
                   ${parseFloat(receipt.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
@@ -493,17 +493,17 @@ function WireTransferPage() {
 
               {/* Confirmation Details */}
               <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-white">Confirmation Details</h3>
+                <h3 className="text-lg font-semibold text-slate-900">Confirmation Details</h3>
                 <div className="grid gap-3">
-                  <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                  <div className="rounded-lg border border-slate-200 bg-white p-3">
                     <p className="text-xs text-slate-400">Confirmation Number</p>
-                    <p className="text-sm font-mono text-white mt-1">
+                    <p className="text-sm font-mono text-slate-900 mt-1">
                       {receipt.reference || `WIR-${Date.now().toString().slice(-10)}`}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                  <div className="rounded-lg border border-slate-200 bg-white p-3">
                     <p className="text-xs text-slate-400">Date & Time</p>
-                    <p className="text-sm text-white mt-1">
+                    <p className="text-sm text-slate-900 mt-1">
                       {receipt.date} at {receipt.time}
                     </p>
                   </div>
@@ -511,9 +511,9 @@ function WireTransferPage() {
               </div>
 
               {/* Next Steps */}
-              <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-4">
-                <p className="text-sm font-semibold text-cyan-400 mb-2">Next Steps</p>
-                <ul className="text-sm text-slate-300 space-y-1">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-indigo-900 mb-2">Next Steps</p>
+                <ul className="text-sm text-slate-600 space-y-1">
                   <li>• Your wire transfer has been submitted for approval</li>
                   <li>• You'll receive an email confirmation shortly</li>
                   <li>• Processing typically takes 1-2 business days</li>
@@ -525,13 +525,13 @@ function WireTransferPage() {
               <div className="flex gap-3">
                 <button
                   onClick={handlePrint}
-                  className="flex-1 rounded-lg border border-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/5 transition"
+                  className="flex-1 rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
                 >
                   🖨️ Print
                 </button>
                 <button
                   onClick={handleReceiptClose}
-                  className="flex-1 rounded-lg bg-cyan-400 px-4 py-3 text-sm font-semibold text-slate-900 hover:bg-cyan-300 transition"
+                  className="flex-1 rounded-lg bg-gradient-to-r from-indigo-900 to-slate-950 px-4 py-3 text-sm font-semibold text-white hover:from-indigo-950 hover:to-black transition"
                 >
                   Back to Dashboard
                 </button>

@@ -82,6 +82,7 @@ function App() {
         <Route path="/about" element={<AboutPage />} />
       </Routes>
     </BankProvider>
+  // ...existing code...
   );
 }
 
