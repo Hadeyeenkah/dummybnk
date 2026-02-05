@@ -156,7 +156,7 @@ function SupportChatWidget() {
           )}
         </button>
       ) : (
-        <div className="w-96 h-[500px] bg-slate-900 rounded-2xl border border-cyan-500/30 shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto w-auto sm:w-96 h-[90vh] sm:h-[500px] max-h-[90vh] bg-slate-900 rounded-2xl border border-cyan-500/30 shadow-2xl flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-cyan-600 to-cyan-500 px-4 py-3 flex items-center justify-between">
             <div>

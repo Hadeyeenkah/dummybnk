@@ -444,7 +444,7 @@ function Dashboard() {
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-slate-200 bg-white shadow-2xl z-50 overflow-hidden">
+                <div className="fixed sm:absolute left-4 right-4 sm:left-auto top-auto sm:top-full mt-2 w-auto sm:w-80 max-h-96 sm:max-h-screen rounded-2xl border border-slate-200 bg-white shadow-2xl z-50 overflow-hidden">
                   <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 bg-gradient-to-r from-slate-50 to-white">
                     <span className="text-sm font-semibold text-slate-900">Notifications</span>
                     <button
