@@ -125,9 +125,60 @@ exports.approveTransaction = async (req, res) => {
     transaction.status = 'completed';
     await transaction.save();
 
-    // Update user balance
+    // For external transfers, find and approve the matching recipient transaction
+    if (transaction.transferType === 'external' && transaction.reference) {
+      // Find the corresponding recipient transaction with same reference
+      const recipientTransaction = await Transaction.findOne({
+        reference: transaction.reference,
+        userId: { $ne: transaction.userId }, // Different user
+        status: 'pending',
+      });
+
+      if (recipientTransaction) {
+        recipientTransaction.status = 'completed';
+        await recipientTransaction.save();
+
+        // Credit the recipient's account
+        const recipient = await User.findById(recipientTransaction.userId);
+        if (recipient) {
+          // Initialize accounts if needed
+          if (!recipient.accounts || recipient.accounts.length === 0) {
+            recipient.accounts = [
+              { accountType: 'checking', balance: 0 },
+              { accountType: 'savings', balance: 0 }
+            ];
+          }
+
+          // Find or create the account
+          let recipientAccount = recipient.accounts.find(
+            (a) => a.accountType === recipientTransaction.accountType
+          );
+
+          if (!recipientAccount) {
+            recipient.accounts.push({
+              accountType: recipientTransaction.accountType,
+              balance: 0
+            });
+            recipientAccount = recipient.accounts[recipient.accounts.length - 1];
+          }
+
+          // Credit the recipient account
+          recipientAccount.balance = (recipientAccount.balance || 0) + recipientTransaction.amount;
+
+          // Recalculate total balance
+          recipient.balance = recipient.accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+          recipient.markModified('accounts');
+          await recipient.save();
+
+          console.log(`✅ Approved transfer: Credited $${recipientTransaction.amount} to recipient ${recipient.email}`);
+        }
+      }
+    }
+
+    // Update user balance (for sender, this was already deducted, so only update if needed)
     const user = await User.findById(transaction.userId);
-    if (user) {
+    if (user && transaction.transferType !== 'external') {
+      // For non-external transfers, update balance normally
       user.balance = (user.balance || 0) + transaction.amount;
 
       const account = user.accounts?.find((a) => a.accountType === transaction.accountType);
@@ -163,6 +214,52 @@ exports.rejectTransaction = async (req, res) => {
 
     transaction.status = 'rejected';
     await transaction.save();
+
+    // For external transfers, refund the sender and reject recipient transaction
+    if (transaction.transferType === 'external' && transaction.reference) {
+      // If this is the sender's transaction (negative amount), refund them
+      if (transaction.amount < 0) {
+        const sender = await User.findById(transaction.userId);
+        if (sender) {
+          // Initialize accounts if needed
+          if (!sender.accounts || sender.accounts.length === 0) {
+            sender.accounts = [
+              { accountType: 'checking', balance: sender.balance || 0 },
+              { accountType: 'savings', balance: 0 }
+            ];
+          }
+
+          // Find the account
+          const senderAccount = sender.accounts.find(
+            (a) => a.accountType === transaction.accountType
+          );
+
+          if (senderAccount) {
+            // Refund the sender (add back the absolute value)
+            senderAccount.balance = (senderAccount.balance || 0) + Math.abs(transaction.amount);
+
+            // Recalculate total balance
+            sender.balance = sender.accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
+            sender.markModified('accounts');
+            await sender.save();
+
+            console.log(`✅ Rejected transfer: Refunded $${Math.abs(transaction.amount)} to sender ${sender.email}`);
+          }
+        }
+      }
+
+      // Find and reject the corresponding recipient transaction
+      const recipientTransaction = await Transaction.findOne({
+        reference: transaction.reference,
+        userId: { $ne: transaction.userId },
+        status: 'pending',
+      });
+
+      if (recipientTransaction) {
+        recipientTransaction.status = 'rejected';
+        await recipientTransaction.save();
+      }
+    }
 
     res.json({
       message: 'Transaction rejected',

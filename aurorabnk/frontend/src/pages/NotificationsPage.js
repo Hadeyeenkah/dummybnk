@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
-import './Page.css';
+import AuroraBankLogo from '../components/AuroraBankLogo';
 
 function NotificationsPage() {
   const { currentUser } = useBankContext();
@@ -9,26 +9,17 @@ function NotificationsPage() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [adminMessages, setAdminMessages] = useState([]);
-  const [filter, setFilter] = useState('all'); // all, unread, transactions, security, account, admin
+  const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [onlyId, setOnlyId] = useState(null);
   const [onlyMessageId, setOnlyMessageId] = useState(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [preferences, setPreferences] = useState({
-    transactions: true,
-    security: true,
-    account: true,
-    marketing: false,
-  });
 
   // Fetch admin messages for the user
   useEffect(() => {
     const fetchAdminMessages = async () => {
       if (!currentUser?.id) return;
       try {
-        const apiBase = process.env.NODE_ENV === 'production'
-          ? (process.env.REACT_APP_API_BASE || '/api')
-          : 'http://localhost:5001/api';
-        // For Vercel, set REACT_APP_API_BASE to your backend deployment URL if needed
+        const apiBase = process.env.REACT_APP_API_BASE || 'http://localhost:5001/api';
         const res = await fetch(`${apiBase}/admin/users/${currentUser.id}/messages`, {
           credentials: 'include',
         });
@@ -186,11 +177,20 @@ function NotificationsPage() {
 
   // Filter notifications
   let filteredNotifications = notifications.filter((n) => {
+    // Apply category filter
     if (filter === 'unread') return !n.read;
     if (filter === 'transactions') return n.type === 'transaction';
-    if (filter === 'security') return n.type === 'security';
-    if (filter === 'account') return n.type === 'account';
-    if (filter === 'admin') return n.type === 'admin';
+    if (filter === 'alerts') return n.type === 'admin';
+    
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return (
+        n.title.toLowerCase().includes(query) ||
+        n.detail.toLowerCase().includes(query)
+      );
+    }
+    
     return true;
   });
 
@@ -201,6 +201,31 @@ function NotificationsPage() {
     filteredNotifications = filteredNotifications.filter((n) => n.messageId === onlyMessageId);
   }
 
+  // Group notifications by date
+  const groupByDate = (notifications) => {
+    const groups = {};
+    const now = new Date();
+    
+    notifications.forEach(notification => {
+      const date = new Date(notification.time);
+      const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+      
+      let key;
+      if (diffDays === 0) key = 'Today';
+      else if (diffDays === 1) key = 'Yesterday';
+      else if (diffDays <= 7) key = 'This Week';
+      else if (diffDays <= 30) key = 'This Month';
+      else key = 'Earlier';
+      
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(notification);
+    });
+    
+    return groups;
+  };
+
+  const groupedNotifications = groupByDate(filteredNotifications);
+
   // Mark as read
   const markAsRead = async (id) => {
     const notif = notifications.find((n) => n.id === id);
@@ -208,7 +233,7 @@ function NotificationsPage() {
     // If this is an admin message, mark it as read on server
     if (notif && notif.type === 'admin' && notif.messageId && currentUser?.id) {
       try {
-        const apiBase = process.env.REACT_APP_API_BASE || '/api';
+        const apiBase = process.env.REACT_APP_API_BASE || 'http://localhost:5001/api';
         await fetch(`${apiBase}/admin/users/${currentUser.id}/messages/${notif.messageId}/read`, {
           method: 'PATCH',
           credentials: 'include',
@@ -233,7 +258,7 @@ function NotificationsPage() {
     // Also mark all unread admin messages as read server-side
     try {
       if (!currentUser?.id) return;
-      const apiBase = process.env.REACT_APP_API_BASE || '/api';
+      const apiBase = process.env.REACT_APP_API_BASE || 'http://localhost:5001/api';
       const unreadAdmin = adminMessages.filter((m) => !m.read && m._id);
       await Promise.all(
         unreadAdmin.map((m) =>
@@ -263,193 +288,339 @@ function NotificationsPage() {
 
   // Clear all notifications
   const clearAll = () => {
-    if (window.confirm('Are you sure you want to clear all notifications?')) {
+    if (window.confirm('Are you sure you want to clear all notifications? This action cannot be undone.')) {
       setNotifications([]);
     }
   };
 
-  // Save preferences
-  const savePreferences = () => {
-    setShowSettings(false);
-    // In a real app, this would save to backend
-    alert('Notification preferences saved successfully!');
+  // Export notifications as CSV
+  const exportToCSV = () => {
+    if (filteredNotifications.length === 0) {
+      alert('No notifications to export');
+      return;
+    }
+
+    const headers = ['Date', 'Type', 'Title', 'Details', 'Status'];
+    const rows = filteredNotifications.map(n => [
+      new Date(n.time).toLocaleString('en-US'),
+      n.type,
+      n.title,
+      n.detail,
+      n.read ? 'Read' : 'Unread'
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `aurora-bank-notifications-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
+  // Print notifications
+  const handlePrint = () => {
+    if (filteredNotifications.length === 0) {
+      alert('No notifications to print');
+      return;
+    }
+    window.print();
   };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-slate-950 to-slate-950 text-slate-50">
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-900/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-900/20 rounded-full blur-3xl" />
+    <div className="min-h-screen bg-gray-50">
+      {/* Print styles */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          .printable, .printable * { visibility: visible; }
+          .printable { position: absolute; left: 0; top: 0; }
+          .no-print { display: none !important; }
+          @page { size: A4; margin: 15mm; }
+          * { color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+        }
+      `}</style>
+
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 no-print">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="text-gray-600 hover:text-gray-900 transition"
+              >
+                ← Back
+              </button>
+              <div className="h-8 w-px bg-gray-300"></div>
+              <AuroraBankLogo className="h-8" />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">{currentUser?.name}</span>
+            </div>
+          </div>
+        </div>
       </div>
-      
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12 space-y-8 sm:space-y-10">
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Page Title and Actions */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
-            <p className="text-xs sm:text-sm uppercase tracking-[0.2em] text-indigo-300 font-semibold">Notifications & Alerts</p>
-            <h1 className="text-3xl sm:text-4xl font-bold text-white mt-2">Activity Center</h1>
-            <p className="text-sm text-slate-300 mt-3">
-              Track all your account activity, messages, and updates in one place
+            <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
+            <p className="text-sm text-gray-600 mt-1">
+              {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up'}
             </p>
           </div>
-        </header>
-
-        {/* Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/5 backdrop-blur-sm rounded-2xl border border-indigo-500/20 p-4">
-          <div className="flex items-center gap-2 text-xs text-slate-300">
-            <span className="flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-cyan-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-500"></span>
-            </span>
-            Real-time updates enabled
-          </div>
-
-          <div className="flex gap-2 flex-wrap">
+          
+          <div className="flex gap-2 no-print">
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 transition border border-indigo-500/30"
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >
-                Mark all read
+                Mark all as read
               </button>
+            )}
+            {filteredNotifications.length > 0 && (
+              <>
+                <button
+                  onClick={exportToCSV}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  title="Download as CSV"
+                >
+                  Download
+                </button>
+                <button
+                  onClick={handlePrint}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                  title="Print"
+                >
+                  Print
+                </button>
+              </>
             )}
             {notifications.length > 0 && (
               <button
                 onClick={clearAll}
-                className="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-red-500/20 text-red-300 hover:bg-red-500/30 transition border border-red-500/30"
+                className="px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-lg hover:bg-red-50 transition"
               >
                 Clear all
               </button>
             )}
-            <button
-              onClick={() => setShowSettings(true)}
-              className="text-xs sm:text-sm px-3 py-1.5 rounded-lg bg-slate-500/20 text-slate-300 hover:bg-slate-500/30 transition border border-slate-500/30"
-              title="Notification settings"
-            >
-              ⚙️ Settings
-            </button>
           </div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-1.5 flex-wrap">
-          {[
-            { key: 'all', label: 'All', count: notifications.length },
-            { key: 'unread', label: 'Unread', count: unreadCount },
-            { key: 'transactions', label: 'Transactions', count: notifications.filter(n => n.type === 'transaction').length },
-            { key: 'security', label: 'Security', count: notifications.filter(n => n.type === 'security').length },
-            { key: 'account', label: 'Account', count: notifications.filter(n => n.type === 'account').length },
-            { key: 'admin', label: 'Admin', count: notifications.filter(n => n.type === 'admin').length },
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setFilter(tab.key)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition ${
-                filter === tab.key
-                  ? 'bg-indigo-600 text-white border border-indigo-400/50'
-                  : 'bg-white/5 border border-indigo-500/20 text-slate-300 hover:bg-indigo-500/10'
-              }`}
-            >
-              {tab.label} {tab.count > 0 && `(${tab.count})`}
-            </button>
-          ))}
+        {/* Search and Filter */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6 no-print">
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search notifications..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 pl-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+                <svg className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+            
+            {/* Filter Buttons */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFilter('all')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
+                  filter === 'all'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setFilter('unread')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
+                  filter === 'unread'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Unread {unreadCount > 0 && `(${unreadCount})`}
+              </button>
+              <button
+                onClick={() => setFilter('transactions')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
+                  filter === 'transactions'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Transactions
+              </button>
+              <button
+                onClick={() => setFilter('alerts')}
+                className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
+                  filter === 'alerts'
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Alerts
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Notifications List */}
         {filteredNotifications.length === 0 ? (
-          <div className="rounded-2xl border border-indigo-500/20 bg-white/5 backdrop-blur-sm p-12 text-center">
-            <div className="text-5xl mb-4">🔔</div>
-            <p className="text-lg text-slate-200 font-semibold">No notifications to show</p>
-            <p className="text-sm text-slate-400 mt-2">
-              {filter === 'unread' 
-                ? "You're all caught up! No unread notifications."
-                : "When you have account activity, you'll see it here."}
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">No notifications</h3>
+            <p className="text-sm text-gray-500">
+              {searchQuery ? 'No results found for your search.' : 
+               filter === 'unread' ? "You're all caught up!" : 
+               'You don\'t have any notifications yet.'}
             </p>
           </div>
         ) : (
-          <div className="rounded-2xl border border-indigo-500/20 bg-white/5 backdrop-blur-sm overflow-hidden divide-y divide-indigo-500/10">
-            {filteredNotifications.map((notification) => (
-              <div
-                key={notification.id}
-                className={`px-4 py-5 sm:px-6 hover:bg-indigo-500/5 transition group ${
-                  !notification.read ? 'bg-indigo-500/5 border-l-2 border-indigo-400' : ''
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  {/* Left: Icon + Content */}
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="text-2xl flex-shrink-0 mt-1">{notification.icon}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start flex-wrap gap-2">
-                        <div className="text-sm font-semibold text-white">{notification.title}</div>
-                        {!notification.read && (
-                          <span className="h-2.5 w-2.5 rounded-full bg-indigo-400 flex-shrink-0 mt-1.5"></span>
-                        )}
-                        {notification.status && (
-                          <span className={`text-[11px] px-2 py-0.5 rounded-full flex-shrink-0 font-medium ${
-                            notification.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
-                            notification.status === 'rejected' ? 'bg-red-500/20 text-red-300 border border-red-500/30' :
-                            'bg-green-500/20 text-green-300 border border-green-500/30'
-                          }`}>
-                            {notification.status.toUpperCase()}
-                          </span>
-                        )}
-                        <span className={`text-[11px] px-2 py-0.5 rounded-full flex-shrink-0 font-medium border ${
-                          notification.type === 'transaction' ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' :
-                          notification.type === 'security' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
-                          notification.type === 'admin' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
-                          'bg-slate-500/20 text-slate-300 border-slate-500/30'
-                        }`}>
-                          {notification.type}
-                        </span>
-                      </div>
-                      <div className="text-xs text-slate-400 mt-2">{notification.detail}</div>
-                      <div className="text-[11px] text-slate-500 mt-2.5">
-                        {formatTime(notification.time)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Actions */}
-                  <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition flex-shrink-0">
-                    {!notification.read && (
-                      <button
-                        onClick={() => markAsRead(notification.id)}
-                        className="p-1 text-indigo-400 hover:text-indigo-300 transition text-lg"
-                        title="Mark as read"
-                      >
-                        ✓
-                      </button>
-                    )}
-                    <button
-                      onClick={() => deleteNotification(notification.id)}
-                      className="p-1 text-red-400 hover:text-red-300 transition text-lg"
-                      title="Delete"
-                    >
-                      ✕
-                    </button>
-                  </div>
+          <div className="printable space-y-6">
+            {/* Print Header */}
+            <div className="hidden print:block mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-black">Aurora Bank</h1>
+                  <h2 className="text-lg font-semibold text-gray-800 mt-1">Notifications Statement</h2>
+                </div>
+                <div className="text-right text-sm text-gray-600">
+                  <p>Account: {currentUser?.name}</p>
+                  <p>Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
                 </div>
               </div>
-            ))}
+              <hr className="border-gray-300 mb-6" />
+            </div>
+
+            {/* Grouped Notifications */}
+            {Object.keys(groupedNotifications).length > 0 && (
+              <div className="space-y-6">
+                {['Today', 'Yesterday', 'This Week', 'This Month', 'Earlier'].map(group => {
+                  if (!groupedNotifications[group] || groupedNotifications[group].length === 0) return null;
+                  
+                  return (
+                    <div key={group}>
+                      <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{group}</h2>
+                      <div className="bg-white rounded-lg border border-gray-200 divide-y divide-gray-200">
+                        {groupedNotifications[group].map((notification) => (
+                          <div
+                            key={notification.id}
+                            className={`p-4 hover:bg-gray-50 transition group ${
+                              !notification.read ? 'bg-blue-50' : ''
+                            }`}
+                          >
+                            <div className="flex gap-4">
+                              {/* Icon */}
+                              <div className="flex-shrink-0">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
+                                  notification.type === 'transaction' ? 'bg-green-100' :
+                                  notification.type === 'admin' ? 'bg-purple-100' :
+                                  'bg-gray-100'
+                                }`}>
+                                  {notification.icon}
+                                </div>
+                              </div>
+                              
+                              {/* Content */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <h3 className="text-sm font-semibold text-gray-900">{notification.title}</h3>
+                                      {!notification.read && (
+                                        <span className="h-2 w-2 bg-blue-600 rounded-full"></span>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-gray-600 mt-1">{notification.detail}</p>
+                                    <div className="flex items-center gap-3 mt-2">
+                                      <span className="text-xs text-gray-500">{formatTime(notification.time)}</span>
+                                      {notification.status && (
+                                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                          notification.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                          notification.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                          'bg-green-100 text-green-800'
+                                        }`}>
+                                          {notification.status}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Actions */}
+                                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition no-print">
+                                    {!notification.read && (
+                                      <button
+                                        onClick={() => markAsRead(notification.id)}
+                                        className="p-1 text-gray-400 hover:text-blue-600 transition"
+                                        title="Mark as read"
+                                      >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => deleteNotification(notification.id)}
+                                      className="p-1 text-gray-400 hover:text-red-600 transition"
+                                      title="Delete"
+                                    >
+                                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Stats */}
+        {/* Summary Stats */}
         {notifications.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 backdrop-blur-sm p-5">
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Total Notifications</p>
-              <p className="text-3xl font-bold text-white mt-2">{notifications.length}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 no-print">
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <p className="text-xs font-medium text-gray-500 uppercase">Total</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{notifications.length}</p>
             </div>
-            <div className="rounded-xl border border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 backdrop-blur-sm p-5">
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Unread</p>
-              <p className="text-3xl font-bold text-cyan-400 mt-2">{unreadCount}</p>
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <p className="text-xs font-medium text-gray-500 uppercase">Unread</p>
+              <p className="text-2xl font-bold text-blue-600 mt-1">{unreadCount}</p>
             </div>
-            <div className="rounded-xl border border-purple-500/20 bg-gradient-to-br from-purple-500/10 to-purple-600/5 backdrop-blur-sm p-5">
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wide">Today</p>
-              <p className="text-3xl font-bold text-purple-400 mt-2">
+            <div className="bg-white rounded-lg border border-gray-200 p-4">
+              <p className="text-xs font-medium text-gray-500 uppercase">Today</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
                 {notifications.filter(n => {
                   const diffHours = (new Date() - new Date(n.time)) / 3600000;
                   return diffHours < 24;
@@ -459,85 +630,6 @@ function NotificationsPage() {
           </div>
         )}
       </div>
-
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-slate-900 to-slate-950 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-white">Notification Preferences</h2>
-              <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-white text-2xl transition">
-                ×
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <p className="text-sm text-slate-300">Choose which notifications you want to receive:</p>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-4 rounded-xl border border-indigo-500/20 bg-indigo-500/5 hover:bg-indigo-500/10 transition">
-                  <div>
-                    <p className="text-sm font-semibold text-white">Transaction Alerts</p>
-                    <p className="text-xs text-slate-400 mt-1">Deposits, withdrawals, and purchases</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={preferences.transactions}
-                    onChange={(e) => setPreferences({ ...preferences, transactions: e.target.checked })}
-                    className="h-5 w-5 rounded border border-indigo-500/30 accent-indigo-500"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-xl border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition">
-                  <div>
-                    <p className="text-sm font-semibold text-white">Security Alerts</p>
-                    <p className="text-xs text-slate-400 mt-1">Login attempts and security changes</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={preferences.security}
-                    onChange={(e) => setPreferences({ ...preferences, security: e.target.checked })}
-                    className="h-5 w-5 rounded border border-red-500/30 accent-red-500"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 hover:bg-cyan-500/10 transition">
-                  <div>
-                    <p className="text-sm font-semibold text-white">Account Updates</p>
-                    <p className="text-xs text-slate-400 mt-1">Statements, rewards, and service updates</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={preferences.account}
-                    onChange={(e) => setPreferences({ ...preferences, account: e.target.checked })}
-                    className="h-5 w-5 rounded border border-cyan-500/30 accent-cyan-500"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between p-4 rounded-xl border border-purple-500/20 bg-purple-500/5 hover:bg-purple-500/10 transition">
-                  <div>
-                    <p className="text-sm font-semibold text-white">Marketing & Offers</p>
-                    <p className="text-xs text-slate-400 mt-1">Promotions and special offers</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={preferences.marketing}
-                    onChange={(e) => setPreferences({ ...preferences, marketing: e.target.checked })}
-                    className="h-5 w-5 rounded border border-purple-500/30 accent-purple-500"
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={savePreferences}
-                className="w-full rounded-lg bg-gradient-to-r from-indigo-600 to-indigo-700 px-4 py-3 font-semibold text-white hover:from-indigo-500 hover:to-indigo-600 transition mt-6 border border-indigo-500/50"
-              >
-                Save Preferences
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

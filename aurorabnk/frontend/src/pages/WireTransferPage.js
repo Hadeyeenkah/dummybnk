@@ -430,111 +430,166 @@ function WireTransferPage() {
         </div>
       </main>
 
+      {/* Print styles */}
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          .printable, .printable * { visibility: visible; }
+          .printable { position: absolute; left: 0; top: 0; }
+          .no-print { display: none !important; }
+          @page { size: A4; margin: 15mm; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+        }
+      `}</style>
+
       {/* Receipt Modal */}
       {showReceiptModal && receipt && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
             {/* Modal Header */}
-            <div className="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between">
-              <h2 className="text-2xl font-semibold text-slate-900">Wire Transfer Confirmation</h2>
-              <button
-                onClick={handleReceiptClose}
-                className="text-slate-400 hover:text-slate-900 transition text-2xl"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6 space-y-6">
-              {/* Status */}
-              <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-slate-500">Status</p>
-                    <p className="text-2xl font-semibold text-yellow-400 mt-1">Pending Approval</p>
-                  </div>
-                  <span className="text-4xl">⏱</span>
-                </div>
-              </div>
-
-              {/* Transfer Details */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-slate-900">Transfer Details</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs text-slate-400">From</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">
-                      {currentUser?.name}
-                    </p>
-                    <p className="text-sm text-slate-400 mt-1">
-                      {receipt.fromAccount === 'checking' ? 'Checking' : 'Savings'} Account
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                    <p className="text-xs text-slate-400">To</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-900">
-                      {receipt.recipientName}
-                    </p>
-                    <p className="text-sm text-slate-400 mt-1">
-                      {receipt.recipientBankName}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Amount */}
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm text-slate-400">Amount</p>
-                <p className="mt-2 text-4xl font-semibold text-green-400">
-                  ${parseFloat(receipt.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </p>
-              </div>
-
-              {/* Confirmation Details */}
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-slate-900">Confirmation Details</h3>
-                <div className="grid gap-3">
-                  <div className="rounded-lg border border-slate-200 bg-white p-3">
-                    <p className="text-xs text-slate-400">Confirmation Number</p>
-                    <p className="text-sm font-mono text-slate-900 mt-1">
-                      {receipt.reference || `WIR-${Date.now().toString().slice(-10)}`}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-200 bg-white p-3">
-                    <p className="text-xs text-slate-400">Date & Time</p>
-                    <p className="text-sm text-slate-900 mt-1">
-                      {receipt.date} at {receipt.time}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Next Steps */}
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-indigo-900 mb-2">Next Steps</p>
-                <ul className="text-sm text-slate-600 space-y-1">
-                  <li>• Your wire transfer has been submitted for approval</li>
-                  <li>• You'll receive an email confirmation shortly</li>
-                  <li>• Processing typically takes 1-2 business days</li>
-                  <li>• Save your confirmation number for reference</li>
-                </ul>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3">
+            <div className="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between no-print">
+              <h2 className="text-2xl font-semibold text-slate-900">Wire Transfer Receipt</h2>
+              <div className="flex items-center gap-3">
                 <button
                   onClick={handlePrint}
-                  className="flex-1 rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
                 >
                   🖨️ Print
                 </button>
                 <button
                   onClick={handleReceiptClose}
-                  className="flex-1 rounded-lg bg-gradient-to-r from-indigo-900 to-slate-950 px-4 py-3 text-sm font-semibold text-white hover:from-indigo-950 hover:to-black transition"
+                  className="text-slate-400 hover:text-slate-900 transition text-2xl"
                 >
-                  Back to Dashboard
+                  ✕
                 </button>
+              </div>
+            </div>
+
+            {/* Receipt Content */}
+            <div className="printable p-8 font-mono text-xs leading-relaxed bg-white" style={{fontFamily: "'Courier New', 'Courier', monospace"}}>
+              
+              {/* Header */}
+              <div className="text-center mb-3">
+                <p className="font-bold">AURORA BANK</p>
+                <p>WIRE TRANSFER RECEIPT</p>
+              </div>
+
+              <div className="border-t border-b border-black py-2 mb-3 text-center">
+                <p>*** WIRE TRANSFER SUBMITTED ***</p>
+              </div>
+
+              {/* Transaction Info */}
+              <div className="mb-3 space-y-0.5">
+                <div className="flex justify-between">
+                  <span>DATE:</span>
+                  <span>{receipt.date}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>REFERENCE:</span>
+                  <span>{receipt.reference || `WIR-${Date.now().toString().slice(-10)}`}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>STATUS:</span>
+                  <span>PENDING APPROVAL</span>
+                </div>
+              </div>
+
+              <div className="border-t border-black my-3"></div>
+
+              {/* Amount */}
+              <div className="mb-3">
+                <div className="flex justify-between font-bold">
+                  <span>AMOUNT:</span>
+                  <span>${parseFloat(receipt.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+
+              <div className="border-t border-black my-3"></div>
+
+              {/* From Account */}
+              <div className="mb-3 space-y-0.5">
+                <p className="font-bold">FROM:</p>
+                <p className="ml-2">{currentUser?.name}</p>
+                <div className="ml-2 flex justify-between">
+                  <span>ACCOUNT:</span>
+                  <span>{receipt.fromAccount === 'checking' ? 'CHECKING' : 'SAVINGS'}</span>
+                </div>
+                {currentUser?.accountNumber && (
+                  <div className="ml-2 flex justify-between">
+                    <span>ACCT #:</span>
+                    <span>****{String(currentUser.accountNumber).slice(-4)}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-black my-3"></div>
+
+              {/* To Account */}
+              <div className="mb-3 space-y-0.5">
+                <p className="font-bold">TO:</p>
+                <p className="ml-2">{receipt.recipientName}</p>
+                <div className="ml-2 flex justify-between">
+                  <span>BANK:</span>
+                  <span>{receipt.recipientBankName}</span>
+                </div>
+                {receipt.recipientAccountNumber && (
+                  <div className="ml-2 flex justify-between">
+                    <span>ACCT #:</span>
+                    <span>****{String(receipt.recipientAccountNumber).slice(-4)}</span>
+                  </div>
+                )}
+                {receipt.recipientRoutingNumber && (
+                  <div className="ml-2 flex justify-between">
+                    <span>ROUTING:</span>
+                    <span>{receipt.recipientRoutingNumber}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Purpose */}
+              {formData.purpose && (
+                <>
+                  <div className="border-t border-black my-3"></div>
+                  <div className="mb-3">
+                    <div className="flex">
+                      <span className="font-bold">PURPOSE:</span>
+                      <span className="ml-2">{formData.purpose}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Note */}
+              {formData.note && (
+                <>
+                  <div className="border-t border-black my-3"></div>
+                  <div className="mb-3">
+                    <div className="flex">
+                      <span className="font-bold">NOTE:</span>
+                      <span className="ml-2">{formData.note}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="border-t border-black my-3"></div>
+
+              {/* Notice */}
+              <div className="mb-3 text-xs">
+                <p className="text-center mb-1">IMPORTANT NOTICE</p>
+                <p>Your wire transfer is currently being</p>
+                <p>processed. This takes 1-2 business days.</p>
+              </div>
+
+              <div className="border-t border-black my-3"></div>
+
+              {/* Footer */}
+              <div className="text-center text-xs">
+                <p>Questions? Contact us:</p>
+                <p>support@aurorabank.com</p>
+                <p>1-800-AURORA-1</p>
+                <p className="mt-3">Member FDIC</p>
+                <p className="mt-2">RETAIN FOR YOUR RECORDS</p>
               </div>
             </div>
           </div>

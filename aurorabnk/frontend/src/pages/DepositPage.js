@@ -322,96 +322,151 @@ function DepositPage() {
         )}
       </main>
 
-      {/* Print styles scoped for the receipt modal */}
+      {/* Print styles */}
       <style>{`
         @media print {
           body * { visibility: hidden; }
           .printable, .printable * { visibility: visible; }
-          .printable { position: absolute; inset: 0; margin: 0; padding: 32px; background: white; color: #0f172a; }
+          .printable { position: absolute; left: 0; top: 0; }
+          .no-print { display: none !important; }
+          @page { size: A4; margin: 15mm; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
         }
       `}</style>
 
       {showReceiptModal && receipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
-          <div className="printable w-full max-w-lg rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <div className="flex items-center gap-2 text-green-600">
-                <span className="text-xl">✔</span>
-                <div>
-                  <div className="text-xs uppercase tracking-[0.16em] text-slate-500">Deposit</div>
-                  <div className="text-lg font-semibold text-slate-900">Successful</div>
-                </div>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            {/* Modal Header */}
+            <div className="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between no-print">
+              <h2 className="text-2xl font-semibold text-slate-900">Mobile Deposit Receipt</h2>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handlePrint}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                >
+                  🖨️ Print
+                </button>
+                <button
+                  onClick={handleReceiptClose}
+                  className="text-slate-400 hover:text-slate-900 transition text-2xl"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm hover:border-indigo-300 hover:text-indigo-700"
-                aria-label="Print receipt"
-              >
-                <span className="text-sm">🖨</span>
-                <span>PDF</span>
-              </button>
             </div>
 
-            <div className="space-y-4 px-5 py-5 text-sm text-slate-700">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600">Reference</span>
-                <span className="font-semibold text-slate-900">{receipt.reference}</span>
+            {/* Receipt Content */}
+            <div className="printable p-8 font-mono text-xs leading-relaxed bg-white" style={{fontFamily: "'Courier New', 'Courier', monospace"}}>
+              
+              {/* Header */}
+              <div className="text-center mb-3">
+                <p className="font-bold">AURORA BANK</p>
+                <p>MOBILE DEPOSIT RECEIPT</p>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600">Date</span>
-                <span className="font-semibold text-slate-900">{receipt.date}</span>
+
+              <div className="border-t border-b border-black py-2 mb-3 text-center">
+                <p>*** DEPOSIT SUCCESSFUL ***</p>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600">Amount</span>
-                <span className="text-lg font-semibold text-slate-900">{formatCurrency(receipt.amount)}</span>
+
+              {/* Transaction Info */}
+              <div className="mb-3 space-y-0.5">
+                <div className="flex justify-between">
+                  <span>DATE:</span>
+                  <span>{receipt.date}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>REFERENCE:</span>
+                  <span>{receipt.reference}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>STATUS:</span>
+                  <span className="uppercase">{receipt.status === 'pending' ? 'PENDING APPROVAL' : receipt.status}</span>
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600">Status</span>
-                <span className={`font-semibold capitalize ${receipt.status === 'pending' ? 'text-amber-600' : 'text-green-600'}`}>
-                  {receipt.status}
-                </span>
+
+              <div className="border-t border-black my-3"></div>
+
+              {/* Amount */}
+              <div className="mb-3">
+                <div className="flex justify-between font-bold">
+                  <span>AMOUNT:</span>
+                  <span>{formatCurrency(receipt.amount)}</span>
+                </div>
               </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.12em] text-slate-600 mb-1">Deposit To</div>
-                <div className="font-semibold text-slate-900 capitalize">{receipt.toAccount}</div>
-                <div className="text-xs text-slate-600">{currentUser?.name}</div>
+
+              <div className="border-t border-black my-3"></div>
+
+              {/* Deposit To */}
+              <div className="mb-3 space-y-0.5">
+                <p className="font-bold">DEPOSITED TO:</p>
+                <p className="ml-2">{currentUser?.name}</p>
+                <div className="ml-2 flex justify-between">
+                  <span>ACCOUNT:</span>
+                  <span className="uppercase">{receipt.toAccount}</span>
+                </div>
+                {currentUser?.accountNumber && (
+                  <div className="ml-2 flex justify-between">
+                    <span>ACCT #:</span>
+                    <span>****{String(currentUser.accountNumber).slice(-4)}</span>
+                  </div>
+                )}
               </div>
+
+              {/* Check Number */}
               {receipt.checkNumber && receipt.checkNumber !== 'N/A' && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div className="text-xs uppercase tracking-[0.12em] text-slate-600 mb-1">Check Number</div>
-                  <div className="font-semibold text-slate-900">{receipt.checkNumber}</div>
-                </div>
-              )}
-              {receipt.memo && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  <div className="text-xs uppercase tracking-[0.12em] text-slate-600 mb-1">Memo</div>
-                  <div className="text-slate-800">{receipt.memo}</div>
-                </div>
-              )}
-              {receipt.needsApproval && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                  <div className="flex gap-2">
-                    <span className="text-amber-600">⏳</span>
-                    <div>
-                      <div className="text-xs font-semibold text-amber-900 mb-1">Pending Admin Approval</div>
-                      <div className="text-xs text-amber-800">
-                        Deposits over $1,000 require approval. You'll be notified once approved.
-                      </div>
+                <>
+                  <div className="border-t border-black my-3"></div>
+                  <div className="mb-3">
+                    <div className="flex justify-between">
+                      <span className="font-bold">CHECK #:</span>
+                      <span>{receipt.checkNumber}</span>
                     </div>
                   </div>
+                </>
+              )}
+
+              {/* Memo */}
+              {receipt.memo && (
+                <>
+                  <div className="border-t border-black my-3"></div>
+                  <div className="mb-3">
+                    <div className="flex">
+                      <span className="font-bold">MEMO:</span>
+                      <span className="ml-2">{receipt.memo}</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="border-t border-black my-3"></div>
+
+              {/* Notice */}
+              {receipt.needsApproval ? (
+                <div className="mb-3 text-xs">
+                  <p className="text-center mb-1">IMPORTANT NOTICE</p>
+                  <p>Your deposit is currently being processed.</p>
+                  <p>Deposits over $1,000 require approval.</p>
+                  <p>This takes 1-2 business days.</p>
+                </div>
+              ) : (
+                <div className="mb-3 text-xs">
+                  <p className="text-center mb-1">IMPORTANT NOTICE</p>
+                  <p>Your deposit has been successfully processed.</p>
+                  <p>Funds are now available in your account.</p>
                 </div>
               )}
-            </div>
 
-            <div className="flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4">
-              <button
-                type="button"
-                onClick={handleReceiptClose}
-                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-              >
-                Close
-              </button>
+              <div className="border-t border-black my-3"></div>
+
+              {/* Footer */}
+              <div className="text-center text-xs">
+                <p>Questions? Contact us:</p>
+                <p>support@aurorabank.com</p>
+                <p>1-800-AURORA-1</p>
+                <p className="mt-3">Member FDIC</p>
+                <p className="mt-2">RETAIN FOR YOUR RECORDS</p>
+              </div>
             </div>
           </div>
         </div>
