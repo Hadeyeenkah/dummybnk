@@ -173,20 +173,22 @@ exports.approveTransaction = async (req, res) => {
           console.log(`✅ Approved transfer: Credited $${recipientTransaction.amount} to recipient ${recipient.email}`);
         }
       }
-    }
+      
+      // For external transfers, sender was already debited when transfer was created
+      // No need to update sender's balance here
+    } else {
+      // For non-external transfers (deposits, bills, etc.), update balance normally
+      const user = await User.findById(transaction.userId);
+      if (user) {
+        user.balance = (user.balance || 0) + transaction.amount;
 
-    // Update user balance (for sender, this was already deducted, so only update if needed)
-    const user = await User.findById(transaction.userId);
-    if (user && transaction.transferType !== 'external') {
-      // For non-external transfers, update balance normally
-      user.balance = (user.balance || 0) + transaction.amount;
+        const account = user.accounts?.find((a) => a.accountType === transaction.accountType);
+        if (account) {
+          account.balance = (account.balance || 0) + transaction.amount;
+        }
 
-      const account = user.accounts?.find((a) => a.accountType === transaction.accountType);
-      if (account) {
-        account.balance = (account.balance || 0) + transaction.amount;
+        await user.save();
       }
-
-      await user.save();
     }
 
     res.json({
