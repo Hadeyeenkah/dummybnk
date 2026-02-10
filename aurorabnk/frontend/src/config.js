@@ -2,7 +2,7 @@
 // This file centralizes all API endpoint configuration
 
 // Determine API URL based on environment
-const getApiUrl = () => {
+export const getApiBase = () => {
   // Prefer explicit production base `REACT_APP_API_BASE` or `REACT_APP_API_URL`.
   // If provided, normalize and ensure it ends with `/api` so frontend calls correct routes.
   const envBase = process.env.REACT_APP_API_BASE || process.env.REACT_APP_API_URL;
@@ -18,15 +18,16 @@ const getApiUrl = () => {
   }
 
   // If no env var provided:
-  // - In production we default to empty (assume same-origin with deployed API under /api)
-  // - In development default to relative `/api` so CRA dev server can proxy
+  // - In production default to deployed backend
+  // - In development default to local backend
   if (process.env.NODE_ENV === 'production') {
-    return '';
+    return 'https://dummyback.vercel.app/api';
   }
-  return '/api';
+  return 'http://localhost:5001/api';
 };
 
-export const API_URL = getApiUrl();
+export const API_BASE = getApiBase();
+export const API_URL = API_BASE;
 
 // Log configuration in development
 if (process.env.NODE_ENV === 'development') {

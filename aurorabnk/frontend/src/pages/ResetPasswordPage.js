@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import AuroraBankLogo from '../components/AuroraBankLogo';
+import { API_BASE } from '../config';
 
 function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -39,10 +40,7 @@ function ResetPasswordPage() {
     setIsSubmitting(true);
 
     try {
-      const apiBase = process.env.NODE_ENV === 'production'
-        ? (process.env.REACT_APP_API_BASE || '/api')
-        : 'http://localhost:5001/api';
-      // For Vercel, set REACT_APP_API_BASE to your backend deployment URL if needed
+      const apiBase = API_BASE;
       const res = await fetch(`${apiBase}/auth/reset-password`, {
         credentials: 'include',
         method: 'POST',

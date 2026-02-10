@@ -1,20 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
+import { API_BASE } from '../config';
 import './Page.css';
 
 function SecurityPage() {
   const { currentUser } = useBankContext();
-  // Use full backend URL on production to prevent routing to frontend
-  const getApiBase = () => {
-    if (process.env.NODE_ENV === 'production') {
-      const baseUrl = process.env.REACT_APP_API_URL || '';
-      return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
-    }
-    const baseUrl = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001';
-    return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
-  };
-  const apiBase = getApiBase();
+  const apiBase = API_BASE;
   
   // State management
   const [show2FAModal, setShow2FAModal] = useState(false);

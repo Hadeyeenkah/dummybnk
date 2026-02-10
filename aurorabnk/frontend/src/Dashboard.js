@@ -3,13 +3,10 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useBankContext } from './context/BankContext';
 import AuroraBankLogo from './components/AuroraBankLogo';
 import SupportChatWidget from './components/SupportChatWidget';
+import { API_BASE } from './config';
 import './App.css';
 
 // API base for all fetch calls
-const API_BASE = process.env.NODE_ENV === 'production'
-  ? (process.env.REACT_APP_API_BASE || '/api')
-  : 'http://localhost:5001/api';
-// For Vercel, set REACT_APP_API_BASE to your backend deployment URL if needed
 console.log('🌍 Environment:', process.env.NODE_ENV);
 console.log('🔗 API Base:', API_BASE);
 
@@ -244,9 +241,8 @@ function Dashboard() {
   useEffect(() => {
     const fetchAdminMessages = async () => {
       try {
-        const apiBase = process.env.REACT_APP_API_BASE || '/api';
         console.log('🔍 Fetching admin messages for user:', currentUser.id);
-        console.log('🔍 API Base:', apiBase);
+        console.log('🔍 API Base:', API_BASE);
         
         const res = await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages`, {
           credentials: 'include',

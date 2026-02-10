@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
 import AuroraBankLogo from '../components/AuroraBankLogo';
+import { API_BASE } from '../config';
 
 function NotificationsPage() {
   const { currentUser } = useBankContext();
@@ -19,8 +20,7 @@ function NotificationsPage() {
     const fetchAdminMessages = async () => {
       if (!currentUser?.id) return;
       try {
-        const apiBase = process.env.REACT_APP_API_BASE || 'http://localhost:5001/api';
-        const res = await fetch(`${apiBase}/admin/users/${currentUser.id}/messages`, {
+        const res = await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages`, {
           credentials: 'include',
         });
         if (res.ok) {
@@ -233,13 +233,12 @@ function NotificationsPage() {
     // If this is an admin message, mark it as read on server
     if (notif && notif.type === 'admin' && notif.messageId && currentUser?.id) {
       try {
-        const apiBase = process.env.REACT_APP_API_BASE || 'http://localhost:5001/api';
-        await fetch(`${apiBase}/admin/users/${currentUser.id}/messages/${notif.messageId}/read`, {
+        await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages/${notif.messageId}/read`, {
           method: 'PATCH',
           credentials: 'include',
         });
         // Refresh admin messages
-        const res = await fetch(`${apiBase}/admin/users/${currentUser.id}/messages`, {
+        const res = await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages`, {
           credentials: 'include',
         });
         if (res.ok) {
@@ -258,18 +257,17 @@ function NotificationsPage() {
     // Also mark all unread admin messages as read server-side
     try {
       if (!currentUser?.id) return;
-      const apiBase = process.env.REACT_APP_API_BASE || 'http://localhost:5001/api';
       const unreadAdmin = adminMessages.filter((m) => !m.read && m._id);
       await Promise.all(
         unreadAdmin.map((m) =>
-          fetch(`${apiBase}/admin/users/${currentUser.id}/messages/${m._id}/read`, {
+          fetch(`${API_BASE}/admin/users/${currentUser.id}/messages/${m._id}/read`, {
             method: 'PATCH',
             credentials: 'include',
           })
         )
       );
       // Refresh
-      const res = await fetch(`${apiBase}/admin/users/${currentUser.id}/messages`, {
+      const res = await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages`, {
         credentials: 'include',
       });
       if (res.ok) {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
 import AuroraBankLogo from '../components/AuroraBankLogo';
+import { API_BASE } from '../config';
 import '../App.css';
 
 function AdminPage() {
@@ -40,9 +41,6 @@ function AdminPage() {
     date: new Date().toISOString().split('T')[0],
   });
 
-  const API_BASE = process.env.REACT_APP_API_BASE 
-    || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001/api');
-  
   console.log('🌍 Environment:', process.env.NODE_ENV);
   console.log('🔗 API Base:', API_BASE);
   console.log('📝 REACT_APP_API_BASE:', process.env.REACT_APP_API_BASE);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useBankContext } from './context/BankContext';
 import AuroraBankLogo from './components/AuroraBankLogo';
+import { API_BASE } from './config';
 import './App.css';
 
 function LoginPage() {
@@ -38,16 +39,7 @@ function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      // Use full backend URL on production
-      const getApiBase = () => {
-        if (process.env.NODE_ENV === 'production') {
-          const baseUrl = process.env.REACT_APP_API_URL || '';
-          return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
-        }
-        const baseUrl = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5001';
-        return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
-      };
-      const apiBase = getApiBase();
+      const apiBase = API_BASE;
       
       const res = await fetch(`${apiBase}/auth/forgot-password`, {
         credentials: 'include',

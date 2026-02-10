@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
 import AuroraBankLogo from '../components/AuroraBankLogo';
+import { API_BASE } from '../config';
 import '../App.css';
 
 function DepositPage() {
@@ -23,10 +24,7 @@ function DepositPage() {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receipt, setReceipt] = useState(null);
 
-  const apiBase = process.env.NODE_ENV === 'production'
-    ? (process.env.REACT_APP_API_BASE || '/api')
-    : 'http://localhost:5001/api';
-  // For Vercel, set REACT_APP_API_BASE to your backend deployment URL if needed
+  const apiBase = API_BASE;
 
   const formatCurrency = (value) => `$${Number(value || 0).toFixed(2)}`;
 

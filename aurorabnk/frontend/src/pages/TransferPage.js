@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
 import AuroraBankLogo from '../components/AuroraBankLogo';
+import { API_BASE } from '../config';
 import '../App.css';
 
 function TransferPage() {
   const { currentUser, transferMoney } = useBankContext();
   const navigate = useNavigate();
-  const apiBase = process.env.REACT_APP_API_BASE || '/api';
+  const apiBase = API_BASE;
   const AURORA_ROUTING = '026009593';
   const [formData, setFormData] = useState({
     transferType: 'external',

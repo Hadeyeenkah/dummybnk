@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
 import AuroraBankLogo from '../components/AuroraBankLogo';
+import { API_BASE } from '../config';
 import '../App.css';
 
 function BillsPage() {
@@ -26,7 +27,7 @@ function BillsPage() {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   const billCategories = ['Utilities', 'Internet', 'Phone', 'Rent', 'Insurance', 'Credit Card', 'Other'];
-  const apiBase = process.env.REACT_APP_API_BASE || '/api';
+  const apiBase = API_BASE;
 
   // Redirect if not authenticated
   useEffect(() => {

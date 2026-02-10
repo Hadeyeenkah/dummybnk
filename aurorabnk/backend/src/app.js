@@ -18,8 +18,17 @@ app.get('/', (req, res) => {
 // CORS - MUST BE FIRST MIDDLEWARE
 
 // Enhanced CORS with logging for debugging
-const allowedOrigins = (process.env.CLIENT_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
-app.use(cors({
+const envOriginsRaw = process.env.CLIENT_ORIGINS || process.env.CLIENT_ORIGIN || '';
+const envOrigins = envOriginsRaw.split(',').map(o => o.trim()).filter(Boolean);
+const defaultOrigins = [
+  'https://aurorabank.net',
+  'https://www.aurorabank.net',
+  'http://localhost:3000',
+  'http://localhost:5001'
+];
+const allowedOrigins = Array.from(new Set([...envOrigins, ...defaultOrigins]));
+
+const corsOptions = {
   origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps, curl, etc.)
     if (!origin) {
@@ -37,9 +46,10 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
   exposedHeaders: ['Set-Cookie']
-}));
+};
+app.use(cors(corsOptions));
 // Handle preflight requests
-app.options('*', cors());
+app.options('*', cors(corsOptions));
 
 // Parse JSON and cookies
 app.use(express.json());

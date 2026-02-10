@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useBankContext } from '../context/BankContext';
+import { API_BASE } from '../config';
 import '../App.css';
 
 function SupportChatWidget() {
@@ -12,10 +13,7 @@ function SupportChatWidget() {
   const [initializing, setInitializing] = useState(false);
   const [sendError, setSendError] = useState('');
   const messagesEndRef = useRef(null);
-  const apiBase = process.env.NODE_ENV === 'production'
-    ? (process.env.REACT_APP_API_BASE || '/api')
-    : 'http://localhost:5001/api';
-  // For Vercel, set REACT_APP_API_BASE to your backend deployment URL if needed
+  const apiBase = API_BASE;
 
   // Fetch messages
   const fetchMessages = useCallback(async (convId) => {
