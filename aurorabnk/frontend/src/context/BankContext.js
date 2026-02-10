@@ -69,6 +69,16 @@ export const BankProvider = ({ children }) => {
     return API_BASE;
   };
 
+  // Helper to get auth headers for Safari/Apple device fallback
+  const getAuthHeaders = (additionalHeaders = {}) => {
+    const headers = { 'Content-Type': 'application/json', ...additionalHeaders };
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  };
+
 
 
 
@@ -149,10 +159,11 @@ const getEndpoint = useCallback(
   const fetchProfile = useCallback(async () => {
     try {
       const profileUrl = getEndpoint('/auth/profile');
-      // Rely on httpOnly cookies for auth during development/production.
-      // Avoid sending Authorization header from localStorage to prevent
-      // stale/malformed token errors. Use credentials to include cookies.
-      const headers = { 'Content-Type': 'application/json' };
+      // Include Authorization header for Safari/Apple devices
+      const headers = getAuthHeaders();
+      if (headers.Authorization) {
+        console.log('🔑 Using token from localStorage (Safari fallback)');
+      }
       console.log('📡 Fetching profile from:', profileUrl);
       const res = await fetch(profileUrl, {
         credentials: 'include',
@@ -291,7 +302,14 @@ const getEndpoint = useCallback(
       }
       
       const data = await res.json();
-      // Server sets httpOnly auth cookies; do not store tokens in localStorage.
+      
+      // Store tokens in localStorage for Safari/Apple devices that block cookies
+      if (data.tokens) {
+        console.log('💾 Storing tokens in localStorage for Safari fallback');
+        localStorage.setItem('accessToken', data.tokens.accessToken);
+        localStorage.setItem('refreshToken', data.tokens.refreshToken);
+      }
+      
       console.log('✅ Login successful, fetching profile...');
       // Fetch profile immediately (no delay - cookies are already set)
       const profileSuccess = await fetchProfile();
@@ -322,6 +340,9 @@ const getEndpoint = useCallback(
         credentials: 'include',
       });
     } catch {}
+    // Clear localStorage tokens (Safari fallback)
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     setCurrentUser(null);
     setIsAuthenticated(false);
   };
@@ -333,7 +354,7 @@ const getEndpoint = useCallback(
         credentials: 'include',
         method: 'PUT',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(profileData),
       });
       if (!res.ok) {

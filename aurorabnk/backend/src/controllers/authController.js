@@ -218,6 +218,11 @@ exports.login = async (req, res) => {
         lastName: user.lastName,
         role: user.role,
       },
+      // Include tokens for Safari/Apple devices that block cookies
+      tokens: {
+        accessToken,
+        refreshToken
+      }
     });
   } catch (error) {
     console.error('💥 LOGIN ERROR:', error.message);
