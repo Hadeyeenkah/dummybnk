@@ -44,12 +44,26 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-  exposedHeaders: ['Set-Cookie']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
+  exposedHeaders: ['Set-Cookie'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 app.use(cors(corsOptions));
 // Handle preflight requests
 app.options('*', cors(corsOptions));
+
+// Additional middleware to ensure Safari/Apple devices can authenticate
+app.use((req, res, next) => {
+  // Ensure CORS headers are set for Safari
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+  }
+  next();
+});
 
 // Parse JSON and cookies
 app.use(express.json());

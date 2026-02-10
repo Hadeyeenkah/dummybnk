@@ -19,9 +19,10 @@ exports.generateTokens = (userId) => {
 exports.setAuthCookies = (res, { accessToken, refreshToken }) => {
 	const isProd = process.env.NODE_ENV === 'production';
 	// Use secure: true and sameSite: 'none' for cross-domain in production
+	// Add Partitioned attribute for Safari/Apple devices
 	const cookieOptions = {
 		httpOnly: true,
-		secure: isProd,
+		secure: isProd ? true : false,
 		sameSite: isProd ? 'none' : 'lax',
 		path: '/',
 		domain: undefined,
@@ -34,13 +35,36 @@ exports.setAuthCookies = (res, { accessToken, refreshToken }) => {
 		requestHost: res.req?.get('host')
 	});
 
+	// For Safari/Apple devices: add Partitioned attribute via Set-Cookie header
+	const partitionedAttr = isProd ? '; Partitioned' : '';
+
 	res.cookie('accessToken', accessToken, {
 		...cookieOptions,
 		maxAge: 15 * 60 * 1000, // 15 minutes
 	});
+	
+	// Manually set Partitioned attribute for Safari compatibility
+	if (isProd) {
+		const accessCookie = res.getHeader('Set-Cookie');
+		if (Array.isArray(accessCookie)) {
+			accessCookie[accessCookie.length - 1] += partitionedAttr;
+			res.setHeader('Set-Cookie', accessCookie);
+		} else if (accessCookie) {
+			res.setHeader('Set-Cookie', accessCookie + partitionedAttr);
+		}
+	}
 
 	res.cookie('refreshToken', refreshToken, {
 		...cookieOptions,
 		maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 	});
+	
+	// Manually set Partitioned attribute for Safari compatibility
+	if (isProd) {
+		const cookies = res.getHeader('Set-Cookie');
+		if (Array.isArray(cookies)) {
+			cookies[cookies.length - 1] += partitionedAttr;
+			res.setHeader('Set-Cookie', cookies);
+		}
+	}
 };
