@@ -51,6 +51,17 @@ function Dashboard() {
     if (length > 12) return 'text-3xl sm:text-4xl md:text-5xl';
     return 'text-4xl sm:text-5xl md:text-6xl';
   };
+
+  // Helper for checking/savings amounts in smaller containers
+  const getAccountBalanceSizeClass = (value) => {
+    const formatted = `$${value.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+    const length = formatted.length;
+
+    if (length > 15) return 'text-sm';
+    if (length > 12) return 'text-base';
+    if (length > 10) return 'text-lg';
+    return 'text-xl';
+  };
   const [formData, setFormData] = useState({
     firstName: currentUser?.name.split(' ')[0] || '',
     lastName: currentUser?.name.split(' ').slice(1).join(' ') || '',
@@ -774,7 +785,7 @@ function Dashboard() {
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm p-4">
                 <p className="text-[10px] text-indigo-200 font-medium uppercase tracking-wide mb-1">Checking</p>
-                <p className="text-xl font-bold text-white">
+                <p className={`${getAccountBalanceSizeClass(user.checking)} font-bold text-white break-all`}>
                   {showBalance 
                     ? `$${user.checking.toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
                     : '$ ••••••'}
@@ -782,7 +793,7 @@ function Dashboard() {
               </div>
               <div className="rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm p-4">
                 <p className="text-[10px] text-indigo-200 font-medium uppercase tracking-wide mb-1">Savings</p>
-                <p className="text-xl font-bold text-white">
+                <p className={`${getAccountBalanceSizeClass(user.savings)} font-bold text-white break-all`}>
                   {showBalance 
                     ? `$${user.savings.toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
                     : '$ ••••••'}
@@ -1336,7 +1347,7 @@ function Dashboard() {
                   </div>
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <p className="text-xs text-slate-500 mb-1 font-medium">Checking Balance</p>
-                    <p className="text-slate-900 font-bold text-lg">
+                    <p className={`text-slate-900 font-bold ${getAccountBalanceSizeClass(user.checking)} break-all`}>
                       {showBalance 
                         ? `$${user.checking.toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
                         : '$ ••••••'}
@@ -1344,7 +1355,7 @@ function Dashboard() {
                   </div>
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <p className="text-xs text-slate-500 mb-1 font-medium">Savings Balance</p>
-                    <p className="text-slate-900 font-bold text-lg">
+                    <p className={`text-slate-900 font-bold ${getAccountBalanceSizeClass(user.savings)} break-all`}>
                       {showBalance 
                         ? `$${user.savings.toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
                         : '$ ••••••'}
