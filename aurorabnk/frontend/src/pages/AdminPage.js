@@ -41,6 +41,14 @@ function AdminPage() {
     date: new Date().toISOString().split('T')[0],
   });
 
+  const getAuthHeaders = (additionalHeaders = {}) => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+      return additionalHeaders;
+    }
+    return { Authorization: `Bearer ${token}`, ...additionalHeaders };
+  };
+
   console.log('🌍 Environment:', process.env.NODE_ENV);
   console.log('🔗 API Base:', API_BASE);
   console.log('📝 REACT_APP_API_BASE:', process.env.REACT_APP_API_BASE);
@@ -53,6 +61,7 @@ function AdminPage() {
       // Fetch all users
       const usersRes = await fetch(`${API_BASE}/admin/users`, {
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
       
       console.log('Users response status:', usersRes.status);
@@ -75,6 +84,7 @@ function AdminPage() {
       // Fetch pending approvals
       const approvalsRes = await fetch(`${API_BASE}/admin/pending-approvals`, {
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
       
       console.log('Approvals response status:', approvalsRes.status);
@@ -98,6 +108,7 @@ function AdminPage() {
     try {
       const res = await fetch(`${API_BASE}/admin/conversations`, {
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -113,6 +124,7 @@ function AdminPage() {
     try {
       const res = await fetch(`${API_BASE}/chat/messages/${convId}`, {
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -131,7 +143,7 @@ function AdminPage() {
       const res = await fetch(`${API_BASE}/chat/messages`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           conversationId: selectedConversationId,
           message: chatInput,
@@ -171,7 +183,7 @@ function AdminPage() {
       const res = await fetch(`${API_BASE}/transactions/${transactionId}/approve`, {
         method: 'PATCH',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       });
       if (res.ok) {
         // Refresh data immediately
@@ -191,7 +203,7 @@ function AdminPage() {
       const res = await fetch(`${API_BASE}/transactions/${transactionId}/reject`, {
         method: 'PATCH',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       });
       if (res.ok) {
         // Refresh data immediately
@@ -219,7 +231,7 @@ function AdminPage() {
       const res = await fetch(`${API_BASE}/admin/users/${userId}/balance`, {
         method: 'PATCH',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           checking: parseFloat(editValues.checking),
           savings: parseFloat(editValues.savings),
@@ -255,7 +267,7 @@ function AdminPage() {
       const res = await fetch(`${API_BASE}/admin/users/${selectedUserId}/transactions`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           ...newTransaction,
           amount: parseFloat(newTransaction.amount),
@@ -294,6 +306,7 @@ function AdminPage() {
       const res = await fetch(`${API_BASE}/admin/users/${userId}/transactions/${transactionId}`, {
         method: 'DELETE',
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
 
       if (res.ok) {
@@ -332,7 +345,7 @@ function AdminPage() {
         {
           method: 'PATCH',
           credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             ...editTransaction,
             amount: parseFloat(editTransaction.amount),
@@ -371,7 +384,7 @@ function AdminPage() {
       const res = await fetch(`${API_BASE}/admin/users/${selectedUserId}/messages`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ message: adminMessage }),
       });
 
