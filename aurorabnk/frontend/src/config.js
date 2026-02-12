@@ -8,6 +8,22 @@ export const getApiBase = () => {
   const envBase = process.env.REACT_APP_API_BASE || process.env.REACT_APP_API_URL;
   if (envBase) {
     const normalized = envBase.replace(/\/+$/, '');
+    // If the env base points to localhost but the app is opened from another device,
+    // swap in the current hostname while keeping the same scheme/port.
+    if (typeof window !== 'undefined') {
+      const isLocalhostEnv = /localhost|127\.0\.0\.1/.test(normalized);
+      const isLocalhostHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      if (isLocalhostEnv && !isLocalhostHost) {
+        try {
+          const url = new URL(normalized);
+          url.hostname = window.location.hostname;
+          const swapped = url.toString().replace(/\/+$/, '');
+          return swapped.endsWith('/api') ? swapped : `${swapped}/api`;
+        } catch (err) {
+          // Fall through to the original base if parsing fails.
+        }
+      }
+    }
     // Fall back to correct regex if above was malformed
     // (some environments or minifiers may corrupt repeated plus signs)
     // Ensure we remove trailing slashes
