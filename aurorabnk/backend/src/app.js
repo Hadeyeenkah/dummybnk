@@ -35,12 +35,15 @@ const corsOptions = {
       console.log('[CORS] No origin header, allowing request');
       return callback(null, true);
     }
-    if (allowedOrigins.includes(origin)) {
+    const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin || '');
+
+    if (allowedOrigins.includes(origin) || isVercelPreview) {
       console.log(`[CORS] Allowed origin: ${origin}`);
       return callback(null, true);
     }
     console.warn(`[CORS] Blocked origin: ${origin}`);
-    return callback(new Error('Not allowed by CORS'));
+    // Do not throw here; return a 403 JSON response later via middleware.
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -91,5 +94,24 @@ app.use('/api/auth', authRoutes);
 // Mount transaction routes
 const transactionRoutes = require('./routes/transactionRoutes');
 app.use('/api/transactions', transactionRoutes);
+
+// Explicit API 404 handler (JSON only)
+app.use('/api', (req, res) => {
+  res.status(404).json({ message: 'API route not found' });
+});
+
+// Global JSON error handler so production never returns HTML error pages
+app.use((err, req, res, _next) => {
+  console.error('❌ Unhandled app error:', err);
+
+  if (err && err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ message: 'CORS origin not allowed' });
+  }
+
+  return res.status(500).json({
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err?.message : undefined,
+  });
+});
 
 module.exports = app;

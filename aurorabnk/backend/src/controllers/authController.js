@@ -153,6 +153,12 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Guard against malformed or legacy user records without password hash.
+    if (!user.password || typeof user.password !== 'string') {
+      console.warn('⚠️ User record missing password hash:', user.email);
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     console.log('🔐 Password match:', isMatch);
     if (!isMatch) {
