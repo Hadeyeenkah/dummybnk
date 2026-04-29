@@ -57,12 +57,14 @@ exports.register = async (req, res) => {
         ],
       });
     } catch (dbError) {
-      console.log('❌ Database unavailable during registration:', dbError.message);
-      return res.status(500).json({ message: 'Database unavailable. Please try again later.' });
-    }
-
-    const origin = process.env.CLIENT_ORIGIN || 'http://localhost:3000';
-    const apiBase = process.env.API_BASE || 'http://localhost:5000';
+      console.error('💥 LOGIN ERROR:', error.message);
+      console.error('📍 Error details:', error);
+      // Return error message in response to aid debugging in production.
+      // NOTE: This exposes internal error messages — revert after debugging.
+      res.status(500).json({ 
+        message: 'Server error', 
+        error: error.message
+      });
     const link = `${apiBase}/api/auth/verify-email?token=${verificationToken}`;
     
     // Try to send email, but don't fail if unavailable
