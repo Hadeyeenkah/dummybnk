@@ -57,14 +57,17 @@ exports.register = async (req, res) => {
         ],
       });
     } catch (dbError) {
-      console.error('💥 LOGIN ERROR:', error.message);
-      console.error('📍 Error details:', error);
+      console.error('💥 LOGIN ERROR:', dbError.message);
+      console.error('📍 Error details:', dbError);
       // Return error message in response to aid debugging in production.
       // NOTE: This exposes internal error messages — revert after debugging.
-      res.status(500).json({ 
+      return res.status(500).json({ 
         message: 'Server error', 
-        error: error.message
+        error: dbError.message
       });
+    }
+
+    const apiBase = process.env.API_BASE || 'http://localhost:5000';
     const link = `${apiBase}/api/auth/verify-email?token=${verificationToken}`;
     
     // Try to send email, but don't fail if unavailable
