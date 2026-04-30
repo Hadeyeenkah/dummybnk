@@ -236,11 +236,10 @@ exports.login = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('💥 LOGIN ERROR:', error.message);
-    console.error('📍 Error details:', error);
+    console.error('LOGIN ERROR:', error.message, error.stack);
     res.status(500).json({ 
       message: 'Server error', 
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal error'
+      error: error.message
     });
   }
 };
