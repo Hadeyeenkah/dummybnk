@@ -251,6 +251,18 @@ const getEndpoint = useCallback(
     setHasInitialized(true);
     const initializeAuth = async () => {
       setIsInitializing(true);
+      const pathname = window.location.pathname || '/';
+      const publicPaths = new Set(['/', '/login', '/signup', '/reset-password', '/about']);
+      const hasStoredToken = Boolean(localStorage.getItem('accessToken') || localStorage.getItem('refreshToken'));
+
+      // On public pages with no token hint, skip initial profile call to avoid expected 401 noise.
+      if (publicPaths.has(pathname) && !hasStoredToken) {
+        setIsAuthenticated(false);
+        setCurrentUser(null);
+        setIsInitializing(false);
+        return;
+      }
+
       // Resolve API base before attempting profile fetch
       await tryResolveApiBase();
       await fetchProfile();
