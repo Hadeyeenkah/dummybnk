@@ -3,9 +3,9 @@ import { useBankContext } from '../context/BankContext';
 import { API_BASE } from '../config';
 import '../App.css';
 
-function SupportChatWidget() {
+function SupportChatWidget({ isOpen = false, onOpen, onClose }) {
   const { currentUser } = useBankContext();
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(isOpen);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -14,6 +14,10 @@ function SupportChatWidget() {
   const [sendError, setSendError] = useState('');
   const messagesEndRef = useRef(null);
   const apiBase = API_BASE;
+
+  useEffect(() => {
+    setChatOpen(isOpen);
+  }, [isOpen]);
 
   // Fetch messages
   const fetchMessages = useCallback(async (convId) => {
@@ -142,7 +146,10 @@ function SupportChatWidget() {
     <div className="fixed bottom-4 right-4 z-50">
       {!chatOpen ? (
         <button
-          onClick={() => setChatOpen(true)}
+          onClick={() => {
+            setChatOpen(true);
+            onOpen?.();
+          }}
           className="relative flex items-center justify-center w-14 h-14 rounded-full bg-cyan-500 hover:bg-cyan-600 text-white shadow-lg transition transform hover:scale-110"
           title="Chat with support"
         >
@@ -162,7 +169,10 @@ function SupportChatWidget() {
               <p className="text-xs text-cyan-100">We're here to help</p>
             </div>
             <button
-              onClick={() => setChatOpen(false)}
+              onClick={() => {
+                setChatOpen(false);
+                onClose?.();
+              }}
               className="text-white hover:bg-white/20 rounded-lg p-2 transition"
             >
               ✕

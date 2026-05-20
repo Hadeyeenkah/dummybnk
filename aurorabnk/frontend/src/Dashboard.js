@@ -18,6 +18,7 @@ function Dashboard() {
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [supportChatOpen, setSupportChatOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [adminMessages, setAdminMessages] = useState([]);
   const [supportChatMessages, setSupportChatMessages] = useState([]);
@@ -538,6 +539,10 @@ function Dashboard() {
                           className={`px-5 py-4 border-b ${borderColor} ${bgColor} transition cursor-pointer`}
                           onClick={() => {
                             setShowNotifications(false);
+                            if (n.type === 'chat') {
+                              setSupportChatOpen(true);
+                              return;
+                            }
                             const targetFilter = n.source === 'admin' ? 'admin' : (n.type || 'all');
                             navigate('/notifications', {
                               state: { filter: targetFilter, showOnlyId: n.id, messageId: n.messageId }
@@ -1441,7 +1446,11 @@ function Dashboard() {
       )}
 
       {/* Support Chat Widget */}
-      <SupportChatWidget />
+      <SupportChatWidget
+        isOpen={supportChatOpen}
+        onOpen={() => setSupportChatOpen(true)}
+        onClose={() => setSupportChatOpen(false)}
+      />
     </div>
   );
 }
