@@ -484,11 +484,11 @@ function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-xl shadow-lg">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 py-4 gap-3 flex-wrap">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-3 sm:px-4 md:px-6 py-3 sm:py-4 gap-2 sm:gap-3 flex-wrap">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-3">
               <AuroraBankLogo />
-              <span className="text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-900 to-slate-950 bg-clip-text text-transparent">Aurora Bank</span>
+              <span className="text-sm sm:text-base md:text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-900 to-slate-950 bg-clip-text text-transparent truncate">Aurora Bank</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -665,11 +665,11 @@ function Dashboard() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 py-8">
+      <main className="relative z-10 mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900">Welcome back, {user.name.split(' ')[0]}</h1>
-          <p className="mt-2 text-slate-600">Here's what's happening with your accounts today.</p>
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Welcome back, {user.name.split(' ')[0]}</h1>
+          <p className="mt-1 sm:mt-2 text-sm sm:text-base text-slate-600">Here's what's happening with your accounts today.</p>
         </div>
 
         {/* Admin Messages - Slim Container */}
@@ -677,9 +677,9 @@ function Dashboard() {
           const latestUnread = adminMessages.filter(m => !m.read).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
           const unreadCount = adminMessages.filter(m => !m.read).length;
           return (
-            <div className="mb-6 rounded-2xl border border-slate-200 bg-gradient-to-r from-indigo-50 to-slate-50 px-5 py-4 flex items-center justify-between gap-3 shadow-lg backdrop-blur-sm">
-              <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+            <div className="mb-4 sm:mb-6 rounded-xl sm:rounded-2xl border border-slate-200 bg-gradient-to-r from-indigo-50 to-slate-50 px-3 sm:px-5 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-3 shadow-lg backdrop-blur-sm">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                <div className="flex-shrink-0 w-9 sm:w-10 h-9 sm:h-10 rounded-full bg-indigo-100 flex items-center justify-center">
                   <svg className="w-5 h-5 text-indigo-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
                   </svg>
@@ -709,13 +709,13 @@ function Dashboard() {
         })()}
 
         {/* Account Balance Cards */}
-        <div className="mb-8 grid gap-6 md:grid-cols-3">
-          <div className="md:col-span-2 rounded-2xl bg-gradient-to-br from-indigo-900 via-slate-800 to-slate-950 p-8 text-white shadow-2xl border border-indigo-800/30">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex-1">
-                <p className="text-xs uppercase tracking-wider text-indigo-200 font-medium mb-2">Total Balance</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-5xl font-bold text-white">
+        <div className="mb-6 sm:mb-8 grid gap-4 sm:gap-6 md:grid-cols-3">
+          <div className="md:col-span-2 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-900 via-slate-800 to-slate-950 p-4 sm:p-6 md:p-8 text-white shadow-2xl border border-indigo-800/30">
+            <div className="flex items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6 flex-col sm:flex-row">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] sm:text-xs uppercase tracking-wider text-indigo-200 font-medium mb-1 sm:mb-2">Total Balance</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-3xl sm:text-4xl md:text-5xl font-bold text-white">
                     {showBalance 
                       ? formatCurrency(user.balance)
                       : '$ •••••••'}
@@ -738,12 +738,12 @@ function Dashboard() {
                   </button>
                 </div>
               </div>
-              <span className="rounded-full bg-gradient-to-r from-indigo-900 to-slate-950 px-4 py-2 text-[11px] text-white font-bold uppercase tracking-wide shadow-lg">Premium Account</span>
+              <span className="rounded-full bg-gradient-to-r from-indigo-900 to-slate-950 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-[11px] text-white font-bold uppercase tracking-wide shadow-lg">Premium Account</span>
             </div>
             
             {/* Account Details */}
-            <div className="mb-6 rounded-xl border border-indigo-800/50 bg-indigo-900/40 backdrop-blur-sm p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="mb-4 sm:mb-6 rounded-lg sm:rounded-xl border border-indigo-800/50 bg-indigo-900/40 backdrop-blur-sm p-3 sm:p-4 md:p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <p className="text-[10px] text-indigo-200 mb-2 font-medium uppercase tracking-wide">Account Number</p>
                   <div className="flex items-center gap-2">
@@ -939,19 +939,19 @@ function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="mb-8">
-          <h2 className="mb-6 text-xl font-bold text-slate-900">Quick Actions</h2>
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="mb-6 sm:mb-8">
+          <h2 className="mb-4 sm:mb-6 text-lg sm:text-xl font-bold text-slate-900">Quick Actions</h2>
+          <div className="grid gap-2 sm:gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
             {quickActions.map((action) => (
               <Link
                 key={action.title}
                 to={action.link}
-                className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 text-center transition hover:shadow-lg hover:border-indigo-400/50"
+                className="group relative overflow-hidden rounded-lg sm:rounded-xl border border-slate-200 bg-white p-2 sm:p-3 md:p-4 text-center transition hover:shadow-lg hover:border-indigo-400/50"
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-10 transition-opacity`}></div>
                 <div className="relative">
-                  <div className="mb-2 text-2xl">{action.icon}</div>
-                  <div className="text-xs font-semibold text-slate-700 group-hover:text-slate-900 transition">{action.title}</div>
+                  <div className="mb-1 sm:mb-2 text-xl sm:text-2xl">{action.icon}</div>
+                  <div className="text-[10px] sm:text-xs font-semibold text-slate-700 group-hover:text-slate-900 transition line-clamp-2">{action.title}</div>
                 </div>
               </Link>
             ))}
@@ -959,23 +959,23 @@ function Dashboard() {
         </div>
 
         {/* Recent Transactions */}
-        <div className="mb-8">
-          <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <h2 className="text-xl font-bold text-slate-900">Recent Transactions</h2>
-            <Link to="/transactions" className="text-sm text-indigo-800 hover:text-indigo-900 font-semibold flex items-center gap-1">
+        <div className="mb-6 sm:mb-8">
+          <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900">Recent Transactions</h2>
+            <Link to="/transactions" className="text-xs sm:text-sm text-indigo-800 hover:text-indigo-900 font-semibold flex items-center gap-1">
               View all
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </Link>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-lg">
+          <div className="rounded-lg sm:rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-lg">
             <div className="divide-y divide-slate-100">
               {recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="px-6 py-5 hover:bg-slate-50 transition">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4 min-w-0 flex-1">
-                      <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-semibold shadow-sm ${
+                <div key={transaction.id} className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 hover:bg-slate-50 transition">
+                  <div className="flex items-start justify-between gap-2 sm:gap-4">
+                    <div className="flex items-start gap-2 sm:gap-4 min-w-0 flex-1">
+                      <div className={`flex-shrink-0 w-10 sm:w-12 h-10 sm:h-12 rounded-full flex items-center justify-center font-semibold shadow-sm text-sm sm:text-base ${
                         transaction.amount < 0 
                           ? 'bg-rose-100 text-rose-600' 
                           : 'bg-emerald-100 text-emerald-600'
@@ -991,10 +991,10 @@ function Dashboard() {
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-semibold text-slate-900 truncate">
+                        <div className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
                           {transaction.description}
                         </div>
-                        <div className="flex flex-wrap gap-2 mt-1 text-xs text-slate-500">
+                        <div className="flex flex-wrap gap-1 sm:gap-2 mt-1 text-[10px] sm:text-xs text-slate-500">
                           <span>{transaction.date}</span>
                           <span>•</span>
                           <span className="capitalize">{transaction.category}</span>
@@ -1015,7 +1015,7 @@ function Dashboard() {
                     </div>
                     
                     <div className="flex-shrink-0 text-right">
-                      <div className={`text-base font-bold whitespace-nowrap ${
+                      <div className={`text-sm sm:text-base font-bold whitespace-nowrap ${
                         transaction.amount < 0 ? 'text-rose-600' : 'text-emerald-600'
                       }`}>
                         {transaction.amount < 0 ? '−' : '+'}${Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
