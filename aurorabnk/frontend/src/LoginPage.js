@@ -80,89 +80,73 @@ function LoginPage() {
 
   return (
     <div className="auth-shell">
-      <header className="auth-topbar">
-        <div className="auth-brand">
-          <AuroraBankLogo />
-          <span>Aurora Bank, FSB</span>
-        </div>
-        <div className="auth-links">
-          <Link to="/about">About</Link>
-          <Link to="/home">Back to home</Link>
-        </div>
-      </header>
-
-      <main className="auth-main">
-        <section className="auth-panel auth-panel-left">
-          <p className="auth-eyebrow">Secure Online Banking</p>
-          <h1>Sign in to your Aurora account</h1>
-        </section>
-
-        <section className="auth-panel auth-panel-right">
-          <div className="login-card auth-login-card">
-            <h2>Welcome back</h2>
-            <p className="auth-login-note">Use your registered email and password to continue.</p>
-
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm text-slate-200" htmlFor="login-email">Email</label>
-                <input
-                  id="login-email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="form-input"
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm text-slate-200">
-                  <label htmlFor="login-password">Password</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotPassword(true)}
-                    className="text-cyan-200 hover:text-cyan-100"
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-                <input
-                  id="login-password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="form-input"
-                  required
-                />
-              </div>
-
-              {error && (
-                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
-                  {error}
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 text-sm text-slate-200">
-                <input id="remember" type="checkbox" className="h-4 w-4 rounded border-slate-600 bg-slate-800" />
-                <label htmlFor="remember">Remember this device</label>
-              </div>
-
-              <button type="submit" className="auth-submit-btn">
-                Sign in
-              </button>
-            </form>
-
-            <p className="mt-6 text-center text-sm text-slate-300">
-              Need an account?{' '}
-              <Link to="/signup" className="font-semibold text-cyan-200 hover:text-cyan-100">Create one</Link>
-            </p>
+      <main className="auth-main" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="login-card auth-login-card" style={{ maxWidth: 420, width: '100%', padding: 28 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+            <AuroraBankLogo />
           </div>
-        </section>
+          <h1 style={{ margin: 0, fontSize: '1.8rem', color: '#fff', textAlign: 'center' }}>Welcome to Aurora Bank</h1>
+          <p className="auth-login-note">Use your registered email and password to continue.</p>
+
+          <form onSubmit={handleSubmit} className="mt-6" style={{ display: 'grid', gap: 12 }}>
+            <div>
+              <label className="text-sm text-slate-200" htmlFor="login-email">Email</label>
+              <input
+                id="login-email"
+                type="email"
+                placeholder="you@example.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="form-input"
+                required
+              />
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label htmlFor="login-password">Password</label>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotPassword(true)}
+                  className="text-cyan-200 hover:text-cyan-100"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <input
+                id="login-password"
+                type="password"
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="form-input"
+                required
+              />
+            </div>
+
+            {error && (
+              <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
+                {error}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input id="remember" type="checkbox" className="h-4 w-4 rounded border-slate-600 bg-slate-800" />
+              <label htmlFor="remember">Remember this device</label>
+            </div>
+
+            <button type="submit" className="auth-submit-btn">Sign in</button>
+          </form>
+
+          <p style={{ marginTop: 16, textAlign: 'center', fontSize: '0.95rem', color: '#cbd5e1' }}>
+            Need an account?{' '}
+            <Link to="/signup" style={{ color: '#06b6d4', fontWeight: 600 }}>Create one</Link>
+          </p>
+        </div>
       </main>
 
-      {/* Forgot Password Modal */}
+      {/* Forgot Password Modal (kept minimal) */}
       {showForgotPassword && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="relative w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
@@ -177,17 +161,13 @@ function LoginPage() {
             >
               x
             </button>
-            
+
             <h3 className="text-xl font-semibold text-white">Reset Password</h3>
-            <p className="mt-2 text-sm text-slate-300">
-              Enter your email address and we'll send you a link to reset your password.
-            </p>
+            <p className="mt-2 text-sm text-slate-300">Enter your email address and we'll send you a link to reset your password.</p>
 
             <form onSubmit={handleForgotPassword} className="mt-6 space-y-4">
               <div className="space-y-2">
-                <label className="text-sm text-slate-200" htmlFor="forgot-email">
-                  Email Address
-                </label>
+                <label className="text-sm text-slate-200" htmlFor="forgot-email">Email Address</label>
                 <input
                   id="forgot-email"
                   type="email"
@@ -200,22 +180,14 @@ function LoginPage() {
               </div>
 
               {forgotError && (
-                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
-                  {forgotError}
-                </div>
+                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">{forgotError}</div>
               )}
 
               {forgotMessage && (
-                <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-3 text-sm text-green-400">
-                  {forgotMessage}
-                </div>
+                <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-3 text-sm text-green-400">{forgotMessage}</div>
               )}
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-400/30 transition hover:translate-y-0.5 disabled:opacity-50"
-              >
+              <button type="submit" disabled={isSubmitting} className="w-full rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-400/30 transition hover:translate-y-0.5 disabled:opacity-50">
                 {isSubmitting ? 'Sending...' : 'Send Reset Link'}
               </button>
             </form>
