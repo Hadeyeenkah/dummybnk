@@ -20,6 +20,7 @@ function Dashboard() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [adminMessages, setAdminMessages] = useState([]);
+  const [supportChatMessages, setSupportChatMessages] = useState([]);
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const formatTime = (isoString) => {
@@ -178,6 +179,23 @@ function Dashboard() {
       });
     }
 
+    // Add support chat messages to notifications
+    if (supportChatMessages && supportChatMessages.length > 0) {
+      const chatAdminMessages = supportChatMessages.filter((msg) => msg.senderRole === 'admin');
+      chatAdminMessages.forEach((msg) => {
+        realNotifications.push({
+          id: `chat-${msg._id || msg.createdAt}`,
+          title: msg.message,
+          detail: 'New support chat message',
+          time: new Date(msg.createdAt).toISOString(),
+          read: msg.read || false,
+          icon: '💬',
+          source: 'chat',
+          type: 'chat',
+        });
+      });
+    }
+
     // Get recent transactions (last 10)
     if (currentUser.transactions && currentUser.transactions.length > 0) {
       const recentTransactions = currentUser.transactions.slice(0, 10);
@@ -227,7 +245,7 @@ function Dashboard() {
     realNotifications.sort((a, b) => new Date(b.time) - new Date(a.time));
     
     setNotifications(realNotifications.slice(0, 15)); // Keep top 15
-  }, [currentUser, currentUser?.transactions, currentUser?.pendingTransactions, adminMessages]);
+  }, [currentUser, currentUser?.transactions, currentUser?.pendingTransactions, adminMessages, supportChatMessages]);
 
   // Handle flash notification coming from navigation state (e.g., transfer success)
   useEffect(() => {
@@ -278,6 +296,44 @@ function Dashboard() {
       fetchAdminMessages();
       // Poll for new admin messages every 5 seconds
       const interval = setInterval(fetchAdminMessages, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [currentUser]);
+
+  // Fetch support chat messages for notification bell
+  useEffect(() => {
+    const fetchSupportChatMessages = async () => {
+      try {
+        // First get or create conversation ID
+        const convRes = await fetch(`${API_BASE}/chat/conversation`, {
+          credentials: 'include',
+        });
+        
+        if (convRes.ok) {
+          const convData = await convRes.json();
+          const convId = convData.conversation?._id;
+          
+          if (convId) {
+            // Fetch messages for this conversation
+            const msgRes = await fetch(`${API_BASE}/chat/messages/${convId}`, {
+              credentials: 'include',
+            });
+            
+            if (msgRes.ok) {
+              const msgData = await msgRes.json();
+              setSupportChatMessages(msgData.messages || []);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching support chat messages:', err);
+      }
+    };
+
+    if (currentUser?.id) {
+      fetchSupportChatMessages();
+      // Poll for new support chat messages every 5 seconds
+      const interval = setInterval(fetchSupportChatMessages, 5000);
       return () => clearInterval(interval);
     }
   }, [currentUser]);
