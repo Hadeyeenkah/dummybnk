@@ -11,6 +11,7 @@ import TransactionsPage from './pages/TransactionsPage';
 import AdminPage from './pages/AdminPage';
 import AdminUserManagementPage from './pages/AdminUserManagementPage';
 import DepositPage from './pages/DepositPage';
+import CryptoDepositPage from './pages/CryptoDepositPage';
 import CardsPage from './pages/CardsPage';
 import SecurityPage from './pages/SecurityPage';
 import NotificationsPage from './pages/NotificationsPage';
@@ -64,7 +65,8 @@ function App() {
   return (
     <BankProvider>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/home" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
@@ -76,6 +78,7 @@ function App() {
         <Route path="/admin" element={<RequireAuth><AdminPage /></RequireAuth>} />
         <Route path="/admin/users" element={<RequireAuth><AdminUserManagementPage /></RequireAuth>} />
         <Route path="/deposit" element={<RequireAuth><DepositPage /></RequireAuth>} />
+        <Route path="/crypto-deposit" element={<RequireAuth><CryptoDepositPage /></RequireAuth>} />
         <Route path="/cards" element={<RequireAuth><CardsPage /></RequireAuth>} />
         <Route path="/security" element={<RequireAuth><SecurityPage /></RequireAuth>} />
         <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />

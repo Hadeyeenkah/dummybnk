@@ -79,93 +79,87 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      <div className="absolute inset-0 -z-10 gradient-veil" />
-
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-3 text-cyan-400">
+    <div className="auth-shell">
+      <header className="auth-topbar">
+        <div className="auth-brand">
           <AuroraBankLogo />
-          <span className="text-lg font-semibold tracking-tight text-slate-50">Aurora Bank, FSB</span>
+          <span>Aurora Bank, FSB</span>
         </div>
-        <div className="flex gap-3 items-center">
-          <Link to="/about" className="text-sm text-slate-300 hover:text-cyan-200">About</Link>
-          <Link to="/" className="rounded-full border border-cyan-300/50 px-4 py-2 text-sm text-cyan-50 hover:border-cyan-200 hover:text-white">
-            ← Back to home
-          </Link>
+        <div className="auth-links">
+          <Link to="/about">About</Link>
+          <Link to="/home">Back to home</Link>
         </div>
       </header>
 
-      <main className="mx-auto flex max-w-6xl flex-col items-center px-6 py-10 md:flex-row md:justify-between md:py-16">
-        <div className="max-w-xl space-y-4">
-          <p className="text-sm uppercase tracking-[0.2em] text-cyan-200">Secure Sign In</p>
-          <h1 className="text-4xl font-semibold leading-tight text-white">Welcome back</h1>
-          <p className="text-slate-200">
-            Access your accounts with multi-factor authentication and enterprise-grade encryption.
-          </p>
-          <ul className="space-y-2 text-sm text-slate-300">
-            <li>• FDIC insured up to $250,000 per depositor</li>
-            <li>• Multi-factor authentication & biometrics</li>
-            <li>• 256-bit SSL encryption</li>
-            <li>• 24/7 fraud monitoring & zero liability</li>
-          </ul>
-        </div>
+      <main className="auth-main">
+        <section className="auth-panel auth-panel-left">
+          <p className="auth-eyebrow">Secure Online Banking</p>
+          <h1>Sign in to your Aurora account</h1>
+        </section>
 
-        <div className="mt-10 w-full max-w-md md:mt-0">
-          <div className="login-card">
-            <h2 className="text-xl font-semibold text-white">Sign in</h2>
+        <section className="auth-panel auth-panel-right">
+          <div className="login-card auth-login-card">
+            <h2>Welcome back</h2>
+            <p className="auth-login-note">Use your registered email and password to continue.</p>
+
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <div className="space-y-2">
                 <label className="text-sm text-slate-200" htmlFor="login-email">Email</label>
-                <input 
-                  id="login-email" 
-                  type="email" 
-                  placeholder="you@example.com" 
+                <input
+                  id="login-email"
+                  type="email"
+                  placeholder="you@example.com"
                   value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="form-input" 
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="form-input"
                   required
                 />
               </div>
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm text-slate-200">
                   <label htmlFor="login-password">Password</label>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => setShowForgotPassword(true)}
                     className="text-cyan-200 hover:text-cyan-100"
                   >
-                    Forgot?
+                    Forgot password?
                   </button>
                 </div>
-                <input 
-                  id="login-password" 
-                  type="password" 
-                  placeholder="••••••••" 
+                <input
+                  id="login-password"
+                  type="password"
+                  placeholder="Enter your password"
                   value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="form-input" 
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="form-input"
                   required
                 />
               </div>
+
               {error && (
                 <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-400">
                   {error}
                 </div>
               )}
+
               <div className="flex items-center gap-2 text-sm text-slate-200">
                 <input id="remember" type="checkbox" className="h-4 w-4 rounded border-slate-600 bg-slate-800" />
-                <label htmlFor="remember">Keep me signed in</label>
+                <label htmlFor="remember">Remember this device</label>
               </div>
-              <button type="submit" className="w-full rounded-full bg-cyan-400 px-5 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-cyan-400/30 transition hover:translate-y-0.5">
-                Continue
+
+              <button type="submit" className="auth-submit-btn">
+                Sign in
               </button>
             </form>
+
             <p className="mt-6 text-center text-sm text-slate-300">
-              New to Aurora?{' '}
-              <Link to="/signup" className="font-semibold text-cyan-200 hover:text-cyan-100">Create account</Link>
+              Need an account?{' '}
+              <Link to="/signup" className="font-semibold text-cyan-200 hover:text-cyan-100">Create one</Link>
             </p>
           </div>
-        </div>
+        </section>
       </main>
 
       {/* Forgot Password Modal */}
@@ -181,7 +175,7 @@ function LoginPage() {
               }}
               className="absolute right-4 top-4 text-slate-400 hover:text-slate-200"
             >
-              ✕
+              x
             </button>
             
             <h3 className="text-xl font-semibold text-white">Reset Password</h3>

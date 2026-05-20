@@ -40,7 +40,7 @@ const TransactionSchema = new mongoose.Schema(
 
     transferType: {
       type: String,
-      enum: ['internal', 'external', 'bill', 'deposit', 'withdrawal'],
+      enum: ['internal', 'external', 'bill', 'deposit', 'withdrawal', 'crypto_deposit'],
       default: 'external',
     },
 

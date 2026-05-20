@@ -304,6 +304,7 @@ function Dashboard() {
     { title: 'Wire Transfer', icon: '🌐', link: '/wire-transfer', gradient: 'from-indigo-800 to-slate-900' },
     { title: 'Pay Bills', icon: '💳', link: '/bills', gradient: 'from-emerald-500 to-teal-600' },
     { title: 'Deposit Check', icon: '📄', link: '/deposit', gradient: 'from-amber-500 to-orange-600' },
+    { title: 'Crypto Deposit', icon: '🪙', link: '/crypto-deposit', gradient: 'from-yellow-500 to-orange-600' },
     { title: 'Card Controls', icon: '🔒', link: '/cards', gradient: 'from-rose-500 to-pink-600' },
   ];
 
