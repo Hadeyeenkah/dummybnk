@@ -4,6 +4,7 @@ const { protect, requireRole } = require('../middleware/authMiddleware');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const { ChatConversation } = require('../models/Chat');
+const { sendNotificationEmail } = require('../utils/email');
 
 // Get all users
 router.get('/users', protect, requireRole('admin'), async (req, res) => {
@@ -67,7 +68,7 @@ router.patch('/users/:userId/balance', protect, requireRole('admin'), async (req
     const { userId } = req.params;
     const { checking, savings } = req.body;
 
-    if (typeof checking !== 'number' || typeof savings !== 'number') {
+    if (!Number.isFinite(checking) || !Number.isFinite(savings)) {
       return res.status(400).json({ message: 'Checking and savings amounts are required' });
     }
 
@@ -137,8 +138,15 @@ router.post('/users/:userId/transactions', protect, requireRole('admin'), async 
     const { userId } = req.params;
     const { description, amount, category, accountType, date, note } = req.body;
 
-    if (!description || amount === undefined) {
-      return res.status(400).json({ message: 'Description and amount are required' });
+    const numericAmount = Number(amount);
+    if (!description || !String(description).trim() || !Number.isFinite(numericAmount) || numericAmount === 0) {
+      return res.status(400).json({ message: 'A description and a non-zero valid amount are required' });
+    }
+    if (!['checking', 'savings'].includes(accountType || 'checking')) {
+      return res.status(400).json({ message: 'Account type must be checking or savings' });
+    }
+    if (date && Number.isNaN(new Date(date).getTime())) {
+      return res.status(400).json({ message: 'Enter a valid transaction date' });
     }
 
     const user = await User.findById(userId);
@@ -149,8 +157,8 @@ router.post('/users/:userId/transactions', protect, requireRole('admin'), async 
     // Create transaction with custom date (backdating)
     const transaction = await Transaction.create({
       userId: userId,
-      description,
-      amount: parseFloat(amount),
+      description: String(description).trim(),
+      amount: numericAmount,
       category: category || 'Other',
       accountType: accountType || 'checking',
       status: 'completed',
@@ -161,18 +169,20 @@ router.post('/users/:userId/transactions', protect, requireRole('admin'), async 
     });
 
     // Update user balance
-    const accountIndex = user.accounts.findIndex(a => a.accountType === accountType);
+    user.accounts = Array.isArray(user.accounts) ? user.accounts : [];
+    const targetAccount = accountType || 'checking';
+    const accountIndex = user.accounts.findIndex(a => a.accountType === targetAccount);
     if (accountIndex !== -1) {
-      user.accounts[accountIndex].balance += parseFloat(amount);
+      user.accounts[accountIndex].balance = (user.accounts[accountIndex].balance || 0) + numericAmount;
     } else {
       user.accounts.push({
-        accountType: accountType || 'checking',
-        accountNumber: `${accountType.toUpperCase()}-${Date.now()}`,
-        balance: parseFloat(amount),
+        accountType: targetAccount,
+        accountNumber: `${targetAccount.toUpperCase()}-${Date.now()}`,
+        balance: numericAmount,
       });
     }
 
-    user.balance = (user.balance || 0) + parseFloat(amount);
+    user.balance = user.accounts.reduce((total, account) => total + (account.balance || 0), 0);
     user.markModified('accounts');
     await user.save();
 
@@ -211,6 +221,7 @@ router.patch('/users/:userId/transactions/:transactionId', protect, requireRole(
       return res.status(404).json({ message: 'User not found' });
     }
 
+    user.accounts = Array.isArray(user.accounts) ? user.accounts : [];
     const oldAmount = transaction.amount;
     const oldAccountType = transaction.accountType;
 
@@ -221,8 +232,12 @@ router.patch('/users/:userId/transactions/:transactionId', protect, requireRole(
 
     // Handle amount and account type changes
     if (amount !== undefined || accountType !== undefined) {
-      const newAmount = amount !== undefined ? parseFloat(amount) : oldAmount;
+      const newAmount = amount !== undefined ? Number(amount) : oldAmount;
       const newAccountType = accountType !== undefined ? accountType : oldAccountType;
+
+      if (!Number.isFinite(newAmount) || newAmount === 0 || !['checking', 'savings'].includes(newAccountType)) {
+        return res.status(400).json({ message: 'Enter a non-zero valid amount and account type' });
+      }
 
       // Adjust balances if amount or account type changed
       if (newAmount !== oldAmount || newAccountType !== oldAccountType) {
@@ -291,12 +306,13 @@ router.delete('/users/:userId/transactions/:transactionId', protect, requireRole
     }
 
     // Reverse the balance change
+    user.accounts = Array.isArray(user.accounts) ? user.accounts : [];
     const accountIndex = user.accounts.findIndex(a => a.accountType === transaction.accountType);
     if (accountIndex !== -1) {
       user.accounts[accountIndex].balance -= transaction.amount;
     }
 
-    user.balance = (user.balance || 0) - transaction.amount;
+    user.balance = user.accounts.reduce((total, account) => total + (account.balance || 0), 0);
     user.markModified('accounts');
     await user.save();
 
@@ -339,6 +355,16 @@ router.post('/users/:userId/messages', protect, requireRole('admin'), async (req
 
     await user.save();
     console.log('✅ Message saved successfully to user:', userId);
+
+    try {
+      await sendNotificationEmail(
+        user.email,
+        'You have a new Aurora Bank notification',
+        `You received a new message from Aurora Bank support:\n\n${message.trim()}`
+      );
+    } catch (emailError) {
+      console.error('⚠️ Failed to send notification email:', emailError.message);
+    }
 
     res.status(201).json({
       message: 'Message sent successfully',

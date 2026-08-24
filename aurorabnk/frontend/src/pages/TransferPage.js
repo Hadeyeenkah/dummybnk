@@ -570,8 +570,8 @@ function TransferPage() {
       `}</style>
 
       {showReceiptModal && receipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="printable my-auto w-full max-w-xl bg-white text-slate-900 shadow-2xl max-h-[95vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+          <div className="printable my-auto w-full max-w-xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto bg-white text-slate-900 shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
             {/* Typewriter Style Receipt - Professional & Organized */}
             <div className="p-8 font-mono text-xs leading-relaxed bg-white" style={{fontFamily: "'Courier New', 'Courier', monospace"}}>
               

@@ -22,11 +22,25 @@ exports.payBill = async (req, res) => {
     }
 
     // Validate required fields
-    if (!payee || !amount || amount <= 0) {
+    if (!payee || !String(payee).trim() || !amount || amount <= 0) {
       console.log('❌ Invalid payee or amount');
       return res.status(400).json({
         status: 'error',
         message: 'Payee name and valid amount are required',
+      });
+    }
+
+    if (!accountNumber || !String(accountNumber).trim()) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Account or reference number is required',
+      });
+    }
+
+    if (!['checking', 'savings'].includes(fromAccount || 'checking')) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Select a valid account to pay from',
       });
     }
 

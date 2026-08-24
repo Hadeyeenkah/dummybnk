@@ -95,6 +95,11 @@ app.use('/api/auth', authRoutes);
 const transactionRoutes = require('./routes/transactionRoutes');
 app.use('/api/transactions', transactionRoutes);
 
+// Mount bill payment routes before the API fallback handler.
+// The Bills page uses GET/POST /api/bills for payment history and new payments.
+const billRoutes = require('./routes/billRoutes');
+app.use('/api/bills', billRoutes);
+
 // Explicit API 404 handler (JSON only)
 app.use('/api', (req, res) => {
   res.status(404).json({ message: 'API route not found' });

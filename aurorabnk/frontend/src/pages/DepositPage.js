@@ -333,8 +333,8 @@ function DepositPage() {
       `}</style>
 
       {showReceiptModal && receipt && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+          <div className="my-auto w-full max-w-2xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
             {/* Modal Header */}
             <div className="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between no-print">
               <h2 className="text-2xl font-semibold text-slate-900">Mobile Deposit Receipt</h2>

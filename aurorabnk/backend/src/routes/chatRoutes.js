@@ -2,6 +2,7 @@ const express = require('express');
 const { ChatMessage, ChatConversation } = require('../models/Chat');
 const User = require('../models/User');
 const { protect } = require('../middleware/authMiddleware');
+const { sendNotificationEmail } = require('../utils/email');
 
 const router = express.Router();
 
@@ -92,6 +93,23 @@ router.post('/messages', protect, async (req, res) => {
       ),
       timeoutMs
     );
+
+    if (senderRole === 'admin') {
+      try {
+        const conversation = await withTimeout(ChatConversation.findById(conversationId), timeoutMs);
+        const recipientEmail = conversation?.userEmail || user.email;
+        if (recipientEmail) {
+          await sendNotificationEmail(
+            recipientEmail,
+            'New support chat message from Aurora Bank',
+            `You have a new support chat message:\n\n${message}`
+          );
+        }
+      } catch (emailError) {
+        console.error('⚠️ Failed to send support chat email:', emailError.message);
+      }
+    }
+
     res.status(201).json({ success: true, message: newMessage });
   } catch (err) {
     console.error('Error sending message:', err);

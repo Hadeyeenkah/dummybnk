@@ -565,8 +565,8 @@ Thank you for banking with Aurora Bank!
 
       {/* Receipt Modal */}
       {showReceiptModal && receipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-8 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-3 backdrop-blur sm:items-center sm:p-6">
+          <div className="my-auto w-full max-w-lg max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl sm:max-h-[calc(100dvh-3rem)] sm:p-8">
             <div className="mb-6 text-center">
               <div className="text-5xl mb-3">✓</div>
               <h2 className="text-2xl font-semibold text-green-600">Payment Confirmed</h2>
@@ -618,7 +618,7 @@ Thank you for banking with Aurora Bank!
               </div>
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div className="sticky bottom-0 -mx-5 mt-6 flex gap-2 border-t border-slate-200 bg-white px-5 pt-4 sm:-mx-8 sm:gap-3 sm:px-8">
               <button
                 onClick={handleDownloadReceipt}
                 className="flex-1 rounded-lg border border-indigo-800 px-4 py-3 text-sm font-semibold text-indigo-800 hover:bg-indigo-50 transition"

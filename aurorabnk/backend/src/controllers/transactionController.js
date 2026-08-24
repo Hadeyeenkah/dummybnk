@@ -1,7 +1,7 @@
 // src/controllers/transactionController.js
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
-const { sendVerificationEmail } = require('../utils/email');
+const { sendNotificationEmail } = require('../utils/email');
 
 // Create a new transaction
 exports.createTransaction = async (req, res) => {
@@ -55,6 +55,16 @@ exports.createTransaction = async (req, res) => {
         }
 
         await user.save();
+
+        try {
+          await sendNotificationEmail(
+            user.email,
+            'Aurora Bank transaction update',
+            `Your transaction "${description}" has been completed for ${Number(amount).toLocaleString('en-US', { style: 'currency', currency: 'USD' })}.`
+          );
+        } catch (emailError) {
+          console.error('⚠️ Failed to send transaction email:', emailError.message);
+        }
       }
     }
 
@@ -170,6 +180,17 @@ exports.approveTransaction = async (req, res) => {
           recipient.markModified('accounts');
           await recipient.save();
 
+          try {
+            await sendNotificationEmail(
+              recipient.email,
+              'Aurora Bank transaction approved'
+            ,
+              `A transfer has been completed and your account has been credited with ${recipientTransaction.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}.`
+            );
+          } catch (emailError) {
+            console.error('⚠️ Failed to send recipient approval email:', emailError.message);
+          }
+
           console.log(`✅ Approved transfer: Credited $${recipientTransaction.amount} to recipient ${recipient.email}`);
         }
       }
@@ -188,6 +209,16 @@ exports.approveTransaction = async (req, res) => {
         }
 
         await user.save();
+
+          try {
+            await sendNotificationEmail(
+              user.email,
+              'Aurora Bank transaction approved',
+              `Your transaction "${transaction.description}" has been approved and completed.`
+            );
+          } catch (emailError) {
+            console.error('⚠️ Failed to send approval email:', emailError.message);
+          }
       }
     }
 
@@ -245,6 +276,16 @@ exports.rejectTransaction = async (req, res) => {
             sender.markModified('accounts');
             await sender.save();
 
+            try {
+              await sendNotificationEmail(
+                sender.email,
+                'Aurora Bank transaction rejected',
+                `Your transaction "${transaction.description}" was rejected and your account has been refunded.`
+              );
+            } catch (emailError) {
+              console.error('⚠️ Failed to send rejection email:', emailError.message);
+            }
+
             console.log(`✅ Rejected transfer: Refunded $${Math.abs(transaction.amount)} to sender ${sender.email}`);
           }
         }
@@ -260,6 +301,19 @@ exports.rejectTransaction = async (req, res) => {
       if (recipientTransaction) {
         recipientTransaction.status = 'rejected';
         await recipientTransaction.save();
+
+        const recipient = await User.findById(recipientTransaction.userId);
+        if (recipient?.email) {
+          try {
+            await sendNotificationEmail(
+              recipient.email,
+              'Aurora Bank transaction rejected',
+              `A transfer related to "${transaction.description}" was rejected.`
+            );
+          } catch (emailError) {
+            console.error('⚠️ Failed to send recipient rejection email:', emailError.message);
+          }
+        }
       }
     }
 
@@ -299,7 +353,7 @@ exports.notifyReceiver = async (req, res) => {
     const safeAmount = Number(amount).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     const message = `You have a pending transfer of ${safeAmount} from ${senderName}. This transfer is currently on hold for security review. ${note ? 'Note: ' + note : ''}`;
 
-    await sendVerificationEmail(receiverEmail, message);
+    await sendNotificationEmail(receiverEmail, 'Aurora Bank transfer on hold', message);
 
     return res.json({ message: 'Receiver notified', detail: message });
   } catch (error) {

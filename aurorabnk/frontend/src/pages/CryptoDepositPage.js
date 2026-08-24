@@ -281,8 +281,8 @@ function CryptoDepositPage() {
       </main>
 
       {showReceiptModal && receipt && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-2xl shadow-2xl p-8">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+          <div className="my-auto w-full max-w-2xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:p-8">
             <div className="text-center mb-8">
               <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 mb-4">
                 <span className="text-4xl">✓</span>

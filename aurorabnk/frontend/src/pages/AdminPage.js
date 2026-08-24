@@ -18,6 +18,7 @@ function AdminPage() {
   const [showAddTransactionModal, setShowAddTransactionModal] = useState(false);
   const [showEditTransactionModal, setShowEditTransactionModal] = useState(false);
   const [showSendMessageModal, setShowSendMessageModal] = useState(false);
+  const [transactionSaving, setTransactionSaving] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [adminMessage, setAdminMessage] = useState('');
@@ -258,19 +259,21 @@ function AdminPage() {
   };
 
   const handleAddTransaction = async () => {
-    if (!selectedUserId || !newTransaction.description || !newTransaction.amount) {
-      alert('Please fill in all required fields');
+    const amount = Number(newTransaction.amount);
+    if (!selectedUserId || !newTransaction.description.trim() || !Number.isFinite(amount) || amount === 0) {
+      alert('Select a user, enter a description, and enter a non-zero amount. Use a negative amount for a debit.');
       return;
     }
 
     try {
+      setTransactionSaving(true);
       const res = await fetch(`${API_BASE}/admin/users/${selectedUserId}/transactions`, {
         method: 'POST',
         credentials: 'include',
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           ...newTransaction,
-          amount: parseFloat(newTransaction.amount),
+          amount,
         }),
       });
 
@@ -293,6 +296,8 @@ function AdminPage() {
     } catch (err) {
       console.error('Add transaction error:', err);
       alert('Error adding transaction');
+    } finally {
+      setTransactionSaving(false);
     }
   };
 
@@ -334,12 +339,14 @@ function AdminPage() {
   };
 
   const handleUpdateTransaction = async () => {
-    if (!selectedTransaction || !editTransaction.description || editTransaction.amount === '') {
-      alert('Please fill in all required fields');
+    const amount = Number(editTransaction.amount);
+    if (!selectedTransaction || !editTransaction.description.trim() || !Number.isFinite(amount) || amount === 0) {
+      alert('Enter a description and a non-zero amount. Use a negative amount for a debit.');
       return;
     }
 
     try {
+      setTransactionSaving(true);
       const res = await fetch(
         `${API_BASE}/admin/users/${selectedTransaction.userId}/transactions/${selectedTransaction.id}`,
         {
@@ -348,7 +355,7 @@ function AdminPage() {
           headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
           body: JSON.stringify({
             ...editTransaction,
-            amount: parseFloat(editTransaction.amount),
+            amount,
           }),
         }
       );
@@ -371,6 +378,8 @@ function AdminPage() {
     } catch (err) {
       console.error('Update transaction error:', err);
       alert('Error updating transaction');
+    } finally {
+      setTransactionSaving(false);
     }
   };
 
@@ -910,8 +919,8 @@ function AdminPage() {
 
       {/* Add Transaction Modal */}
       {showAddTransactionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-900 p-8">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 sm:items-center">
+          <div className="my-auto w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-5 sm:p-8">
             <h2 className="mb-6 text-2xl font-semibold text-white">Add Transaction</h2>
             <div className="space-y-4">
               <div>
@@ -1013,9 +1022,10 @@ function AdminPage() {
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={handleAddTransaction}
-                  className="flex-1 rounded-xl bg-cyan-400 py-3 text-sm font-semibold text-slate-900 hover:bg-cyan-300"
+                  disabled={transactionSaving}
+                  className="flex-1 rounded-xl bg-cyan-400 py-3 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Add Transaction
+                  {transactionSaving ? 'Adding transaction…' : 'Add Transaction'}
                 </button>
                 <button
                   onClick={() => {
@@ -1042,8 +1052,8 @@ function AdminPage() {
 
       {/* Edit Transaction Modal */}
       {showEditTransactionModal && selectedTransaction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-900 p-8">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 sm:items-center">
+          <div className="my-auto w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-5 sm:p-8">
             <h2 className="mb-6 text-2xl font-semibold text-white">Edit Transaction</h2>
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -1117,9 +1127,10 @@ function AdminPage() {
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={handleUpdateTransaction}
-                  className="flex-1 rounded-xl bg-cyan-400 py-3 text-sm font-semibold text-slate-900 hover:bg-cyan-300"
+                  disabled={transactionSaving}
+                  className="flex-1 rounded-xl bg-cyan-400 py-3 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Update Transaction
+                  {transactionSaving ? 'Updating transaction…' : 'Update Transaction'}
                 </button>
                 <button
                   onClick={() => {

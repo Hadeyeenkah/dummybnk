@@ -223,6 +223,143 @@ body {
   box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.15);
 }
 
+/* Account dashboard: calm, high-contrast banking interface across screen sizes. */
+.bank-dashboard {
+  min-width: 320px;
+  background: #f5f7fa;
+}
+
+.dashboard-header {
+  isolation: isolate;
+}
+
+.dashboard-balance-card,
+.dashboard-transfer-card,
+.dashboard-summary > div,
+.dashboard-activity > div {
+  box-shadow: 0 8px 24px rgba(15, 42, 67, 0.06);
+}
+
+.dashboard-actions a {
+  min-height: 118px;
+}
+
+@media (max-width: 639px) {
+  .dashboard-header-inner {
+    min-height: 60px;
+    flex-wrap: nowrap;
+  }
+
+  .dashboard-header-inner > div:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .dashboard-header-inner > div:last-child {
+    flex: 0 0 auto;
+    gap: 4px;
+  }
+
+  .dashboard-header-inner .relative > button {
+    padding: 8px;
+  }
+
+  .dashboard-main {
+    padding: 20px 16px 36px;
+  }
+
+  .dashboard-welcome {
+    margin-bottom: 20px;
+  }
+
+  .dashboard-welcome h1 {
+    font-size: 1.7rem;
+    line-height: 1.2;
+  }
+
+  .dashboard-accounts {
+    gap: 16px;
+  }
+
+  .dashboard-balance-card {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .dashboard-balance-card > div:first-child {
+    gap: 14px;
+  }
+
+  .dashboard-balance-card > div:first-child > span {
+    align-self: flex-start;
+    white-space: normal;
+  }
+
+  .dashboard-balance-card > div:nth-last-child(2) {
+    padding: 14px;
+  }
+
+  .dashboard-balance-card > div:last-child {
+    gap: 10px;
+  }
+
+  .dashboard-balance-card > div:last-child > div {
+    padding: 14px;
+  }
+
+  .dashboard-transfer-card {
+    padding: 20px;
+    border-radius: 18px;
+  }
+
+  .dashboard-summary {
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .dashboard-summary > div {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .dashboard-summary > div p.text-2xl {
+    font-size: 1.45rem;
+  }
+
+  .dashboard-actions a {
+    min-height: 104px;
+    padding: 14px;
+  }
+
+  .dashboard-actions a > div > div:first-child {
+    margin-bottom: 10px;
+  }
+
+  .dashboard-activity > div:last-child {
+    border-radius: 16px;
+  }
+
+  .dashboard-activity .md\:grid-cols-\[120px_minmax\(0\,1fr\)_130px_130px\] {
+    grid-template-columns: 1fr auto;
+  }
+}
+
+@media (max-width: 374px) {
+  .dashboard-main {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .dashboard-balance-card {
+    padding: 16px;
+  }
+
+  .dashboard-actions a {
+    min-height: 96px;
+    padding: 12px;
+  }
+}
+
 /* Small screens adjustments */
 @media (max-width: 480px) {
   .auth-topbar {

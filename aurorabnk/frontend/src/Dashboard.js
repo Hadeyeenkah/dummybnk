@@ -45,6 +45,12 @@ function Dashboard() {
     return `$${numericValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
   };
 
+  const formatTransactionDate = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Pending date';
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   const getBalanceSizeClass = (value) => {
     const length = formatCurrency(value).length;
 
@@ -357,12 +363,12 @@ function Dashboard() {
   const recentTransactions = currentUser.transactions.slice(0, 5);
 
   const quickActions = [
-    { title: 'Transfer Money', icon: '↗️', link: '/transfer', gradient: 'from-indigo-900 to-slate-950' },
-    { title: 'Wire Transfer', icon: '🌐', link: '/wire-transfer', gradient: 'from-indigo-800 to-slate-900' },
-    { title: 'Pay Bills', icon: '💳', link: '/bills', gradient: 'from-emerald-500 to-teal-600' },
-    { title: 'Deposit Check', icon: '📄', link: '/deposit', gradient: 'from-amber-500 to-orange-600' },
-    { title: 'Crypto Deposit', icon: '🪙', link: '/crypto-deposit', gradient: 'from-yellow-500 to-orange-600' },
-    { title: 'Card Controls', icon: '🔒', link: '/cards', gradient: 'from-rose-500 to-pink-600' },
+    { title: 'Transfer money', icon: '↗', link: '/transfer', description: 'Move money' },
+    { title: 'Wire transfer', icon: '⇄', link: '/wire-transfer', description: 'Send a wire' },
+    { title: 'Pay bills', icon: '▣', link: '/bills', description: 'Pay a bill' },
+    { title: 'Deposit a check', icon: '▤', link: '/deposit', description: 'Mobile deposit' },
+    { title: 'Add crypto', icon: '₿', link: '/crypto-deposit', description: 'Fund crypto' },
+    { title: 'Manage cards', icon: '◫', link: '/cards', description: 'Card controls' },
   ];
 
   const handleLogout = () => {
@@ -482,15 +488,21 @@ function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="bank-dashboard min-h-screen bg-[#f5f7fa] text-slate-900">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-xl shadow-lg">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-3 sm:px-4 md:px-6 py-3 sm:py-4 gap-2 sm:gap-3 flex-wrap">
+      <header className="dashboard-header sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm">
+        <div className="dashboard-header-inner mx-auto flex max-w-7xl items-center justify-between px-3 sm:px-4 md:px-6 py-3 sm:py-4 gap-2 sm:gap-3 flex-wrap">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <div className="flex items-center gap-2 sm:gap-3">
               <AuroraBankLogo />
               <span className="text-sm sm:text-base md:text-lg font-bold tracking-tight bg-gradient-to-r from-indigo-900 to-slate-950 bg-clip-text text-transparent truncate">Aurora Bank</span>
             </div>
+            <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-1 ml-6">
+              <Link to="/dashboard" className="rounded-md bg-[#e9f1fb] px-3 py-2 text-sm font-semibold text-[#0b3b70]">Accounts</Link>
+              <Link to="/transfer" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-[#0b3b70]">Transfer</Link>
+              <Link to="/bills" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-[#0b3b70]">Pay &amp; manage</Link>
+              <Link to="/cards" className="rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-[#0b3b70]">Cards</Link>
+            </nav>
           </div>
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -670,11 +682,12 @@ function Dashboard() {
         </div>
       </header>
 
-      <main className="relative z-10 mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+      <main className="dashboard-main relative z-10 mx-auto max-w-7xl px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
         {/* Welcome Section */}
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Welcome back, {user.name.split(' ')[0]}</h1>
-          <p className="mt-1 sm:mt-2 text-sm sm:text-base text-slate-600">Here's what's happening with your accounts today.</p>
+        <div className="dashboard-welcome mb-6 sm:mb-8">
+          <p className="mb-1 text-xs font-bold uppercase tracking-[0.14em] text-[#436b96]">Account overview</p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#102a43]">Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, {user.name.split(' ')[0]}</h1>
+          <p className="mt-1 sm:mt-2 text-sm sm:text-base text-slate-600">Review your balances, recent activity, and next steps.</p>
         </div>
 
         {/* Admin Messages - Slim Container */}
@@ -714,8 +727,8 @@ function Dashboard() {
         })()}
 
         {/* Account Balance Cards */}
-        <div className="mb-6 sm:mb-8 grid gap-4 sm:gap-6 md:grid-cols-3">
-          <div className="md:col-span-2 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-900 via-slate-800 to-slate-950 p-4 sm:p-6 md:p-8 text-white shadow-2xl border border-indigo-800/30">
+        <div className="dashboard-accounts mb-6 sm:mb-8 grid gap-4 sm:gap-6 md:grid-cols-3">
+          <div className="dashboard-balance-card md:col-span-2 rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#083b73] via-[#0b4f8a] to-[#087b9a] p-4 sm:p-6 md:p-8 text-white shadow-xl border border-[#0a4a81]">
             <div className="flex items-start sm:items-center justify-between gap-3 mb-4 sm:mb-6 flex-col sm:flex-row">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] sm:text-xs uppercase tracking-wider text-indigo-200 font-medium mb-1 sm:mb-2">Total Balance</p>
@@ -743,7 +756,7 @@ function Dashboard() {
                   </button>
                 </div>
               </div>
-              <span className="rounded-full bg-gradient-to-r from-indigo-900 to-slate-950 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-[11px] text-white font-bold uppercase tracking-wide shadow-lg">Premium Account</span>
+              <span className="rounded-full border border-white/25 bg-white/10 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-[11px] text-white font-bold uppercase tracking-wide">FDIC insured · Member FDIC</span>
             </div>
             
             {/* Account Details */}
@@ -864,28 +877,37 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="rounded-2xl bg-slate-800 border border-slate-700 p-6 shadow-xl hover:border-cyan-400/50 transition">
-            <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold">Quick Transfer</p>
-            <form className="mt-6 space-y-4">
+          <div className="dashboard-transfer-card rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-[#436b96] font-bold">Move money</p>
+                <h2 className="mt-1 text-lg font-bold text-[#102a43]">Make a transfer</h2>
+              </div>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e9f1fb] text-lg font-bold text-[#0b5a9d]" aria-hidden="true">↗</div>
+            </div>
+            <form className="mt-5 space-y-4" onSubmit={(event) => { event.preventDefault(); navigate('/transfer'); }}>
               <input
                 type="text"
                 placeholder="Recipient"
-                className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition"
+                aria-label="Transfer recipient"
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-[#0b5a9d] focus:ring-2 focus:ring-[#0b5a9d]/15 transition"
               />
               <input
                 type="number"
                 placeholder="Amount"
-                className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/20 transition"
+                aria-label="Transfer amount"
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-[#0b5a9d] focus:ring-2 focus:ring-[#0b5a9d]/15 transition"
               />
-              <button type="submit" className="w-full rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 py-3 text-sm font-semibold text-white transition hover:from-cyan-600 hover:to-blue-600 shadow-lg shadow-cyan-500/30">
-                Send Money
+              <button type="submit" className="w-full rounded-lg bg-[#0b4f8a] py-3 text-sm font-semibold text-white transition hover:bg-[#083b73] focus:outline-none focus:ring-4 focus:ring-[#0b5a9d]/25">
+                Continue to transfer
               </button>
             </form>
+            <p className="mt-4 text-xs leading-5 text-slate-500">For your protection, we’ll confirm transfer details before money is sent.</p>
           </div>
         </div>
 
         {/* Account Summary Cards - More realistic banking feature */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="dashboard-summary mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-xl border border-slate-200 bg-white p-5 hover:shadow-lg hover:border-indigo-400/50 transition">
             <div className="flex items-center justify-between mb-3">
               <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
@@ -944,19 +966,19 @@ function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="mb-6 sm:mb-8">
-          <h2 className="mb-4 sm:mb-6 text-lg sm:text-xl font-bold text-slate-900">Quick Actions</h2>
+        <div className="dashboard-actions mb-6 sm:mb-8">
+          <div className="mb-4 sm:mb-6 flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#436b96]">Everyday banking</p><h2 className="mt-1 text-lg sm:text-xl font-bold text-[#102a43]">Quick actions</h2></div></div>
           <div className="grid gap-2 sm:gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
             {quickActions.map((action) => (
               <Link
                 key={action.title}
                 to={action.link}
-                className="group relative overflow-hidden rounded-lg sm:rounded-xl border border-slate-200 bg-white p-2 sm:p-3 md:p-4 text-center transition hover:shadow-lg hover:border-indigo-400/50"
+                className="group rounded-lg sm:rounded-xl border border-slate-200 bg-white p-3 sm:p-4 text-left transition hover:-translate-y-0.5 hover:shadow-md hover:border-[#8bb5dd] focus:outline-none focus:ring-4 focus:ring-[#0b5a9d]/15"
               >
-                <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-10 transition-opacity`}></div>
-                <div className="relative">
-                  <div className="mb-1 sm:mb-2 text-xl sm:text-2xl">{action.icon}</div>
-                  <div className="text-[10px] sm:text-xs font-semibold text-slate-700 group-hover:text-slate-900 transition line-clamp-2">{action.title}</div>
+                <div>
+                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-[#e9f1fb] text-lg font-bold text-[#0b5a9d]">{action.icon}</div>
+                  <div className="text-xs sm:text-sm font-bold text-[#102a43] transition">{action.title}</div>
+                  <div className="mt-1 hidden text-xs text-slate-500 sm:block">{action.description}</div>
                 </div>
               </Link>
             ))}
@@ -964,72 +986,64 @@ function Dashboard() {
         </div>
 
         {/* Recent Transactions */}
-        <div className="mb-6 sm:mb-8">
-          <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-3">
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900">Recent Transactions</h2>
-            <Link to="/transactions" className="text-xs sm:text-sm text-indigo-800 hover:text-indigo-900 font-semibold flex items-center gap-1">
-              View all
+        <div className="dashboard-activity mb-6 sm:mb-8">
+          <div className="mb-4 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#436b96]">Account activity</p>
+              <h2 className="mt-1 text-lg sm:text-xl font-bold text-[#102a43]">Recent transactions</h2>
+              <p className="mt-1 text-sm text-slate-500">Everyday Checking · ending in {String(user.accountNumber || '0000').slice(-4)}</p>
+            </div>
+            <Link to="/transactions" className="inline-flex items-center gap-1 rounded-md px-1 py-1 text-xs sm:text-sm font-semibold text-[#0b4f8a] hover:text-[#083b73] focus:outline-none focus:ring-4 focus:ring-[#0b5a9d]/15">
+              View all activity
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </Link>
           </div>
-          <div className="rounded-lg sm:rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-lg">
-            <div className="divide-y divide-slate-100">
-              {recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-5 hover:bg-slate-50 transition">
-                  <div className="flex items-start justify-between gap-2 sm:gap-4">
-                    <div className="flex items-start gap-2 sm:gap-4 min-w-0 flex-1">
-                      <div className={`flex-shrink-0 w-10 sm:w-12 h-10 sm:h-12 rounded-full flex items-center justify-center font-semibold shadow-sm text-sm sm:text-base ${
-                        transaction.amount < 0 
-                          ? 'bg-rose-100 text-rose-600' 
-                          : 'bg-emerald-100 text-emerald-600'
-                      }`}>
-                        {transaction.amount < 0 ? (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                          </svg>
-                        ) : (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-                          </svg>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs sm:text-sm font-semibold text-slate-900 truncate">
-                          {transaction.description}
-                        </div>
-                        <div className="flex flex-wrap gap-1 sm:gap-2 mt-1 text-[10px] sm:text-xs text-slate-500">
-                          <span>{transaction.date}</span>
-                          <span>•</span>
-                          <span className="capitalize">{transaction.category}</span>
-                          {transaction.status === 'pending' && (
-                            <>
-                              <span>•</span>
-                              <span className="text-amber-600 font-medium">Pending</span>
-                            </>
-                          )}
-                          {transaction.status === 'rejected' && (
-                            <>
-                              <span>•</span>
-                              <span className="text-rose-600 font-medium">Rejected</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex-shrink-0 text-right">
-                      <div className={`text-sm sm:text-base font-bold whitespace-nowrap ${
-                        transaction.amount < 0 ? 'text-rose-600' : 'text-emerald-600'
-                      }`}>
-                        {transaction.amount < 0 ? '−' : '+'}${Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </div>
-                    </div>
-                  </div>
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+            {recentTransactions.length === 0 ? (
+              <div className="px-6 py-12 text-center">
+                <p className="font-semibold text-[#102a43]">No recent activity</p>
+                <p className="mt-1 text-sm text-slate-500">New account transactions will appear here.</p>
+              </div>
+            ) : (
+              <>
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="w-full table-fixed border-collapse text-left">
+                    <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                      <tr><th className="w-36 px-6 py-3">Date</th><th className="px-4 py-3">Description</th><th className="w-28 px-4 py-3">Type</th><th className="w-28 px-4 py-3">Status</th><th className="w-36 px-6 py-3 text-right">Amount</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {recentTransactions.map((transaction) => {
+                        const isPending = transaction.status === 'pending';
+                        const isRejected = transaction.status === 'rejected';
+                        const isCredit = Number(transaction.amount) >= 0;
+                        const statusLabel = isPending ? 'Pending' : isRejected ? 'Declined' : 'Posted';
+                        const statusClass = isPending ? 'text-amber-700' : isRejected ? 'text-rose-700' : 'text-emerald-700';
+                        return <tr key={transaction.id} className="transition hover:bg-[#f8fbff]">
+                          <td className="px-6 py-4 text-sm text-slate-600">{formatTransactionDate(transaction.date)}</td>
+                          <td className="px-4 py-4"><p className="truncate text-sm font-semibold text-[#102a43]">{transaction.description || 'Account transaction'}</p><p className="mt-0.5 truncate text-xs text-slate-500">{transaction.note || 'Everyday Checking'}</p></td>
+                          <td className="px-4 py-4 text-sm text-slate-600">{transaction.category || 'Other'}</td>
+                          <td className={`px-4 py-4 text-sm font-semibold ${statusClass}`}>{statusLabel}</td>
+                          <td className={`px-6 py-4 text-right text-sm font-bold tabular-nums ${isCredit ? 'text-emerald-700' : 'text-rose-700'}`}>{isCredit ? '+' : '−'}{formatCurrency(Math.abs(Number(transaction.amount) || 0))}</td>
+                        </tr>;
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
-            </div>
+                <div className="divide-y divide-slate-100 md:hidden">
+                  {recentTransactions.map((transaction) => {
+                    const isPending = transaction.status === 'pending';
+                    const isRejected = transaction.status === 'rejected';
+                    const isCredit = Number(transaction.amount) >= 0;
+                    const statusLabel = isPending ? 'Pending' : isRejected ? 'Declined' : 'Posted';
+                    const statusClass = isPending ? 'text-amber-700' : isRejected ? 'text-rose-700' : 'text-emerald-700';
+                    return <div key={transaction.id} className="px-4 py-4"><div className="flex items-start justify-between gap-4"><div className="min-w-0"><p className="truncate text-sm font-semibold text-[#102a43]">{transaction.description || 'Account transaction'}</p><p className="mt-1 text-xs text-slate-500">{formatTransactionDate(transaction.date)} · {transaction.category || 'Other'}</p></div><p className={`shrink-0 text-sm font-bold tabular-nums ${isCredit ? 'text-emerald-700' : 'text-rose-700'}`}>{isCredit ? '+' : '−'}{formatCurrency(Math.abs(Number(transaction.amount) || 0))}</p></div><p className={`mt-2 text-xs font-semibold ${statusClass}`}>{statusLabel}</p></div>;
+                  })}
+                </div>
+              </>
+            )}
+            {recentTransactions.length > 0 && <div className="border-t border-slate-200 bg-slate-50 px-6 py-3 text-xs text-slate-500">Transactions may take time to post. Pending transactions are not final.</div>}
           </div>
         </div>
 
