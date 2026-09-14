@@ -368,6 +368,7 @@ function Dashboard() {
     { title: 'Pay bills', icon: '▣', link: '/bills', description: 'Pay a bill' },
     { title: 'Deposit a check', icon: '▤', link: '/deposit', description: 'Mobile deposit' },
     { title: 'Add crypto', icon: '₿', link: '/crypto-deposit', description: 'Fund crypto' },
+    { title: 'Buy stocks', icon: '↗', link: '/stocks', description: 'Invest in markets' },
     { title: 'Manage cards', icon: '◫', link: '/cards', description: 'Card controls' },
   ];
 
@@ -968,7 +969,7 @@ function Dashboard() {
         {/* Quick Actions */}
         <div className="dashboard-actions mb-6 sm:mb-8">
           <div className="mb-4 sm:mb-6 flex items-end justify-between gap-3"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-[#436b96]">Everyday banking</p><h2 className="mt-1 text-lg sm:text-xl font-bold text-[#102a43]">Quick actions</h2></div></div>
-          <div className="grid gap-2 sm:gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid gap-2 sm:gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-7">
             {quickActions.map((action) => (
               <Link
                 key={action.title}

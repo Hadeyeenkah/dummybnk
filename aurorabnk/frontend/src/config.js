@@ -1,10 +1,11 @@
 // config.js - API Configuration
 // This file centralizes all API endpoint configuration
 
-// Determine API URL based on environment
-// Simplify API base: always use relative proxy path `/api` so frontend
-// routes all API calls through the same origin (Vercel rewrite/proxy).
-export const API_BASE = '/api';
+// Use the deployed backend when configured; local development uses the CRA proxy.
+const configuredApiBase = process.env.REACT_APP_API_BASE || process.env.REACT_APP_API_URL || '';
+export const API_BASE = configuredApiBase
+  ? `${configuredApiBase.replace(/\/+$/, '')}${configuredApiBase.endsWith('/api') ? '' : '/api'}`
+  : '/api';
 export const API_URL = API_BASE;
 
 // Log configuration in development

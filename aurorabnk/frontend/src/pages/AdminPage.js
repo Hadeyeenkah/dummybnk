@@ -5,6 +5,8 @@ import AuroraBankLogo from '../components/AuroraBankLogo';
 import { API_BASE } from '../config';
 import '../App.css';
 
+const marketWatchlistSymbols = ['AAPL', 'MSFT', 'NVDA', 'VOO', 'AMZN', 'TSLA', 'META', 'GOOGL', 'JPM', 'SPY', 'QQQ'];
+
 function AdminPage() {
   const navigate = useNavigate();
   const { logout } = useBankContext();
@@ -26,6 +28,9 @@ function AdminPage() {
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [conversationMessages, setConversationMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
+  const [marketSettings, setMarketSettings] = useState({ todaysReturn: 0, todaysReturnPercent: 10.5, estimatedTradeTotal: 0, marketStatus: 'open', marketMessage: 'Prices update during US market hours.' });
+  const [marketForm, setMarketForm] = useState({ todaysReturn: '0', todaysReturnPercent: '10.5', marketStatus: 'open', marketMessage: 'Prices update during US market hours.', watchlistChanges: {} });
+  const [marketSaving, setMarketSaving] = useState(false);
   const [newTransaction, setNewTransaction] = useState({
     description: '',
     amount: '',
@@ -96,11 +101,65 @@ function AdminPage() {
         setDisplayPendingApprovals(approvalsData.pendingApprovals || []);
       }
 
+      const marketRes = await fetch(`${API_BASE}/market/overview`, {
+        credentials: 'include',
+        headers: getAuthHeaders(),
+      });
+      if (marketRes.ok) {
+        const marketData = await marketRes.json();
+        const nextSettings = marketData.settings || marketSettings;
+        setMarketSettings(nextSettings);
+        setMarketForm({
+          todaysReturn: String(nextSettings.todaysReturn ?? ''),
+          todaysReturnPercent: String(nextSettings.todaysReturnPercent ?? ''),
+          marketStatus: nextSettings.marketStatus || 'open',
+          marketMessage: nextSettings.marketMessage || '',
+          watchlistChanges: Object.fromEntries((nextSettings.watchlistChanges || []).map((item) => [item.symbol, String(item.changePercent)])),
+        });
+      }
+
       setLastUpdate(new Date());
       setLoading(false);
     } catch (err) {
       console.error('Failed to fetch admin data:', err);
       setLoading(false);
+    }
+  };
+
+  const handleSaveMarketSettings = async (event) => {
+    event.preventDefault();
+    setMarketSaving(true);
+    try {
+      const response = await fetch(`${API_BASE}/market/settings`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({
+          todaysReturn: Number(marketForm.todaysReturn),
+          todaysReturnPercent: Number(marketForm.todaysReturnPercent),
+          marketStatus: marketForm.marketStatus,
+          marketMessage: marketForm.marketMessage,
+          watchlistChanges: marketWatchlistSymbols.map((symbol) => ({
+            symbol,
+            changePercent: Number(marketForm.watchlistChanges[symbol] ?? 0),
+          })),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Unable to update market settings.');
+      setMarketSettings(data.settings);
+      setMarketForm({
+        todaysReturn: String(data.settings.todaysReturn),
+        todaysReturnPercent: String(data.settings.todaysReturnPercent),
+        marketStatus: data.settings.marketStatus,
+        marketMessage: data.settings.marketMessage,
+        watchlistChanges: Object.fromEntries((data.settings.watchlistChanges || []).map((item) => [item.symbol, String(item.changePercent)])),
+      });
+      alert('Market settings updated successfully.');
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setMarketSaving(false);
     }
   };
 
@@ -503,7 +562,58 @@ function AdminPage() {
           >
             Recent Activity
           </button>
+          <button
+            onClick={() => setActiveTab('market')}
+            className={`pb-3 text-sm font-semibold transition ${activeTab === 'market' ? 'border-b-2 border-cyan-400 text-cyan-400' : 'text-slate-400 hover:text-white'}`}
+          >
+            Stock Market
+          </button>
         </div>
+
+        {activeTab === 'market' && (
+          <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
+            <div className="mb-6">
+              <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Market controls</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">Today&apos;s return</h2>
+              <p className="mt-1 text-sm text-slate-400">This value appears on the authenticated stock-market page for every customer.</p>
+            </div>
+            <form onSubmit={handleSaveMarketSettings} className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-3">
+                <label className="block text-sm font-semibold text-slate-200">Return ($)
+                  <input type="number" step="0.01" value={marketForm.todaysReturn} onChange={(event) => setMarketForm({ ...marketForm, todaysReturn: event.target.value })} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50" required />
+                </label>
+                <label className="block text-sm font-semibold text-slate-200">Return (%)
+                  <input type="number" step="0.01" value={marketForm.todaysReturnPercent} onChange={(event) => setMarketForm({ ...marketForm, todaysReturnPercent: event.target.value })} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50" required />
+                </label>
+                <label className="block text-sm font-semibold text-slate-200">Market status
+                  <select value={marketForm.marketStatus} onChange={(event) => setMarketForm({ ...marketForm, marketStatus: event.target.value })} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-white outline-none focus:border-cyan-300/50">
+                    <option value="open">Open</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                </label>
+              </div>
+              <label className="block text-sm font-semibold text-slate-200">Market note
+                <input type="text" value={marketForm.marketMessage} onChange={(event) => setMarketForm({ ...marketForm, marketMessage: event.target.value })} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50" maxLength="160" />
+              </label>
+              <div>
+                <p className="text-sm font-semibold text-slate-200">Watchlist daily change (%)</p>
+                <p className="mt-1 text-xs text-slate-400">These values control the percentages displayed to customers.</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {marketWatchlistSymbols.map((symbol) => (
+                    <label key={symbol} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white">
+                      <span className="w-14">{symbol}</span>
+                      <input type="number" step="0.01" min="-100" max="100" value={marketForm.watchlistChanges[symbol] ?? ''} onChange={(event) => setMarketForm({ ...marketForm, watchlistChanges: { ...marketForm.watchlistChanges, [symbol]: event.target.value } })} placeholder="0.00" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-right text-white outline-none focus:border-cyan-300/50" />
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <button type="submit" disabled={marketSaving} className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60">{marketSaving ? 'Saving...' : 'Save market settings'}</button>
+                <span className="text-sm text-slate-400">Current: {marketSettings.todaysReturn >= 0 ? '+' : '-'}${Math.abs(Number(marketSettings.todaysReturn || 0)).toFixed(2)} ({Number(marketSettings.todaysReturnPercent || 0).toFixed(2)}%)</span>
+              </div>
+            </form>
+          </div>
+        )}
 
         {/* User Management Tab */}
         {activeTab === 'users' && (

@@ -12,6 +12,7 @@ import AdminPage from './pages/AdminPage';
 import AdminUserManagementPage from './pages/AdminUserManagementPage';
 import DepositPage from './pages/DepositPage';
 import CryptoDepositPage from './pages/CryptoDepositPage';
+import StockMarketPage from './pages/StockMarketPage';
 import CardsPage from './pages/CardsPage';
 import SecurityPage from './pages/SecurityPage';
 import NotificationsPage from './pages/NotificationsPage';
@@ -79,6 +80,7 @@ function App() {
         <Route path="/admin/users" element={<RequireAuth><AdminUserManagementPage /></RequireAuth>} />
         <Route path="/deposit" element={<RequireAuth><DepositPage /></RequireAuth>} />
         <Route path="/crypto-deposit" element={<RequireAuth><CryptoDepositPage /></RequireAuth>} />
+        <Route path="/stocks" element={<RequireAuth><StockMarketPage /></RequireAuth>} />
         <Route path="/cards" element={<RequireAuth><CardsPage /></RequireAuth>} />
         <Route path="/security" element={<RequireAuth><SecurityPage /></RequireAuth>} />
         <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />

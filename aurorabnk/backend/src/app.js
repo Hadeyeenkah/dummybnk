@@ -100,6 +100,10 @@ app.use('/api/transactions', transactionRoutes);
 const billRoutes = require('./routes/billRoutes');
 app.use('/api/bills', billRoutes);
 
+// Market data and paper-trading routes.
+const marketRoutes = require('./routes/marketRoutes');
+app.use('/api/market', marketRoutes);
+
 // Explicit API 404 handler (JSON only)
 app.use('/api', (req, res) => {
   res.status(404).json({ message: 'API route not found' });

@@ -9,7 +9,7 @@ Recommended approach: deploy frontend and backend as two Vercel projects.
 - Output Directory: `build`
 
 2) Required env var for frontend
-- `REACT_APP_API_BASE` — URL of your backend deployment (e.g. `https://your-backend.vercel.app`)
+- `REACT_APP_API_BASE` — URL of your backend deployment (e.g. `https://your-backend.vercel.app/api`)
 - (This project uses Create React App: environment variables must be prefixed with `REACT_APP_` so they are embedded at build time.)
 - Add this in Settings → Environment Variables for Production/Preview/Development.
 

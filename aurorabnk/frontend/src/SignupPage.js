@@ -1,32 +1,82 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import AuroraBankLogo from './components/AuroraBankLogo';
+import { API_BASE } from './config';
 import './App.css';
 
-
 function SignupPage() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', phone: '', dateOfBirth: '', password: '', confirmPassword: '' });
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const updateField = (field) => (event) => setFormData((current) => ({ ...current, [field]: event.target.value }));
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError('');
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const response = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone || undefined,
+          dateOfBirth: formData.dateOfBirth || undefined,
+          password: formData.password,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const validationMessage = data.errors?.[0]?.msg;
+        throw new Error(validationMessage || data.message || 'Unable to create your account.');
+      }
+      navigate('/dashboard');
+    } catch (signupError) {
+      setError(signupError.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col items-center justify-center">
-      <div className="absolute inset-0 -z-10 gradient-veil" />
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-        <div className="flex items-center gap-3 text-cyan-400">
-          <AuroraBankLogo />
-          <span className="text-lg font-semibold tracking-tight text-slate-50">Aurora Bank, FSB</span>
-        </div>
-        <div className="flex gap-3 items-center">
-          <Link to="/about" className="text-sm text-slate-300 hover:text-cyan-200">About</Link>
-          <Link to="/" className="rounded-full border border-cyan-300/50 px-4 py-2 text-sm text-cyan-50 hover:border-cyan-200 hover:text-white">
-            ← Back to home
-          </Link>
-        </div>
-      </header>
-      <main className="flex flex-col items-center justify-center flex-1">
-        <div className="max-w-lg w-full bg-slate-900 rounded-xl p-8 shadow-lg border border-cyan-900/30">
-          <h2 className="text-2xl font-bold text-center text-cyan-400 mb-4">Sign Up Disabled</h2>
-          <p className="text-center text-slate-200 mb-2">Account creation is restricted.</p>
-          <p className="text-center text-slate-400">To open an account, please visit your nearest bank branch.</p>
-          <div className="mt-6 text-center">
-            <Link to="/login" className="font-semibold text-cyan-200 hover:text-cyan-100">Go to Login</Link>
-          </div>
+    <div className="auth-shell min-h-screen text-slate-50">
+      <main className="auth-main flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
+        <div className="login-card auth-login-card w-full max-w-2xl p-6 sm:p-8">
+          <div className="mb-6 flex justify-center"><AuroraBankLogo /></div>
+          <h1 className="text-center text-2xl font-bold text-white sm:text-3xl">Open your Aurora account</h1>
+          <p className="mt-2 text-center text-sm text-slate-300">Create your secure banking profile in a few steps.</p>
+          <form onSubmit={handleSubmit} className="mt-7 grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div><label className="text-sm text-slate-200" htmlFor="signup-first-name">First name</label><input id="signup-first-name" className="form-input mt-1" value={formData.firstName} onChange={updateField('firstName')} required /></div>
+              <div><label className="text-sm text-slate-200" htmlFor="signup-last-name">Last name</label><input id="signup-last-name" className="form-input mt-1" value={formData.lastName} onChange={updateField('lastName')} required /></div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div><label className="text-sm text-slate-200" htmlFor="signup-email">Email</label><input id="signup-email" type="email" className="form-input mt-1" placeholder="you@example.com" value={formData.email} onChange={updateField('email')} required /></div>
+              <div><label className="text-sm text-slate-200" htmlFor="signup-phone">Phone</label><input id="signup-phone" type="tel" className="form-input mt-1" placeholder="+1 555 555 5555" value={formData.phone} onChange={updateField('phone')} /></div>
+            </div>
+            <div><label className="text-sm text-slate-200" htmlFor="signup-dob">Date of birth</label><input id="signup-dob" type="date" className="form-input mt-1" value={formData.dateOfBirth} onChange={updateField('dateOfBirth')} /></div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div><label className="text-sm text-slate-200" htmlFor="signup-password">Password</label><input id="signup-password" type="password" className="form-input mt-1" value={formData.password} onChange={updateField('password')} minLength="8" required /></div>
+              <div><label className="text-sm text-slate-200" htmlFor="signup-confirm-password">Confirm password</label><input id="signup-confirm-password" type="password" className="form-input mt-1" value={formData.confirmPassword} onChange={updateField('confirmPassword')} minLength="8" required /></div>
+            </div>
+            {error && <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300" role="alert">{error}</div>}
+            <button type="submit" disabled={submitting} className="auth-submit-btn mt-2 disabled:cursor-not-allowed disabled:opacity-60">{submitting ? 'Creating account...' : 'Create account'}</button>
+          </form>
+          <p className="mt-6 text-center text-sm text-slate-300">Already have an account? <Link to="/login" className="font-semibold text-cyan-300 hover:text-cyan-200">Sign in</Link></p>
         </div>
       </main>
     </div>
