@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { API_BASE } from '../config';
 
@@ -24,7 +25,7 @@ export const BankProvider = ({ children }) => {
   const [, setBackendError] = useState(null);
   // Prevent repeated initialization
   const [hasInitialized, setHasInitialized] = useState(false);
-
+  
   // All users data
   const [users, setUsers] = useState([
     {
@@ -61,6 +62,8 @@ export const BankProvider = ({ children }) => {
   // Admin pending approvals
   const [pendingApprovals, setPendingApprovals] = useState([]);
 
+
+
   // Helper to get API base (for local dev or env override)
   const getApiBase = () => {
     return API_BASE;
@@ -76,32 +79,36 @@ export const BankProvider = ({ children }) => {
     return headers;
   };
 
-  // Map logical API paths to Netlify function endpoints for production
-  const FUNCTION_MAP = {
-    '/auth/login': '/auth/login',
-    '/auth/register': '/auth-register',
-    '/auth/profile': '/auth/profile',
-    '/auth/refresh': '/auth/refresh',
-    '/transfers': '/transfers',
-    '/transactions': '/transactions',
-    '/bills': '/bills',
-    '/notifications': '/notifications',
-    '/chat/conversation': '/chat-conversation',
-    '/dashboard': '/dashboard',
-    '/admin/users': '/admin-users'
-  };
 
-  // getEndpoint is now wrapped in useCallback for stability
-  const getEndpoint = useCallback(
-    (path) => {
-      // Always use API_BASE from env, fallback to relative /api
-      if (API_BASE && !API_BASE.startsWith('/')) {
-        return `${API_BASE}${path}`;
-      }
-      return `/api${FUNCTION_MAP[path] || path}`;
-    },
-    [API_BASE]
-  );
+
+
+// Map logical API paths to Netlify function endpoints for production
+const FUNCTION_MAP = {
+  '/auth/login': '/auth/login',
+  '/auth/register': '/auth-register',
+  '/auth/profile': '/auth/profile',
+  '/transfers': '/transfers',
+  '/transactions': '/transactions',
+  '/bills': '/bills',
+  '/notifications': '/notifications',
+  '/chat/conversation': '/chat-conversation',
+  '/dashboard': '/dashboard',
+  '/admin/users': '/admin-users'
+};
+
+
+
+// getEndpoint is now wrapped in useCallback for stability
+const getEndpoint = useCallback(
+  (path) => {
+    // Always use API_BASE from env, fallback to relative /api
+    if (API_BASE && !API_BASE.startsWith('/')) {
+      return `${API_BASE}${path}`;
+    }
+    return `/api${FUNCTION_MAP[path] || path}`;
+  },
+  [API_BASE]
+);
 
   // Try to detect a reachable backend and fall back to relative `/api` if unreachable.
   const tryResolveApiBase = useCallback(async () => {
@@ -148,48 +155,8 @@ export const BankProvider = ({ children }) => {
     console.warn('⚠️  Backend not reachable at configured hosts; using /api fallback');
   }, []);
 
-  // Attempt to use the stored refresh token to get a new access token.
-  // Returns true if refresh succeeded and a new accessToken was stored.
-  const refreshAccessToken = useCallback(async () => {
-    const refreshToken = localStorage.getItem('refreshToken');
-    if (!refreshToken) {
-      console.debug('🔄 No refreshToken in localStorage, cannot refresh');
-      return false;
-    }
-    try {
-      const refreshUrl = getEndpoint('/auth/refresh');
-      console.log('🔄 Attempting token refresh:', refreshUrl);
-      const res = await fetch(refreshUrl, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
 
-      if (!res.ok) {
-        const bodyPreview = await res.clone().text().catch(() => '<<unreadable>>');
-        console.warn('🔄 Refresh failed:', res.status, bodyPreview.slice(0, 500));
-        return false;
-      }
-
-      const data = await res.json();
-      if (data.tokens?.accessToken) {
-        localStorage.setItem('accessToken', data.tokens.accessToken);
-        if (data.tokens.refreshToken) {
-          localStorage.setItem('refreshToken', data.tokens.refreshToken);
-        }
-        console.log('🔄 Token refresh succeeded');
-        return true;
-      }
-      console.warn('🔄 Refresh response missing tokens.accessToken');
-      return false;
-    } catch (err) {
-      console.error('🔄 Refresh error:', err);
-      return false;
-    }
-  }, [getEndpoint]);
-
-  const fetchProfile = useCallback(async (isRetry = false) => {
+  const fetchProfile = useCallback(async () => {
     try {
       const profileUrl = getEndpoint('/auth/profile');
       // Include Authorization header for Safari/Apple devices
@@ -207,21 +174,9 @@ export const BankProvider = ({ children }) => {
       setBackendError(null);
       console.log('📡 Profile response status:', res.status);
 
-      // If unauthorized: read the body so we know WHY (expired vs invalid vs missing),
-      // then try one silent refresh-and-retry before giving up.
+      // If unauthorized, handle explicitly (expected when not logged in)
       if (res.status === 401 || res.status === 403) {
-        const bodyPreview = await res.clone().text().catch(() => '<<unreadable>>');
-        console.debug('🔍 401/403 body:', bodyPreview.slice ? bodyPreview.slice(0, 500) : bodyPreview);
-
-        if (!isRetry) {
-          const refreshed = await refreshAccessToken();
-          if (refreshed) {
-            console.log('🔁 Retrying profile fetch after refresh');
-            return fetchProfile(true);
-          }
-        }
-
-        console.debug('No existing session (401 - expected when not logged in, or refresh failed)');
+        console.debug('No existing session (401 - expected when not logged in)');
         setIsAuthenticated(false);
         setCurrentUser(null);
         return false;
@@ -254,11 +209,11 @@ export const BankProvider = ({ children }) => {
 
       const data = await res.json();
       console.log('✅ Profile data received:', { email: data.user?.email });
-
+      
       // Don't fetch transactions on login - they'll be fetched when dashboard mounts (lazy load)
       let transactions = [];
       let pendingTransactions = [];
-
+      
       setCurrentUser({
         id: data.user._id || data.user.id,
         name: `${data.user.firstName} ${data.user.lastName}`.trim() || data.user.email,
@@ -269,8 +224,8 @@ export const BankProvider = ({ children }) => {
         accountNumber: data.user.accountNumber || 'Generating...',
         routingNumber: data.user.routingNumber || '026009593',
         balance: data.user.balance ?? 0,
-        checking: (data.user.accounts?.find(a => a.accountType === 'checking')?.balance) ?? 0,
-        savings: (data.user.accounts?.find(a => a.accountType === 'savings')?.balance) ?? 0,
+        checking: (data.user.accounts?.find(a => a.accountType==='checking')?.balance) ?? 0,
+        savings: (data.user.accounts?.find(a => a.accountType==='savings')?.balance) ?? 0,
         transactions,
         pendingTransactions,
       });
@@ -288,7 +243,7 @@ export const BankProvider = ({ children }) => {
       setCurrentUser(null);
       return false;
     }
-  }, [getEndpoint, refreshAccessToken]);
+  }, [getEndpoint]);
 
   // Initialize auth on mount - check if user has an active session
   useEffect(() => {
@@ -323,7 +278,7 @@ export const BankProvider = ({ children }) => {
       console.log('🔐 Login attempt:', email);
       const loginUrl = getEndpoint('/auth/login');
       console.log('📡 Calling:', loginUrl);
-
+      
       const res = await fetch(loginUrl, {
         method: 'POST',
         credentials: 'include',
@@ -332,10 +287,10 @@ export const BankProvider = ({ children }) => {
       });
       // Clear previous backend error when we get a network response
       setBackendError(null);
-
+      
       console.log('📡 Login response status:', res.status);
       console.log('🍪 Response headers:', Array.from(res.headers.entries()));
-
+      
       if (!res.ok) {
         // Check if response is JSON
         const contentType = res.headers.get('content-type');
@@ -349,7 +304,7 @@ export const BankProvider = ({ children }) => {
           return { success: false, message: `Server error: ${res.status} - ${res.statusText}` };
         }
       }
-
+      
       // Verify response is JSON
       const contentType = res.headers.get('content-type');
       if (!contentType?.includes('application/json')) {
@@ -357,16 +312,16 @@ export const BankProvider = ({ children }) => {
         console.error('❌ Non-JSON success response:', text.substring(0, 200));
         return { success: false, message: 'Invalid server response' };
       }
-
+      
       const data = await res.json();
-
+      
       // Store tokens in localStorage for Safari/Apple devices that block cookies
       if (data.tokens) {
         console.log('💾 Storing tokens in localStorage for Safari fallback');
         localStorage.setItem('accessToken', data.tokens.accessToken);
         localStorage.setItem('refreshToken', data.tokens.refreshToken);
       }
-
+      
       console.log('✅ Login successful, fetching profile...');
       // Fetch profile immediately (no delay - cookies are already set)
       const profileSuccess = await fetchProfile();
@@ -387,10 +342,12 @@ export const BankProvider = ({ children }) => {
     }
   };
 
+
   // Logout function
   const logout = async () => {
     try {
       await fetch(getEndpoint('/auth/logout'), {
+        credentials: 'include',
         method: 'POST',
         credentials: 'include',
       });
@@ -406,6 +363,7 @@ export const BankProvider = ({ children }) => {
   const updateProfile = async (profileData) => {
     try {
       const res = await fetch(getEndpoint('/auth/profile'), {
+        credentials: 'include',
         method: 'PUT',
         credentials: 'include',
         headers: getAuthHeaders(),
@@ -663,9 +621,10 @@ export const BankProvider = ({ children }) => {
 
       // Save debit transaction to backend
       const saveDebit = fetch(getEndpoint('/transactions'), {
+        credentials: 'include',
         method: 'POST',
         credentials: 'include',
-        headers: getAuthHeaders(),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: -numericAmount,
           description: debitTx.description,
@@ -682,7 +641,7 @@ export const BankProvider = ({ children }) => {
       const saveCredit = fetch(getEndpoint('/transactions'), {
         method: 'POST',
         credentials: 'include',
-        headers: getAuthHeaders(),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: numericAmount,
           description: creditTx.description,
@@ -764,7 +723,7 @@ export const BankProvider = ({ children }) => {
     fetch(getEndpoint('/transactions'), {
       method: 'POST',
       credentials: 'include',
-      headers: getAuthHeaders(),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         amount: -numericAmount,
         description: pendingTx.description,
@@ -823,7 +782,7 @@ export const BankProvider = ({ children }) => {
       const res = await fetch(getEndpoint('/bills'), {
         method: 'POST',
         credentials: 'include',
-        headers: getAuthHeaders(),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           payee: billData.payee,
           amount: parseFloat(billData.amount),
