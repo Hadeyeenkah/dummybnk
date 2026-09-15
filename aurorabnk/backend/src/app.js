@@ -8,6 +8,13 @@ const path = require('path');
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
+// In production (e.g. Vercel), also load the committed production defaults
+// as a fallback. dotenv never overrides variables that are already set, so
+// values configured in the Vercel dashboard always take precedence.
+if (process.env.NODE_ENV === 'production') {
+  dotenv.config({ path: path.resolve(__dirname, '../.env.production') });
+}
+
 const app = express();
 
 // Root route for backend health/debug
@@ -77,6 +84,12 @@ app.use(cookieParser());
 // Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'API is healthy' });
+});
+
+// Auth-scoped health alias. The frontend probes /api/auth/health when
+// detecting a reachable backend; without this it returns a noisy 404.
+app.get('/api/auth/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Auth API is healthy' });
 });
 
 // Mount admin routes

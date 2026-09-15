@@ -1,36 +1,15 @@
-// Root-level Vercel function to expose the backend Express app
-const handler = require('../backend/api/index');
-
-module.exports = handler;
-// Vercel Serverless entrypoint: reuse the existing Express app
-const app = require('../backend/src/app');
-
-// Add root route for Vercel API info
-app.get('/', (req, res) => {
-  res.json({
-    status: 'success',
-    message: 'Aurora Bank Backend API is running',
-    endpoints: {
-      health: '/api/health',
-      auth: '/api/auth/*',
-      transactions: '/api/transactions/*',
-      transfers: '/api/transfers/*',
-      bills: '/api/bills/*',
-      notifications: '/api/notifications/*',
-      admin: '/api/admin/*',
-      chat: '/api/chat/*'
-    }
-  });
-});
-
-// Quick test route for /auth/login
-app.post('/auth/login', (req, res) => {
-  res.json({
-    status: 'success',
-    message: 'Login route working!',
-    body: req.body
-  });
-});
-
-// Export Express app for Vercel (@vercel/node)
-module.exports = app;
+// Root-level Vercel serverless function.
+//
+// IMPORTANT: This MUST export the backend handler *wrapper* (from
+// backend/api/index.js) and NOT the raw Express app.
+//
+// Why: the wrapper awaits connectDB() before delegating to the Express app.
+// If we export the raw Express app instead, connectDB() is never called, so
+// Mongoose has no connection and every query buffers for 10s before failing
+// with:
+//     Operation `users.findOne()` buffering timed out after 10000ms
+//
+// (A previous version of this file had a second `module.exports = app`
+// statement at the bottom which silently overwrote the handler export and
+// caused exactly that production bug.)
+module.exports = require('../backend/api/index');
