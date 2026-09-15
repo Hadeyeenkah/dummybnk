@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const app = require("../src/app");
 const { connectDB } = require("../src/config/database");
 
@@ -7,8 +8,16 @@ module.exports = async (req, res) => {
   try {
     // Health check short-circuit before touching the DB at all,
     // useful for confirming the function itself boots correctly.
+    // Now also reports live Mongo connection state so it's actually
+    // useful for debugging (0=disconnected, 1=connected, 2=connecting, 3=disconnecting).
     if (req.url === "/api/health" && req.method === "GET") {
-      return res.status(200).json({ status: "ok", message: "API is healthy (vercel handler)" });
+      const dbState = mongoose.connection.readyState;
+      const dbStateLabel = ["disconnected", "connected", "connecting", "disconnecting"][dbState] || "unknown";
+      return res.status(200).json({
+        status: "ok",
+        message: "API is healthy (vercel handler)",
+        mongodb: dbStateLabel,
+      });
     }
 
     if (!dbPromise) {
