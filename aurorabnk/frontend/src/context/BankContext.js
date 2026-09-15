@@ -292,18 +292,29 @@ const getEndpoint = useCallback(
       console.log('🍪 Response headers:', Array.from(res.headers.entries()));
       
       if (!res.ok) {
-        // Check if response is JSON
-        const contentType = res.headers.get('content-type');
-        if (contentType?.includes('application/json')) {
-          const errorData = await res.json();
-          console.error('❌ Login failed:', errorData);
-          return { success: false, message: errorData.message || `Login failed (${res.status})` };
-        } else {
-          const text = await res.text();
-          console.error('❌ Non-JSON error response:', text.substring(0, 200));
-          return { success: false, message: `Server error: ${res.status} - ${res.statusText}` };
-        }
-      }
+  const rawText = await res.text();
+  let errorData = null;
+
+  try {
+    errorData = JSON.parse(rawText);
+  } catch (_) {
+    // Body wasn't valid JSON — fall through to raw text handling below
+  }
+
+  if (errorData) {
+    console.error('❌ Login failed:', errorData);
+    return {
+      success: false,
+      message: errorData.message || `Login failed (${res.status})`,
+    };
+  } else {
+    console.error('❌ Non-JSON error response:', rawText.substring(0, 200));
+    return {
+      success: false,
+      message: `Server error: ${res.status} - ${res.statusText}`,
+    };
+  }
+}
       
       // Verify response is JSON
       const contentType = res.headers.get('content-type');
