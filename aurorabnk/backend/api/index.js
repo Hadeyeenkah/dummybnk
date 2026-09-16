@@ -6,18 +6,18 @@ let dbPromise = null;
 
 module.exports = async (req, res) => {
   try {
-    // Health check short-circuit before touching the DB at all,
-    // useful for confirming the function itself boots correctly.
-    // Now also reports live Mongo connection state so it's actually
-    // useful for debugging (0=disconnected, 1=connected, 2=connecting, 3=disconnecting).
+    // Health check short-circuit BEFORE touching the DB, so a health probe
+    // never has to wait on (or fail because of) a DB connection attempt.
+    //
+    // IMPORTANT: this still delegates to `app(req, res)` rather than
+    // building the response by hand. Building it by hand skips the cors()
+    // middleware defined in src/app.js entirely, which caused /api/health
+    // specifically to fail with a CORS error in the browser while every
+    // other route (going through app(req, res) normally) worked fine.
+    // Express's own /api/health route in app.js already reports live
+    // mongoose.connection.readyState and needs no DB connection to run.
     if (req.url === "/api/health" && req.method === "GET") {
-      const dbState = mongoose.connection.readyState;
-      const dbStateLabel = ["disconnected", "connected", "connecting", "disconnecting"][dbState] || "unknown";
-      return res.status(200).json({
-        status: "ok",
-        message: "API is healthy (vercel handler)",
-        mongodb: dbStateLabel,
-      });
+      return app(req, res);
     }
 
     if (!dbPromise) {
@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
     try {
       await dbPromise;
     } catch (dbErr) {
-      // connectDB() now throws on failure instead of returning false.
+      // connectDB() throws on failure instead of returning false.
       // Reset the cache so the NEXT request in this warm container
       // gets a fresh attempt instead of being stuck with a dead promise.
       dbPromise = null;
