@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { API_BASE } from '../config';
 
@@ -16,6 +15,36 @@ export const useBankContext = () => {
   return context;
 };
 
+// --- Protocol-cleanup helper -------------------------------------------------
+// Collapses any run of leading "http://" / "https://" prefixes into a single,
+// correctly-cased scheme. This guards against values like:
+//   "http://https://newbackend-ten.vercel.app"  ->  "https://newbackend-ten.vercel.app"
+//   "https://http://localhost:5001"             ->  "http://localhost:5001"
+// which typically happen when a scheme is hard-coded somewhere and then
+// concatenated with an env var that ALSO already includes a scheme
+// (e.g. `https://${process.env.REACT_APP_API_BASE}` where the env var is
+// already "https://newbackend-ten.vercel.app").
+const cleanApiBase = (base) => {
+  if (!base || typeof base !== 'string') return base;
+
+  const trimmed = base.trim();
+  const schemeRun = trimmed.match(/^(?:https?:\/\/)+/i);
+
+  if (!schemeRun) {
+    // No scheme at all (e.g. relative path) — leave untouched here;
+    // callers decide how to treat relative bases.
+    return trimmed;
+  }
+
+  // Grab every scheme in the run and keep only the LAST one, since that's
+  // the one immediately followed by the actual host.
+  const schemes = schemeRun[0].match(/https?:\/\//gi) || [];
+  const lastScheme = schemes[schemes.length - 1].toLowerCase();
+  const rest = trimmed.slice(schemeRun[0].length);
+
+  return `${lastScheme}${rest}`;
+};
+
 export const BankProvider = ({ children }) => {
   // Current logged-in user
   const [currentUser, setCurrentUser] = useState(null);
@@ -25,7 +54,7 @@ export const BankProvider = ({ children }) => {
   const [, setBackendError] = useState(null);
   // Prevent repeated initialization
   const [hasInitialized, setHasInitialized] = useState(false);
-  
+
   // All users data
   const [users, setUsers] = useState([
     {
@@ -62,8 +91,6 @@ export const BankProvider = ({ children }) => {
   // Admin pending approvals
   const [pendingApprovals, setPendingApprovals] = useState([]);
 
-
-
   // Helper to get API base (for local dev or env override)
   const getApiBase = () => {
     return API_BASE;
@@ -79,43 +106,41 @@ export const BankProvider = ({ children }) => {
     return headers;
   };
 
+  // Map logical API paths to Netlify function endpoints for production
+  const FUNCTION_MAP = {
+    '/auth/login': '/auth/login',
+    '/auth/register': '/auth-register',
+    '/auth/profile': '/auth/profile',
+    '/transfers': '/transfers',
+    '/transactions': '/transactions',
+    '/bills': '/bills',
+    '/notifications': '/notifications',
+    '/chat/conversation': '/chat-conversation',
+    '/dashboard': '/dashboard',
+    '/admin/users': '/admin-users',
+  };
 
-
-
-// Map logical API paths to Netlify function endpoints for production
-const FUNCTION_MAP = {
-  '/auth/login': '/auth/login',
-  '/auth/register': '/auth-register',
-  '/auth/profile': '/auth/profile',
-  '/transfers': '/transfers',
-  '/transactions': '/transactions',
-  '/bills': '/bills',
-  '/notifications': '/notifications',
-  '/chat/conversation': '/chat-conversation',
-  '/dashboard': '/dashboard',
-  '/admin/users': '/admin-users'
-};
-
-
-
-// getEndpoint is now wrapped in useCallback for stability
-const getEndpoint = useCallback(
-  (path) => {
-    // Always use API_BASE from env, fallback to relative /api
-    if (API_BASE && !API_BASE.startsWith('/')) {
-      return `${API_BASE}${path}`;
-    }
-    return `/api${FUNCTION_MAP[path] || path}`;
-  },
-  [API_BASE]
-);
+  // getEndpoint is wrapped in useCallback for stability.
+  // FIX: normalize API_BASE through cleanApiBase() and strip trailing
+  // slashes before concatenating, so a misconfigured env var that already
+  // contains "http://" or "https://" never produces a doubled-up scheme.
+  const getEndpoint = useCallback(
+    (path) => {
+      if (API_BASE && !API_BASE.startsWith('/')) {
+        const cleanBase = cleanApiBase(API_BASE).replace(/\/+$/, '');
+        return `${cleanBase}${path}`;
+      }
+      return `/api${FUNCTION_MAP[path] || path}`;
+    },
+    [API_BASE] // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   // Try to detect a reachable backend and fall back to relative `/api` if unreachable.
   const tryResolveApiBase = useCallback(async () => {
     // Prefer local relative proxy during development or when running on localhost
     const runningLocally = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
       || process.env.NODE_ENV === 'development';
-    const candidates = runningLocally ? ['/api', getApiBase()] : [getApiBase(), '/api'];
+    const candidates = runningLocally ? ['/api', cleanApiBase(getApiBase())] : [cleanApiBase(getApiBase()), '/api'];
     const timeoutMs = 1500;
 
     const tryFetch = async (url) => {
@@ -131,6 +156,7 @@ const getEndpoint = useCallback(
     };
 
     for (const candidate of candidates) {
+      if (!candidate) continue;
       // normalize candidate to ensure it doesn't double `/api`
       const normalized = candidate.endsWith('/api') ? candidate : `${candidate.replace(/\/+$/, '')}/api`;
       // try common health endpoints
@@ -154,7 +180,6 @@ const getEndpoint = useCallback(
     setBackendError('Backend unreachable. Using relative `/api` proxy. Start backend or set REACT_APP_API_BASE.');
     console.warn('⚠️  Backend not reachable at configured hosts; using /api fallback');
   }, []);
-
 
   const fetchProfile = useCallback(async () => {
     try {
@@ -209,11 +234,11 @@ const getEndpoint = useCallback(
 
       const data = await res.json();
       console.log('✅ Profile data received:', { email: data.user?.email });
-      
+
       // Don't fetch transactions on login - they'll be fetched when dashboard mounts (lazy load)
       let transactions = [];
       let pendingTransactions = [];
-      
+
       setCurrentUser({
         id: data.user._id || data.user.id,
         name: `${data.user.firstName} ${data.user.lastName}`.trim() || data.user.email,
@@ -224,8 +249,8 @@ const getEndpoint = useCallback(
         accountNumber: data.user.accountNumber || 'Generating...',
         routingNumber: data.user.routingNumber || '026009593',
         balance: data.user.balance ?? 0,
-        checking: (data.user.accounts?.find(a => a.accountType==='checking')?.balance) ?? 0,
-        savings: (data.user.accounts?.find(a => a.accountType==='savings')?.balance) ?? 0,
+        checking: (data.user.accounts?.find(a => a.accountType === 'checking')?.balance) ?? 0,
+        savings: (data.user.accounts?.find(a => a.accountType === 'savings')?.balance) ?? 0,
         transactions,
         pendingTransactions,
       });
@@ -278,7 +303,7 @@ const getEndpoint = useCallback(
       console.log('🔐 Login attempt:', email);
       const loginUrl = getEndpoint('/auth/login');
       console.log('📡 Calling:', loginUrl);
-      
+
       const res = await fetch(loginUrl, {
         method: 'POST',
         credentials: 'include',
@@ -287,35 +312,35 @@ const getEndpoint = useCallback(
       });
       // Clear previous backend error when we get a network response
       setBackendError(null);
-      
+
       console.log('📡 Login response status:', res.status);
       console.log('🍪 Response headers:', Array.from(res.headers.entries()));
-      
+
       if (!res.ok) {
-  const rawText = await res.text();
-  let errorData = null;
+        const rawText = await res.text();
+        let errorData = null;
 
-  try {
-    errorData = JSON.parse(rawText);
-  } catch (_) {
-    // Body wasn't valid JSON — fall through to raw text handling below
-  }
+        try {
+          errorData = JSON.parse(rawText);
+        } catch (_) {
+          // Body wasn't valid JSON — fall through to raw text handling below
+        }
 
-  if (errorData) {
-    console.error('❌ Login failed:', errorData);
-    return {
-      success: false,
-      message: errorData.message || `Login failed (${res.status})`,
-    };
-  } else {
-    console.error('❌ Non-JSON error response:', rawText.substring(0, 200));
-    return {
-      success: false,
-      message: `Server error: ${res.status} - ${res.statusText}`,
-    };
-  }
-}
-      
+        if (errorData) {
+          console.error('❌ Login failed:', errorData);
+          return {
+            success: false,
+            message: errorData.message || `Login failed (${res.status})`,
+          };
+        } else {
+          console.error('❌ Non-JSON error response:', rawText.substring(0, 200));
+          return {
+            success: false,
+            message: `Server error: ${res.status} - ${res.statusText}`,
+          };
+        }
+      }
+
       // Verify response is JSON
       const contentType = res.headers.get('content-type');
       if (!contentType?.includes('application/json')) {
@@ -323,16 +348,16 @@ const getEndpoint = useCallback(
         console.error('❌ Non-JSON success response:', text.substring(0, 200));
         return { success: false, message: 'Invalid server response' };
       }
-      
+
       const data = await res.json();
-      
+
       // Store tokens in localStorage for Safari/Apple devices that block cookies
       if (data.tokens) {
         console.log('💾 Storing tokens in localStorage for Safari fallback');
         localStorage.setItem('accessToken', data.tokens.accessToken);
         localStorage.setItem('refreshToken', data.tokens.refreshToken);
       }
-      
+
       console.log('✅ Login successful, fetching profile...');
       // Fetch profile immediately (no delay - cookies are already set)
       const profileSuccess = await fetchProfile();
@@ -353,14 +378,12 @@ const getEndpoint = useCallback(
     }
   };
 
-
   // Logout function
   const logout = async () => {
     try {
       await fetch(getEndpoint('/auth/logout'), {
         credentials: 'include',
         method: 'POST',
-        credentials: 'include',
       });
     } catch {}
     // Clear localStorage tokens (Safari fallback)
@@ -376,7 +399,6 @@ const getEndpoint = useCallback(
       const res = await fetch(getEndpoint('/auth/profile'), {
         credentials: 'include',
         method: 'PUT',
-        credentials: 'include',
         headers: getAuthHeaders(),
         body: JSON.stringify(profileData),
       });
@@ -632,7 +654,6 @@ const getEndpoint = useCallback(
 
       // Save debit transaction to backend
       const saveDebit = fetch(getEndpoint('/transactions'), {
-        credentials: 'include',
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
