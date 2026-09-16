@@ -3,6 +3,7 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
 const path = require('path');
+const mongoose = require('mongoose');
 
 // Load .env.local for local development, then fallback to .env
 dotenv.config({ path: path.resolve(__dirname, '../.env.local') });
@@ -79,8 +80,6 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(cookieParser());
 
-
-
 // Health check route
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'API is healthy' });
@@ -90,6 +89,25 @@ app.get('/api/health', (req, res) => {
 // detecting a reachable backend; without this it returns a noisy 404.
 app.get('/api/auth/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Auth API is healthy' });
+});
+
+// Deep health check: confirms MongoDB is actually connected and reachable,
+// not just that the server process booted. Visit /api/health/db directly
+// to verify the database connection on Vercel.
+app.get('/api/health/db', async (req, res) => {
+  const state = mongoose.connection.readyState;
+  const states = ['disconnected', 'connected', 'connecting', 'disconnecting'];
+
+  if (state === 1) {
+    try {
+      await mongoose.connection.db.admin().ping();
+      return res.status(200).json({ status: 'ok', mongodb: 'connected', ping: 'success' });
+    } catch (err) {
+      return res.status(500).json({ status: 'error', mongodb: 'connected but ping failed', error: err.message });
+    }
+  }
+
+  return res.status(503).json({ status: 'error', mongodb: states[state] || 'unknown' });
 });
 
 // Mount admin routes
