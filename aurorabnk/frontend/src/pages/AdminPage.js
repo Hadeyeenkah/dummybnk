@@ -1,11 +1,46 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
 import AuroraBankLogo from '../components/AuroraBankLogo';
 import { API_BASE } from '../config';
 import '../App.css';
 
-const marketWatchlistSymbols = ['AAPL', 'MSFT', 'NVDA', 'VOO', 'AMZN', 'TSLA', 'META', 'GOOGL', 'JPM', 'SPY', 'QQQ'];
+/*
+  Design notes:
+  - Shares the Aurora Bank brand tokens used on the customer stock page:
+    ink #10182B, paper #F3F4EF, forest #163B2E (brand/primary action),
+    gold #A9843C (highlight), positive #1E7245, negative #9B3232.
+  - Left sidebar replaces the horizontal tab strip so section labels and
+    badge counts stay visible at a glance, which is the more standard
+    pattern for an internal console with this many sections.
+  - marketWatchlistSymbols now matches every symbol shown on the customer
+    stock page (including AMD, NFLX, DIS, WMT, KO, BA) so admins can
+    actually control the change% for everything customers see — those
+    six were previously uncontrollable from this screen.
+*/
+
+const marketWatchlistSymbols = [
+  'AAPL', 'MSFT', 'NVDA', 'VOO', 'AMZN', 'TSLA', 'META', 'GOOGL', 'JPM', 'SPY', 'QQQ',
+  'AMD', 'NFLX', 'DIS', 'WMT', 'KO', 'BA',
+];
+
+const marketWatchlistNames = {
+  AAPL: 'Apple', MSFT: 'Microsoft', NVDA: 'NVIDIA', VOO: 'Vanguard S&P 500 ETF',
+  AMZN: 'Amazon.com', TSLA: 'Tesla', META: 'Meta Platforms', GOOGL: 'Alphabet Class A',
+  JPM: 'JPMorgan Chase', SPY: 'SPDR S&P 500 ETF Trust', QQQ: 'Invesco QQQ Trust',
+  AMD: 'Advanced Micro Devices', NFLX: 'Netflix', DIS: 'Walt Disney', WMT: 'Walmart',
+  KO: 'Coca-Cola', BA: 'Boeing',
+};
+
+const navItems = [
+  { id: 'users', label: 'User management' },
+  { id: 'approvals', label: 'Pending approvals' },
+  { id: 'transactions', label: 'Transaction management' },
+  { id: 'chat', label: 'User chat' },
+  { id: 'messages', label: 'Send messages' },
+  { id: 'activity', label: 'Recent activity' },
+  { id: 'market', label: 'Stock market' },
+];
 
 function AdminPage() {
   const navigate = useNavigate();
@@ -28,9 +63,21 @@ function AdminPage() {
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [conversationMessages, setConversationMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
-  const [marketSettings, setMarketSettings] = useState({ todaysReturn: 0, todaysReturnPercent: 10.5, estimatedTradeTotal: 0, marketStatus: 'open', marketMessage: 'Prices update during US market hours.' });
-  const [marketForm, setMarketForm] = useState({ todaysReturn: '0', todaysReturnPercent: '10.5', marketStatus: 'open', marketMessage: 'Prices update during US market hours.', watchlistChanges: {} });
+  const [marketSettings, setMarketSettings] = useState({ estimatedTradeTotal: 0, marketStatus: 'open', marketMessage: 'Prices update during US market hours.' });
+  const [marketForm, setMarketForm] = useState({ marketStatus: 'open', marketMessage: 'Prices update during US market hours.', watchlistChanges: {} });
   const [marketSaving, setMarketSaving] = useState(false);
+  // Tracks whether marketForm has been seeded from the server yet. Once it
+  // has, the 5-second polling refresh stops overwriting it — otherwise any
+  // number the admin was mid-typing into the watchlist form kept getting
+  // reset out from under them before they could finish or save it.
+  const marketFormInitialized = useRef(false);
+  // Today's return is per user (user A's return can differ from user B's),
+  // so it's edited as a draft keyed by user id rather than one global value.
+  const [userReturnDrafts, setUserReturnDrafts] = useState({});
+  const [savingUserReturnId, setSavingUserReturnId] = useState(null);
+  // Which user ids already have a seeded draft — same guard as marketForm,
+  // so polling doesn't overwrite a return an admin is mid-typing for a user.
+  const userReturnInitialized = useRef(new Set());
   const [newTransaction, setNewTransaction] = useState({
     description: '',
     amount: '',
@@ -55,29 +102,18 @@ function AdminPage() {
     return { Authorization: `Bearer ${token}`, ...additionalHeaders };
   };
 
-  console.log('🌍 Environment:', process.env.NODE_ENV);
-  console.log('🔗 API Base:', API_BASE);
-  console.log('📝 REACT_APP_API_BASE:', process.env.REACT_APP_API_BASE);
-
   // Fetch admin data in real-time
   const fetchAdminData = async () => {
     try {
-      console.log('Fetching admin data...');
-      
-      // Fetch all users
       const usersRes = await fetch(`${API_BASE}/admin/users`, {
         credentials: 'include',
         headers: getAuthHeaders(),
       });
-      
-      console.log('Users response status:', usersRes.status);
-      
+
       if (usersRes.ok) {
         const usersData = await usersRes.json();
-        console.log('Users data received:', usersData);
         setDisplayUsers(usersData.users || []);
       } else if (usersRes.status === 401 || usersRes.status === 403) {
-        console.error('Unauthorized - redirecting to login');
         // Not authorized, redirect to login
         logout();
         navigate('/login');
@@ -92,12 +128,9 @@ function AdminPage() {
         credentials: 'include',
         headers: getAuthHeaders(),
       });
-      
-      console.log('Approvals response status:', approvalsRes.status);
-      
+
       if (approvalsRes.ok) {
         const approvalsData = await approvalsRes.json();
-        console.log('Approvals data received:', approvalsData);
         setDisplayPendingApprovals(approvalsData.pendingApprovals || []);
       }
 
@@ -109,13 +142,18 @@ function AdminPage() {
         const marketData = await marketRes.json();
         const nextSettings = marketData.settings || marketSettings;
         setMarketSettings(nextSettings);
-        setMarketForm({
-          todaysReturn: String(nextSettings.todaysReturn ?? ''),
-          todaysReturnPercent: String(nextSettings.todaysReturnPercent ?? ''),
-          marketStatus: nextSettings.marketStatus || 'open',
-          marketMessage: nextSettings.marketMessage || '',
-          watchlistChanges: Object.fromEntries((nextSettings.watchlistChanges || []).map((item) => [item.symbol, String(item.changePercent)])),
-        });
+        // Only seed the editable form once. Re-seeding it on every poll is
+        // what was making typed values vanish before you could save them.
+        if (!marketFormInitialized.current) {
+          setMarketForm({
+            todaysReturn: String(nextSettings.todaysReturn ?? ''),
+            todaysReturnPercent: String(nextSettings.todaysReturnPercent ?? ''),
+            marketStatus: nextSettings.marketStatus || 'open',
+            marketMessage: nextSettings.marketMessage || '',
+            watchlistChanges: Object.fromEntries((nextSettings.watchlistChanges || []).map((item) => [item.symbol, String(item.changePercent)])),
+          });
+          marketFormInitialized.current = true;
+        }
       }
 
       setLastUpdate(new Date());
@@ -161,6 +199,13 @@ function AdminPage() {
     } finally {
       setMarketSaving(false);
     }
+  };
+
+  const handleResetWatchlistChanges = () => {
+    setMarketForm({
+      ...marketForm,
+      watchlistChanges: Object.fromEntries(marketWatchlistSymbols.map((symbol) => [symbol, '0'])),
+    });
   };
 
   // Fetch conversations
@@ -246,7 +291,6 @@ function AdminPage() {
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       });
       if (res.ok) {
-        // Refresh data immediately
         await fetchAdminData();
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -266,7 +310,6 @@ function AdminPage() {
         headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       });
       if (res.ok) {
-        // Refresh data immediately
         await fetchAdminData();
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -300,7 +343,6 @@ function AdminPage() {
 
       if (res.ok) {
         setEditingUser(null);
-        // Refresh data immediately
         await fetchAdminData();
       } else {
         const error = await res.json();
@@ -472,606 +514,631 @@ function AdminPage() {
     }
   };
 
+  const systemBalance = displayUsers.reduce((sum, user) => sum + (user.balance || 0), 0);
+  const totalTransactions = displayUsers.reduce((sum, user) => sum + (user.transactions?.length || 0), 0);
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-50">
-      <header className="border-b border-white/5 bg-slate-900/50 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3 text-cyan-400">
+    <div className="min-h-screen bg-[#F3F4EF] text-[#10182B]">
+      <header className="bg-[#163B2E] text-[#F3F4EF]">
+        <div className="mx-auto flex max-w-[1400px] items-center justify-between px-4 py-4 sm:px-6">
+          <div className="flex items-center gap-3">
             <AuroraBankLogo />
-            <span className="text-lg font-semibold tracking-tight text-slate-50">Aurora Bank</span>
+            <div className="flex items-baseline gap-2">
+              <span className="font-serif text-lg font-semibold tracking-tight" style={{ fontFamily: "'Iowan Old Style', 'Source Serif 4', Georgia, serif" }}>Aurora Bank</span>
+              <span className="rounded border border-[#3d5a4c] px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#c9d6cd]">Admin</span>
+            </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-cyan-200 hover:text-white"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-4">
+            <span className="hidden text-xs text-[#a9bcae] sm:inline">
+              {loading ? 'Syncing…' : `Last synced ${lastUpdate.toLocaleTimeString()}`}
+            </span>
+            <button
+              onClick={handleLogout}
+              className="rounded-md border border-[#3d5a4c] px-3 py-1.5 text-sm font-medium text-[#dfe6de] transition hover:border-[#6e8c7c] hover:text-white"
+            >
+              Log out
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-8">
-        <h1 className="mb-2 text-3xl font-semibold text-white">Admin Dashboard</h1>
-        <p className="mb-8 flex items-center justify-between text-slate-300">
-          <span>Manage users, approve transactions, and monitor system activity</span>
-          <span className="text-xs text-cyan-400">
-            {loading ? 'Loading...' : `Last updated: ${lastUpdate.toLocaleTimeString()}`}
-          </span>
-        </p>
+      <main className="mx-auto max-w-[1400px] px-4 py-8 sm:px-6">
+        <div className="mb-6">
+          <h1 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl" style={{ fontFamily: "'Iowan Old Style', 'Source Serif 4', Georgia, serif" }}>
+            Admin console
+          </h1>
+          <p className="mt-1 text-sm text-[#5b6459]">Manage users, approve transactions, and monitor system activity.</p>
+        </div>
 
         {/* Stats Overview */}
-        <div className="mb-8 grid gap-6 md:grid-cols-4">
-          <div className="card secondary">
-            <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Total Users</p>
-            <p className="mt-2 text-3xl font-semibold text-white">{displayUsers.length}</p>
+        <section className="mb-8 grid gap-px overflow-hidden border border-[#D9DBD2] bg-[#D9DBD2] sm:grid-cols-4">
+          <div className="bg-white p-5">
+            <p className="text-sm text-[#5b6459]">Total users</p>
+            <p className="mt-2 text-2xl font-semibold tabular-nums">{displayUsers.length}</p>
           </div>
-          <div className="card secondary">
-            <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">System Balance</p>
-            <p className="mt-2 text-3xl font-semibold text-white">${displayUsers.reduce((sum, user) => sum + user.balance, 0).toFixed(2)}</p>
+          <div className="bg-white p-5">
+            <p className="text-sm text-[#5b6459]">System balance</p>
+            <p className="mt-2 text-2xl font-semibold tabular-nums">${systemBalance.toFixed(2)}</p>
           </div>
-          <div className="card secondary">
-            <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Pending Approvals</p>
-            <p className="mt-2 text-3xl font-semibold text-yellow-400">{displayPendingApprovals.length}</p>
+          <div className="bg-white p-5">
+            <p className="text-sm text-[#5b6459]">Pending approvals</p>
+            <p className={`mt-2 text-2xl font-semibold tabular-nums ${displayPendingApprovals.length > 0 ? 'text-[#A9843C]' : ''}`}>{displayPendingApprovals.length}</p>
           </div>
-          <div className="card secondary">
-            <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Total Transactions</p>
-            <p className="mt-2 text-3xl font-semibold text-white">{displayUsers.reduce((sum, user) => sum + (user.transactions?.length || 0), 0)}</p>
+          <div className="bg-white p-5">
+            <p className="text-sm text-[#5b6459]">Total transactions</p>
+            <p className="mt-2 text-2xl font-semibold tabular-nums">{totalTransactions}</p>
           </div>
-        </div>
+        </section>
 
-        {/* Tabs */}
-        <div className="mb-6 flex gap-4 border-b border-white/5">
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`pb-3 text-sm font-semibold transition ${activeTab === 'users' ? 'border-b-2 border-cyan-400 text-cyan-400' : 'text-slate-400 hover:text-white'}`}
-          >
-            User Management
-          </button>
-          <button
-            onClick={() => setActiveTab('approvals')}
-            className={`pb-3 text-sm font-semibold transition ${activeTab === 'approvals' ? 'border-b-2 border-cyan-400 text-cyan-400' : 'text-slate-400 hover:text-white'}`}
-          >
-            Pending Approvals {displayPendingApprovals.length > 0 && `(${displayPendingApprovals.length})`}
-          </button>
-          <button
-            onClick={() => setActiveTab('transactions')}
-            className={`pb-3 text-sm font-semibold transition ${activeTab === 'transactions' ? 'border-b-2 border-cyan-400 text-cyan-400' : 'text-slate-400 hover:text-white'}`}
-          >
-            Transaction Management
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab('chat');
-              if (conversations.length > 0 && !selectedConversationId) {
-                setSelectedConversationId(conversations[0]._id);
-                fetchConversationMessages(conversations[0]._id);
-              }
-            }}
-            className={`pb-3 text-sm font-semibold transition ${activeTab === 'chat' ? 'border-b-2 border-cyan-400 text-cyan-400' : 'text-slate-400 hover:text-white'}`}
-          >
-            User Chat ({conversations.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('messages')}
-            className={`pb-3 text-sm font-semibold transition ${activeTab === 'messages' ? 'border-b-2 border-cyan-400 text-cyan-400' : 'text-slate-400 hover:text-white'}`}
-          >
-            Send Messages
-          </button>
-          <button
-            onClick={() => setActiveTab('activity')}
-            className={`pb-3 text-sm font-semibold transition ${activeTab === 'activity' ? 'border-b-2 border-cyan-400 text-cyan-400' : 'text-slate-400 hover:text-white'}`}
-          >
-            Recent Activity
-          </button>
-          <button
-            onClick={() => setActiveTab('market')}
-            className={`pb-3 text-sm font-semibold transition ${activeTab === 'market' ? 'border-b-2 border-cyan-400 text-cyan-400' : 'text-slate-400 hover:text-white'}`}
-          >
-            Stock Market
-          </button>
-        </div>
-
-        {activeTab === 'market' && (
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
-            <div className="mb-6">
-              <p className="text-xs uppercase tracking-[0.2em] text-cyan-200">Market controls</p>
-              <h2 className="mt-2 text-xl font-semibold text-white">Today&apos;s return</h2>
-              <p className="mt-1 text-sm text-slate-400">This value appears on the authenticated stock-market page for every customer.</p>
-            </div>
-            <form onSubmit={handleSaveMarketSettings} className="space-y-5">
-              <div className="grid gap-4 md:grid-cols-3">
-                <label className="block text-sm font-semibold text-slate-200">Return ($)
-                  <input type="number" step="0.01" value={marketForm.todaysReturn} onChange={(event) => setMarketForm({ ...marketForm, todaysReturn: event.target.value })} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50" required />
-                </label>
-                <label className="block text-sm font-semibold text-slate-200">Return (%)
-                  <input type="number" step="0.01" value={marketForm.todaysReturnPercent} onChange={(event) => setMarketForm({ ...marketForm, todaysReturnPercent: event.target.value })} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50" required />
-                </label>
-                <label className="block text-sm font-semibold text-slate-200">Market status
-                  <select value={marketForm.marketStatus} onChange={(event) => setMarketForm({ ...marketForm, marketStatus: event.target.value })} className="mt-2 w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-white outline-none focus:border-cyan-300/50">
-                    <option value="open">Open</option>
-                    <option value="closed">Closed</option>
-                  </select>
-                </label>
-              </div>
-              <label className="block text-sm font-semibold text-slate-200">Market note
-                <input type="text" value={marketForm.marketMessage} onChange={(event) => setMarketForm({ ...marketForm, marketMessage: event.target.value })} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50" maxLength="160" />
-              </label>
-              <div>
-                <p className="text-sm font-semibold text-slate-200">Watchlist daily change (%)</p>
-                <p className="mt-1 text-xs text-slate-400">These values control the percentages displayed to customers.</p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {marketWatchlistSymbols.map((symbol) => (
-                    <label key={symbol} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white">
-                      <span className="w-14">{symbol}</span>
-                      <input type="number" step="0.01" min="-100" max="100" value={marketForm.watchlistChanges[symbol] ?? ''} onChange={(event) => setMarketForm({ ...marketForm, watchlistChanges: { ...marketForm.watchlistChanges, [symbol]: event.target.value } })} placeholder="0.00" className="min-w-0 flex-1 rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-right text-white outline-none focus:border-cyan-300/50" />
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-4">
-                <button type="submit" disabled={marketSaving} className="rounded-xl bg-cyan-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60">{marketSaving ? 'Saving...' : 'Save market settings'}</button>
-                <span className="text-sm text-slate-400">Current: {marketSettings.todaysReturn >= 0 ? '+' : '-'}${Math.abs(Number(marketSettings.todaysReturn || 0)).toFixed(2)} ({Number(marketSettings.todaysReturnPercent || 0).toFixed(2)}%)</span>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* User Management Tab */}
-        {activeTab === 'users' && (
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
-            <h2 className="mb-6 text-xl font-semibold text-white">All Users</h2>
-            {loading ? (
-              <p className="py-8 text-center text-slate-400">Loading users...</p>
-            ) : displayUsers.length === 0 ? (
-              <p className="py-8 text-center text-slate-400">No users found. Please register users first.</p>
-            ) : (
-              <div className="space-y-4">
-                {displayUsers.map((user) => (
-                <div
-                  key={user.id}
-                  className="rounded-xl border border-white/5 bg-white/5 p-6"
+        <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">
+          {/* Sidebar nav */}
+          <nav className="flex gap-1 overflow-x-auto border border-[#D9DBD2] bg-white p-2 lg:h-fit lg:flex-col lg:overflow-visible lg:p-2">
+            {navItems.map((item) => {
+              const isActive = activeTab === item.id;
+              const badge = item.id === 'approvals' ? displayPendingApprovals.length
+                : item.id === 'chat' ? conversations.length
+                : null;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    if (item.id === 'chat' && conversations.length > 0 && !selectedConversationId) {
+                      setSelectedConversationId(conversations[0]._id);
+                      fetchConversationMessages(conversations[0]._id);
+                    }
+                  }}
+                  className={`flex shrink-0 items-center justify-between gap-3 border-l-2 px-3 py-2.5 text-left text-sm font-medium transition ${
+                    isActive ? 'border-[#A9843C] bg-[#FAFAF7] text-[#10182B]' : 'border-transparent text-[#5b6459] hover:bg-[#FAFAF7]'
+                  }`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="mb-4 flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500" />
-                        <div>
-                          <h3 className="font-semibold text-white">{user.name}</h3>
-                          <p className="text-sm text-slate-400">{user.email}</p>
-                          <p className="text-xs text-slate-500">Account: {user.accountNumber}</p>
-                        </div>
-                      </div>
+                  <span className="whitespace-nowrap">{item.label}</span>
+                  {badge !== null && badge > 0 && (
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${
+                      item.id === 'approvals' ? 'bg-[#FBF6EC] text-[#8a6c2e]' : 'bg-[#ECEDE7] text-[#5b6459]'
+                    }`}>
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
 
-                      {editingUser === user.id ? (
-                        <div className="grid gap-4 md:grid-cols-3">
-                          <div>
-                            <label className="mb-1 block text-xs text-slate-400">Checking</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editValues.checking}
-                              onChange={(e) => setEditValues({ ...editValues, checking: e.target.value })}
-                              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/50"
-                            />
-                          </div>
-                          <div>
-                            <label className="mb-1 block text-xs text-slate-400">Savings</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={editValues.savings}
-                              onChange={(e) => setEditValues({ ...editValues, savings: e.target.value })}
-                              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-cyan-300/50"
-                            />
-                          </div>
-                          <div className="flex items-end gap-2">
-                            <button
-                              onClick={() => handleSave(user.id)}
-                              className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={() => setEditingUser(null)}
-                              className="rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/5"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="grid gap-4 md:grid-cols-3">
-                          <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                            <p className="text-xs text-slate-400">Total Balance</p>
-                            <p className="text-xl font-semibold text-white">${user.balance.toFixed(2)}</p>
-                          </div>
-                          <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                            <p className="text-xs text-slate-400">Checking</p>
-                            <p className="text-xl font-semibold text-white">${user.checking.toFixed(2)}</p>
-                          </div>
-                          <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                            <p className="text-xs text-slate-400">Savings</p>
-                            <p className="text-xl font-semibold text-white">${user.savings.toFixed(2)}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="mt-4">
-                        <p className="text-xs text-slate-400">
-                          {user.transactions.length} transactions • {user.pendingTransactions.length} pending
-                        </p>
-                      </div>
-                    </div>
-
-                    {editingUser !== user.id && (
-                      <button
-                        onClick={() => handleEdit(user)}
-                        className="rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/5"
-                      >
-                        Edit
-                      </button>
-                    )}
-                  </div>
+          {/* Content */}
+          <div className="min-w-0">
+            {activeTab === 'market' && (
+              <section className="border border-[#D9DBD2] bg-white">
+                <div className="border-b border-[#D9DBD2] px-5 py-5 sm:px-6">
+                  <p className="text-sm text-[#5b6459]">Market controls</p>
+                  <h2 className="mt-1 text-lg font-semibold">Today&apos;s return &amp; watchlist</h2>
+                  <p className="mt-1 text-sm text-[#5b6459]">These values appear on the stock market page for every customer.</p>
                 </div>
-              ))}
-            </div>
-            )}
-          </div>
-        )}
+                <form onSubmit={handleSaveMarketSettings} className="p-5 sm:p-6">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <label className="block text-sm font-semibold">
+                      Return ($)
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={marketForm.todaysReturn}
+                        onChange={(event) => setMarketForm({ ...marketForm, todaysReturn: event.target.value })}
+                        className="mt-2 w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm tabular-nums outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
+                        required
+                      />
+                    </label>
+                    <label className="block text-sm font-semibold">
+                      Return (%)
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={marketForm.todaysReturnPercent}
+                        onChange={(event) => setMarketForm({ ...marketForm, todaysReturnPercent: event.target.value })}
+                        className="mt-2 w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm tabular-nums outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
+                        required
+                      />
+                    </label>
+                    <label className="block text-sm font-semibold">
+                      Market status
+                      <select
+                        value={marketForm.marketStatus}
+                        onChange={(event) => setMarketForm({ ...marketForm, marketStatus: event.target.value })}
+                        className="mt-2 w-full rounded-md border border-[#c7ccc0] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
+                      >
+                        <option value="open">Open</option>
+                        <option value="closed">Closed</option>
+                      </select>
+                    </label>
+                  </div>
 
-        {/* Pending Approvals Tab */}
-        {activeTab === 'approvals' && (
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
-            <h2 className="mb-6 text-xl font-semibold text-white">Pending Transaction Approvals</h2>
-            {displayPendingApprovals.length === 0 ? (
-              <p className="py-8 text-center text-slate-400">No pending approvals</p>
-            ) : (
-              <div className="space-y-4">
-                {displayPendingApprovals.map((transaction) => (
-                  <div
-                    key={transaction.id}
-                    className="flex items-center justify-between rounded-xl border border-yellow-500/20 bg-yellow-500/10 p-6"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-yellow-500/20">
-                        <span className="text-2xl">⏱</span>
-                      </div>
+                  <label className="mt-4 block text-sm font-semibold">
+                    Market note
+                    <input
+                      type="text"
+                      value={marketForm.marketMessage}
+                      onChange={(event) => setMarketForm({ ...marketForm, marketMessage: event.target.value })}
+                      maxLength="160"
+                      className="mt-2 w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
+                    />
+                  </label>
+
+                  <div className="mt-6 border-t border-[#ECEDE7] pt-5">
+                    <div className="flex flex-wrap items-end justify-between gap-3">
                       <div>
-                        <div className="font-semibold text-white">{transaction.description}</div>
-                        <div className="text-sm text-slate-300">
-                          {transaction.userName} • {transaction.date} • {transaction.category}
-                        </div>
-                        <div className="mt-1 text-xs text-slate-400">
-                          From: {transaction.accountType}
-                        </div>
+                        <p className="text-sm font-semibold">Watchlist daily change (%)</p>
+                        <p className="mt-1 text-xs text-[#8a9081]">Controls the price and percentage shown for each symbol on the customer stock page.</p>
                       </div>
+                      <button
+                        type="button"
+                        onClick={handleResetWatchlistChanges}
+                        className="text-xs font-semibold text-[#5b6459] underline decoration-[#c7ccc0] underline-offset-4 hover:text-[#10182B]"
+                      >
+                        Reset all to 0%
+                      </button>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className={`text-2xl font-semibold ${transaction.amount < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                        {transaction.amount < 0 ? '-' : '+'}$
-                        {Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+
+                    <div className="mt-4 overflow-hidden border border-[#ECEDE7]">
+                      <div className="grid grid-cols-[64px_minmax(0,1fr)_140px] gap-3 border-b border-[#ECEDE7] bg-[#FAFAF7] px-4 py-2 text-xs font-semibold uppercase tracking-wide text-[#8a9081]">
+                        <span>Symbol</span>
+                        <span>Company</span>
+                        <span className="text-right">Change (%)</span>
                       </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleApprove(transaction.id)}
-                          className="rounded-lg bg-green-500 px-4 py-2 text-sm font-semibold text-white hover:bg-green-400"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => handleReject(transaction.id)}
-                          className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-400"
-                        >
-                          Reject
-                        </button>
+                      <div className="divide-y divide-[#ECEDE7]">
+                        {marketWatchlistSymbols.map((symbol) => {
+                          const rawValue = marketForm.watchlistChanges[symbol] ?? '';
+                          const numericValue = Number(rawValue);
+                          const isNegative = Number.isFinite(numericValue) && numericValue < 0;
+                          const isPositive = Number.isFinite(numericValue) && numericValue > 0;
+                          return (
+                            <div key={symbol} className="grid grid-cols-[64px_minmax(0,1fr)_140px] items-center gap-3 px-4 py-2.5">
+                              <span className="font-semibold">{symbol}</span>
+                              <span className="truncate text-sm text-[#5b6459]">{marketWatchlistNames[symbol] || '—'}</span>
+                              <div className="flex items-center justify-end">
+                                <div className={`flex items-center gap-1 rounded-md border px-2 py-1.5 focus-within:border-[#163B2E] focus-within:ring-2 focus-within:ring-[#163B2E]/15 ${
+                                  isNegative ? 'border-[#e3b3b3]' : isPositive ? 'border-[#bcdcc6]' : 'border-[#c7ccc0]'
+                                }`}>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    inputMode="decimal"
+                                    value={rawValue}
+                                    onChange={(event) => setMarketForm({ ...marketForm, watchlistChanges: { ...marketForm.watchlistChanges, [symbol]: event.target.value } })}
+                                    placeholder="0.00"
+                                    className={`w-16 bg-transparent text-right text-sm tabular-nums outline-none ${
+                                      isNegative ? 'text-[#9B3232]' : isPositive ? 'text-[#1E7245]' : ''
+                                    }`}
+                                  />
+                                  <span className="text-xs text-[#8a9081]">%</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* Transaction Management Tab */}
-        {activeTab === 'transactions' && (
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-white">Transaction Management</h2>
-              <button
-                onClick={() => setShowAddTransactionModal(true)}
-                className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300"
-              >
-                + Add Transaction
-              </button>
-            </div>
-            {displayUsers.length === 0 ? (
-              <p className="py-8 text-center text-slate-400">No users found</p>
-            ) : (
-              <div className="space-y-6">
-                {displayUsers.map((user) => (
-                  <div key={user.id} className="rounded-xl border border-white/5 bg-white/5 p-6">
-                    <div className="mb-4 flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500" />
-                      <div>
-                        <h3 className="font-semibold text-white">{user.name}</h3>
-                        <p className="text-xs text-slate-400">{user.email}</p>
-                      </div>
-                    </div>
-                    {user.transactions && user.transactions.length > 0 ? (
-                      <div className="space-y-2">
-                        {user.transactions.slice(0, 5).map((transaction, idx) => (
-                          <div
-                            key={`${transaction.id}-${idx}`}
-                            className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 p-4"
-                          >
-                            <div className="flex-1">
-                              <div className="text-sm font-semibold text-white">{transaction.description}</div>
-                              <div className="text-xs text-slate-400">
-                                {transaction.date} • {transaction.category} • {transaction.accountType}
+                  <div className="mt-6 flex flex-wrap items-center gap-4 border-t border-[#ECEDE7] pt-5">
+                    <button
+                      type="submit"
+                      disabled={marketSaving}
+                      className="rounded-md bg-[#163B2E] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0F2C22] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {marketSaving ? 'Saving…' : 'Save market settings'}
+                    </button>
+                    <span className="text-sm text-[#5b6459]">
+                      Current: <span className={marketSettings.todaysReturn >= 0 ? 'text-[#1E7245]' : 'text-[#9B3232]'}>
+                        {marketSettings.todaysReturn >= 0 ? '+' : '-'}${Math.abs(Number(marketSettings.todaysReturn || 0)).toFixed(2)}
+                      </span> ({Number(marketSettings.todaysReturnPercent || 0).toFixed(2)}%)
+                    </span>
+                  </div>
+                </form>
+              </section>
+            )}
+
+            {/* User Management Tab */}
+            {activeTab === 'users' && (
+              <section className="border border-[#D9DBD2] bg-white">
+                <div className="border-b border-[#D9DBD2] px-5 py-5 sm:px-6">
+                  <h2 className="text-lg font-semibold">All users</h2>
+                </div>
+                {loading ? (
+                  <p className="px-6 py-10 text-center text-sm text-[#5b6459]">Loading users…</p>
+                ) : displayUsers.length === 0 ? (
+                  <p className="px-6 py-10 text-center text-sm text-[#5b6459]">No users found. Please register users first.</p>
+                ) : (
+                  <div className="divide-y divide-[#ECEDE7]">
+                    {displayUsers.map((user) => (
+                      <div key={user.id} className="px-5 py-5 sm:px-6">
+                        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-3 flex items-center gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-[#10182B] text-xs font-bold text-white">
+                                {(user.name || '?').slice(0, 2).toUpperCase()}
+                              </div>
+                              <div className="min-w-0">
+                                <h3 className="truncate font-semibold">{user.name}</h3>
+                                <p className="truncate text-sm text-[#5b6459]">{user.email}</p>
+                                <p className="text-xs text-[#8a9081]">Account: {user.accountNumber}</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-4">
-                              <div className={`text-lg font-semibold ${transaction.amount < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                {transaction.amount < 0 ? '-' : '+'}${Math.abs(transaction.amount).toFixed(2)}
+
+                            {editingUser === user.id ? (
+                              <div className="grid gap-3 md:grid-cols-3">
+                                <div>
+                                  <label className="mb-1 block text-xs text-[#5b6459]">Checking</label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={editValues.checking}
+                                    onChange={(e) => setEditValues({ ...editValues, checking: e.target.value })}
+                                    className="w-full rounded-md border border-[#c7ccc0] px-3 py-2 text-sm tabular-nums outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="mb-1 block text-xs text-[#5b6459]">Savings</label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={editValues.savings}
+                                    onChange={(e) => setEditValues({ ...editValues, savings: e.target.value })}
+                                    className="w-full rounded-md border border-[#c7ccc0] px-3 py-2 text-sm tabular-nums outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
+                                  />
+                                </div>
+                                <div className="flex items-end gap-2">
+                                  <button onClick={() => handleSave(user.id)} className="rounded-md bg-[#163B2E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0F2C22]">
+                                    Save
+                                  </button>
+                                  <button onClick={() => setEditingUser(null)} className="rounded-md border border-[#c7ccc0] px-4 py-2 text-sm font-semibold hover:bg-[#FAFAF7]">
+                                    Cancel
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleEditTransaction(transaction, user.id)}
-                                  className="rounded-lg border border-blue-500/50 px-3 py-1 text-xs font-semibold text-blue-400 hover:bg-blue-500/10"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteTransaction(user.id, transaction.id)}
-                                  className="rounded-lg border border-red-500/50 px-3 py-1 text-xs font-semibold text-red-400 hover:bg-red-500/10"
-                                >
-                                  Delete
-                                </button>
+                            ) : (
+                              <div className="grid gap-3 sm:grid-cols-3">
+                                <div className="border border-[#ECEDE7] bg-[#FAFAF7] p-3">
+                                  <p className="text-xs text-[#8a9081]">Total balance</p>
+                                  <p className="text-lg font-semibold tabular-nums">${(user.balance || 0).toFixed(2)}</p>
+                                </div>
+                                <div className="border border-[#ECEDE7] bg-[#FAFAF7] p-3">
+                                  <p className="text-xs text-[#8a9081]">Checking</p>
+                                  <p className="text-lg font-semibold tabular-nums">${(user.checking || 0).toFixed(2)}</p>
+                                </div>
+                                <div className="border border-[#ECEDE7] bg-[#FAFAF7] p-3">
+                                  <p className="text-xs text-[#8a9081]">Savings</p>
+                                  <p className="text-lg font-semibold tabular-nums">${(user.savings || 0).toFixed(2)}</p>
+                                </div>
                               </div>
-                            </div>
+                            )}
+
+                            <p className="mt-3 text-xs text-[#8a9081]">
+                              {user.transactions?.length || 0} transactions · {user.pendingTransactions?.length || 0} pending
+                            </p>
                           </div>
+
+                          {editingUser !== user.id && (
+                            <button
+                              onClick={() => handleEdit(user)}
+                              className="shrink-0 rounded-md border border-[#c7ccc0] px-4 py-2 text-sm font-semibold hover:bg-[#FAFAF7]"
+                            >
+                              Edit
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Pending Approvals Tab */}
+            {activeTab === 'approvals' && (
+              <section className="border border-[#D9DBD2] bg-white">
+                <div className="border-b border-[#D9DBD2] px-5 py-5 sm:px-6">
+                  <h2 className="text-lg font-semibold">Pending transaction approvals</h2>
+                </div>
+                {displayPendingApprovals.length === 0 ? (
+                  <p className="px-6 py-10 text-center text-sm text-[#5b6459]">No pending approvals</p>
+                ) : (
+                  <div className="divide-y divide-[#ECEDE7]">
+                    {displayPendingApprovals.map((transaction) => (
+                      <div key={transaction.id} className="flex flex-col gap-4 border-l-2 border-[#A9843C] bg-[#FBF6EC] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                        <div className="min-w-0">
+                          <p className="font-semibold">{transaction.description}</p>
+                          <p className="text-sm text-[#5b6459]">{transaction.userName} · {transaction.date} · {transaction.category}</p>
+                          <p className="mt-0.5 text-xs text-[#8a9081]">From: {transaction.accountType}</p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-4">
+                          <span className={`text-lg font-semibold tabular-nums ${transaction.amount < 0 ? 'text-[#9B3232]' : 'text-[#1E7245]'}`}>
+                            {transaction.amount < 0 ? '-' : '+'}${Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </span>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleApprove(transaction.id)} className="rounded-md bg-[#163B2E] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#0F2C22]">
+                              Approve
+                            </button>
+                            <button onClick={() => handleReject(transaction.id)} className="rounded-md border border-[#9B3232] px-3 py-1.5 text-sm font-semibold text-[#9B3232] hover:bg-[#fbf1f1]">
+                              Reject
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Transaction Management Tab */}
+            {activeTab === 'transactions' && (
+              <section className="border border-[#D9DBD2] bg-white">
+                <div className="flex items-center justify-between border-b border-[#D9DBD2] px-5 py-5 sm:px-6">
+                  <h2 className="text-lg font-semibold">Transaction management</h2>
+                  <button
+                    onClick={() => setShowAddTransactionModal(true)}
+                    className="rounded-md bg-[#163B2E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0F2C22]"
+                  >
+                    + Add transaction
+                  </button>
+                </div>
+                {displayUsers.length === 0 ? (
+                  <p className="px-6 py-10 text-center text-sm text-[#5b6459]">No users found</p>
+                ) : (
+                  <div className="divide-y divide-[#ECEDE7]">
+                    {displayUsers.map((user) => (
+                      <div key={user.id} className="px-5 py-5 sm:px-6">
+                        <div className="mb-3 flex items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#10182B] text-xs font-bold text-white">
+                            {(user.name || '?').slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="truncate font-semibold">{user.name}</h3>
+                            <p className="truncate text-xs text-[#8a9081]">{user.email}</p>
+                          </div>
+                        </div>
+                        {user.transactions && user.transactions.length > 0 ? (
+                          <div className="divide-y divide-[#ECEDE7] border border-[#ECEDE7]">
+                            {user.transactions.slice(0, 5).map((transaction, idx) => (
+                              <div key={`${transaction.id}-${idx}`} className="flex items-center justify-between gap-4 px-4 py-3">
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-sm font-semibold">{transaction.description}</p>
+                                  <p className="text-xs text-[#8a9081]">{transaction.date} · {transaction.category} · {transaction.accountType}</p>
+                                </div>
+                                <div className="flex shrink-0 items-center gap-3">
+                                  <span className={`text-sm font-semibold tabular-nums ${transaction.amount < 0 ? 'text-[#9B3232]' : 'text-[#1E7245]'}`}>
+                                    {transaction.amount < 0 ? '-' : '+'}${Math.abs(transaction.amount).toFixed(2)}
+                                  </span>
+                                  <div className="flex gap-1.5">
+                                    <button onClick={() => handleEditTransaction(transaction, user.id)} className="rounded-md border border-[#c7ccc0] px-2.5 py-1 text-xs font-semibold hover:bg-[#FAFAF7]">
+                                      Edit
+                                    </button>
+                                    <button onClick={() => handleDeleteTransaction(user.id, transaction.id)} className="rounded-md border border-[#9B3232] px-2.5 py-1 text-xs font-semibold text-[#9B3232] hover:bg-[#fbf1f1]">
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="py-3 text-center text-sm text-[#8a9081]">No transactions</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* Messages Tab */}
+            {activeTab === 'messages' && (
+              <section className="border border-[#D9DBD2] bg-white">
+                <div className="flex items-center justify-between border-b border-[#D9DBD2] px-5 py-5 sm:px-6">
+                  <h2 className="text-lg font-semibold">Send messages to users</h2>
+                  <button
+                    onClick={() => {
+                      setShowSendMessageModal(true);
+                      setSelectedUserId('');
+                      setAdminMessage('');
+                    }}
+                    className="rounded-md bg-[#163B2E] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0F2C22]"
+                  >
+                    + Send message
+                  </button>
+                </div>
+                <div className="px-5 py-5 sm:px-6">
+                  <p className="mb-4 text-sm text-[#5b6459]">Use this feature to send important notifications and information to users. Messages will appear on their profile.</p>
+                  {displayUsers.length === 0 ? (
+                    <p className="py-8 text-center text-sm text-[#8a9081]">No users available</p>
+                  ) : (
+                    <div className="divide-y divide-[#ECEDE7] border border-[#ECEDE7]">
+                      {displayUsers.map((user) => (
+                        <div key={user.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-semibold">{user.name}</p>
+                            <p className="truncate text-xs text-[#8a9081]">{user.email}</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setSelectedUserId(user.id);
+                              setShowSendMessageModal(true);
+                              setAdminMessage('');
+                            }}
+                            className="shrink-0 rounded-md bg-[#163B2E] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#0F2C22]"
+                          >
+                            Send message
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* User Chat Tab */}
+            {activeTab === 'chat' && (
+              <section className="border border-[#D9DBD2] bg-white">
+                <div className="border-b border-[#D9DBD2] px-5 py-5 sm:px-6">
+                  <h2 className="text-lg font-semibold">User chat support</h2>
+                </div>
+                <div className="grid min-h-[60vh] gap-px bg-[#D9DBD2] md:h-[600px] md:grid-cols-3">
+                  {/* Conversations List */}
+                  <div className="overflow-y-auto bg-white md:col-span-1">
+                    <p className="px-4 pt-4 text-xs font-semibold uppercase tracking-wide text-[#8a9081]">Active conversations ({conversations.length})</p>
+                    {conversations.length === 0 ? (
+                      <p className="px-4 py-6 text-sm text-[#8a9081]">No conversations yet</p>
+                    ) : (
+                      <div className="mt-2 divide-y divide-[#ECEDE7]">
+                        {conversations.map((conv) => (
+                          <button
+                            key={conv._id}
+                            onClick={() => {
+                              setSelectedConversationId(conv._id);
+                              fetchConversationMessages(conv._id);
+                            }}
+                            className={`block w-full border-l-2 px-4 py-3 text-left transition ${
+                              selectedConversationId === conv._id ? 'border-[#A9843C] bg-[#FAFAF7]' : 'border-transparent hover:bg-[#FAFAF7]'
+                            }`}
+                          >
+                            <p className="text-sm font-semibold">{conv.userName}</p>
+                            <p className="mt-0.5 text-xs text-[#8a9081]">{conv.userEmail}</p>
+                            {conv.lastMessage && <p className="mt-1 truncate text-xs text-[#8a9081]">{conv.lastMessage}</p>}
+                          </button>
                         ))}
                       </div>
-                    ) : (
-                      <p className="py-4 text-center text-sm text-slate-400">No transactions</p>
                     )}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* Messages Tab */}
-        {activeTab === 'messages' && (
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-white">Send Messages to Users</h2>
-              <button
-                onClick={() => {
-                  setShowSendMessageModal(true);
-                  setSelectedUserId('');
-                  setAdminMessage('');
-                }}
-                className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300"
-              >
-                + Send Message
-              </button>
-            </div>
-            <div className="rounded-xl border border-white/5 bg-white/5 p-6">
-              <p className="mb-4 text-sm text-slate-300">Use this feature to send important notifications and information to users. Messages will appear on their profile.</p>
-              <div className="space-y-2">
-                {displayUsers.length === 0 ? (
-                  <p className="py-8 text-center text-slate-400">No users available</p>
-                ) : (
-                  displayUsers.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between rounded-lg border border-white/5 bg-white/10 p-4">
-                      <div>
-                        <p className="font-semibold text-white">{user.name}</p>
-                        <p className="text-xs text-slate-400">{user.email}</p>
+                  {/* Chat Messages */}
+                  <div className="flex min-h-0 flex-col bg-[#FAFAF7] md:col-span-2">
+                    {!selectedConversationId ? (
+                      <div className="flex flex-1 items-center justify-center text-sm text-[#8a9081]">
+                        <p>Select a conversation to view messages</p>
                       </div>
-                      <button
-                        onClick={() => {
-                          setSelectedUserId(user.id);
-                          setShowSendMessageModal(true);
-                          setAdminMessage('');
-                        }}
-                        className="rounded-lg bg-cyan-400 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-cyan-300"
-                      >
-                        Send Message
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* User Chat Tab */}
-        {activeTab === 'chat' && (
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
-            <h2 className="mb-6 text-xl font-semibold text-white">User Chat Support</h2>
-            <div className="grid min-h-[60vh] gap-6 md:h-[600px] md:grid-cols-3">
-              {/* Conversations List */}
-              <div className="space-y-2 overflow-y-auto md:col-span-1 md:min-h-0">
-                <h3 className="text-sm font-semibold text-slate-300 mb-3">Active Conversations ({conversations.length})</h3>
-                {conversations.length === 0 ? (
-                  <p className="text-sm text-slate-400">No conversations yet</p>
-                ) : (
-                  conversations.map((conv) => (
-                    <button
-                      key={conv._id}
-                      onClick={() => {
-                        setSelectedConversationId(conv._id);
-                        fetchConversationMessages(conv._id);
-                      }}
-                      className={`w-full text-left px-4 py-3 rounded-lg transition ${
-                        selectedConversationId === conv._id
-                          ? 'bg-cyan-500/20 border border-cyan-500/50'
-                          : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                      }`}
-                    >
-                      <p className="font-semibold text-white text-sm">{conv.userName}</p>
-                      <p className="text-xs text-slate-400 mt-1">{conv.userEmail}</p>
-                      {conv.lastMessage && (
-                        <p className="text-xs text-slate-500 mt-1 truncate">{conv.lastMessage}</p>
-                      )}
-                    </button>
-                  ))
-                )}
-              </div>
-
-              {/* Chat Messages */}
-              <div className="md:col-span-2 border border-white/10 rounded-lg bg-slate-800/50 flex flex-col min-h-0">
-                {!selectedConversationId ? (
-                  <div className="flex-1 flex items-center justify-center text-slate-400">
-                    <p>Select a conversation to view messages</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
-                      {conversationMessages.length === 0 ? (
-                        <p className="text-center text-slate-400 py-8">No messages yet</p>
-                      ) : (
-                        conversationMessages.map((msg, idx) => (
-                          <div
-                            key={idx}
-                            className={`flex ${msg.senderRole === 'admin' ? 'justify-end' : 'justify-start'}`}
-                          >
-                            <div
-                              className={`max-w-xs px-4 py-2 rounded-lg text-sm ${
-                                msg.senderRole === 'admin'
-                                  ? 'bg-cyan-500 text-white'
-                                  : 'bg-slate-700 text-slate-100'
-                              }`}
+                    ) : (
+                      <>
+                        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+                          {conversationMessages.length === 0 ? (
+                            <p className="py-8 text-center text-sm text-[#8a9081]">No messages yet</p>
+                          ) : (
+                            conversationMessages.map((msg, idx) => (
+                              <div key={idx} className={`flex ${msg.senderRole === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-xs px-4 py-2 text-sm ${msg.senderRole === 'admin' ? 'bg-[#163B2E] text-white' : 'border border-[#D9DBD2] bg-white'}`}>
+                                  <div className={`mb-1 text-xs font-semibold ${msg.senderRole === 'admin' ? 'text-[#c9d6cd]' : 'text-[#8a9081]'}`}>{msg.senderName}</div>
+                                  {msg.message}
+                                  <div className={`mt-1 text-xs ${msg.senderRole === 'admin' ? 'text-[#c9d6cd]' : 'text-[#8a9081]'}`}>
+                                    {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        <div className="border-t border-[#D9DBD2] p-3">
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={chatInput}
+                              onChange={(e) => setChatInput(e.target.value)}
+                              onKeyPress={(e) => e.key === 'Enter' && handleSendChatMessage()}
+                              placeholder="Type a message…"
+                              className="flex-1 rounded-md border border-[#c7ccc0] bg-white px-3 py-2 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
+                            />
+                            <button
+                              onClick={handleSendChatMessage}
+                              disabled={!chatInput.trim()}
+                              className="rounded-md bg-[#163B2E] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0F2C22] disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                              <div className="text-xs font-semibold mb-1 opacity-70">
-                                {msg.senderName}
-                              </div>
-                              {msg.message}
-                              <div className="text-xs mt-1 opacity-70">
-                                {new Date(msg.createdAt).toLocaleTimeString([], { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                })}
-                              </div>
-                            </div>
+                              Send
+                            </button>
                           </div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Chat Input */}
-                    <div className="border-t border-slate-700 p-3">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={chatInput}
-                          onChange={(e) => setChatInput(e.target.value)}
-                          onKeyPress={(e) => e.key === 'Enter' && handleSendChatMessage()}
-                          placeholder="Type a message..."
-                          className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400"
-                        />
-                        <button
-                          onClick={handleSendChatMessage}
-                          disabled={!chatInput.trim()}
-                          className="rounded-lg bg-cyan-500 hover:bg-cyan-600 disabled:opacity-50 px-4 py-2 text-white font-semibold transition"
-                        >
-                          Send
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Recent Activity Tab */}
-        {activeTab === 'activity' && (
-          <div className="rounded-2xl border border-white/5 bg-white/5 p-6">
-            <h2 className="mb-6 text-xl font-semibold text-white">Recent System Activity</h2>
-            <div className="space-y-4">
-              {displayUsers.flatMap(user => 
-                user.transactions.slice(0, 3).map(t => ({
-                  ...t,
-                  userName: user.name,
-                  userEmail: user.email,
-                }))
-              ).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 20).map((transaction, idx) => (
-                <div
-                  key={`${transaction.id}-${idx}`}
-                  className="flex items-center justify-between border-b border-white/5 pb-4 last:border-0"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/5">
-                      <span className="text-lg">{transaction.amount < 0 ? '↓' : '↑'}</span>
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-white">{transaction.description}</div>
-                      <div className="text-xs text-slate-400">
-                        {transaction.userName} ({transaction.userEmail}) • {transaction.date}
-                      </div>
-                    </div>
-                  </div>
-                  <div className={`text-lg font-semibold ${transaction.amount < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                    {transaction.amount < 0 ? '-' : '+'}$
-                    {Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
+              </section>
+            )}
+
+            {/* Recent Activity Tab */}
+            {activeTab === 'activity' && (
+              <section className="border border-[#D9DBD2] bg-white">
+                <div className="border-b border-[#D9DBD2] px-5 py-5 sm:px-6">
+                  <h2 className="text-lg font-semibold">Recent system activity</h2>
+                </div>
+                <div className="divide-y divide-[#ECEDE7]">
+                  {displayUsers.flatMap((user) =>
+                    (user.transactions || []).slice(0, 3).map((t) => ({
+                      ...t,
+                      userName: user.name,
+                      userEmail: user.email,
+                    }))
+                  ).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 20).map((transaction, idx) => (
+                    <div key={`${transaction.id}-${idx}`} className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+                      <div className="flex min-w-0 items-center gap-4">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center border border-[#ECEDE7] bg-[#FAFAF7] text-base">
+                          {transaction.amount < 0 ? '↓' : '↑'}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold">{transaction.description}</p>
+                          <p className="truncate text-xs text-[#8a9081]">{transaction.userName} ({transaction.userEmail}) · {transaction.date}</p>
+                        </div>
+                      </div>
+                      <span className={`shrink-0 text-base font-semibold tabular-nums ${transaction.amount < 0 ? 'text-[#9B3232]' : 'text-[#1E7245]'}`}>
+                        {transaction.amount < 0 ? '-' : '+'}${Math.abs(transaction.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
-        )}
+        </div>
       </main>
 
       {/* Add Transaction Modal */}
       {showAddTransactionModal && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 sm:items-center">
-          <div className="my-auto w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-5 sm:p-8">
-            <h2 className="mb-6 text-2xl font-semibold text-white">Add Transaction</h2>
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#10182B]/60 p-4 backdrop-blur-sm sm:items-center">
+          <div className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-lg border-t-4 border-[#A9843C] bg-white p-5 shadow-xl sm:p-6">
+            <h2 className="mb-5 text-xl font-semibold">Add transaction</h2>
             <div className="space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-200">Select User</label>
+                <label className="mb-1.5 block text-sm font-semibold">Select user</label>
                 <select
                   value={selectedUserId}
                   onChange={(e) => setSelectedUserId(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50"
+                  className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                   required
                 >
-                  <option value="">Choose a user...</option>
+                  <option value="">Choose a user…</option>
                   {displayUsers.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} ({user.email})
-                    </option>
+                    <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
                   ))}
                 </select>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">Description</label>
+                  <label className="mb-1.5 block text-sm font-semibold">Description</label>
                   <input
                     type="text"
                     value={newTransaction.description}
                     onChange={(e) => setNewTransaction({ ...newTransaction, description: e.target.value })}
-                    placeholder="e.g., Salary Deposit, Grocery Store"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                    placeholder="e.g., Salary deposit, Grocery store"
+                    className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                     required
                   />
                 </div>
-
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">Amount (use - for debit)</label>
+                  <label className="mb-1.5 block text-sm font-semibold">Amount (use - for debit)</label>
                   <input
                     type="number"
                     step="0.01"
                     value={newTransaction.amount}
                     onChange={(e) => setNewTransaction({ ...newTransaction, amount: e.target.value })}
                     placeholder="150.00 or -150.00"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                    className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm tabular-nums outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                     required
                   />
                 </div>
@@ -1079,11 +1146,11 @@ function AdminPage() {
 
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">Category</label>
+                  <label className="mb-1.5 block text-sm font-semibold">Category</label>
                   <select
                     value={newTransaction.category}
                     onChange={(e) => setNewTransaction({ ...newTransaction, category: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50"
+                    className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                   >
                     <option value="Income">Income</option>
                     <option value="Shopping">Shopping</option>
@@ -1093,49 +1160,47 @@ function AdminPage() {
                     <option value="Other">Other</option>
                   </select>
                 </div>
-
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">Account Type</label>
+                  <label className="mb-1.5 block text-sm font-semibold">Account type</label>
                   <select
                     value={newTransaction.accountType}
                     onChange={(e) => setNewTransaction({ ...newTransaction, accountType: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50"
+                    className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                   >
                     <option value="checking">Checking</option>
                     <option value="savings">Savings</option>
                   </select>
                 </div>
-
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">Date (Backdate)</label>
+                  <label className="mb-1.5 block text-sm font-semibold">Date (backdate)</label>
                   <input
                     type="date"
                     value={newTransaction.date}
                     onChange={(e) => setNewTransaction({ ...newTransaction, date: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50"
+                    className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-200">Note (Optional)</label>
+                <label className="mb-1.5 block text-sm font-semibold">Note (optional)</label>
                 <textarea
                   value={newTransaction.note}
                   onChange={(e) => setNewTransaction({ ...newTransaction, note: e.target.value })}
-                  placeholder="Additional details..."
+                  placeholder="Additional details…"
                   rows="2"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                  className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={handleAddTransaction}
                   disabled={transactionSaving}
-                  className="flex-1 rounded-xl bg-cyan-400 py-3 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex-1 rounded-md bg-[#163B2E] py-2.5 text-sm font-semibold text-white transition hover:bg-[#0F2C22] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {transactionSaving ? 'Adding transaction…' : 'Add Transaction'}
+                  {transactionSaving ? 'Adding transaction…' : 'Add transaction'}
                 </button>
                 <button
                   onClick={() => {
@@ -1150,7 +1215,7 @@ function AdminPage() {
                     });
                     setSelectedUserId('');
                   }}
-                  className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-white hover:bg-white/5"
+                  className="flex-1 rounded-md border border-[#c7ccc0] py-2.5 text-sm font-semibold hover:bg-[#FAFAF7]"
                 >
                   Cancel
                 </button>
@@ -1162,32 +1227,31 @@ function AdminPage() {
 
       {/* Edit Transaction Modal */}
       {showEditTransactionModal && selectedTransaction && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-4 sm:items-center">
-          <div className="my-auto w-full max-w-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-white/10 bg-slate-900 p-5 sm:p-8">
-            <h2 className="mb-6 text-2xl font-semibold text-white">Edit Transaction</h2>
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[#10182B]/60 p-4 backdrop-blur-sm sm:items-center">
+          <div className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-lg border-t-4 border-[#A9843C] bg-white p-5 shadow-xl sm:p-6">
+            <h2 className="mb-5 text-xl font-semibold">Edit transaction</h2>
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">Description</label>
+                  <label className="mb-1.5 block text-sm font-semibold">Description</label>
                   <input
                     type="text"
                     value={editTransaction.description}
                     onChange={(e) => setEditTransaction({ ...editTransaction, description: e.target.value })}
-                    placeholder="e.g., Salary Deposit, Grocery Store"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                    placeholder="e.g., Salary deposit, Grocery store"
+                    className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                     required
                   />
                 </div>
-
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">Amount (use - for debit)</label>
+                  <label className="mb-1.5 block text-sm font-semibold">Amount (use - for debit)</label>
                   <input
                     type="number"
                     step="0.01"
                     value={editTransaction.amount}
                     onChange={(e) => setEditTransaction({ ...editTransaction, amount: e.target.value })}
                     placeholder="150.00 or -150.00"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                    className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm tabular-nums outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                     required
                   />
                 </div>
@@ -1195,11 +1259,11 @@ function AdminPage() {
 
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">Category</label>
+                  <label className="mb-1.5 block text-sm font-semibold">Category</label>
                   <select
                     value={editTransaction.category}
                     onChange={(e) => setEditTransaction({ ...editTransaction, category: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50"
+                    className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                   >
                     <option value="Income">Income</option>
                     <option value="Shopping">Shopping</option>
@@ -1209,38 +1273,36 @@ function AdminPage() {
                     <option value="Other">Other</option>
                   </select>
                 </div>
-
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">Account Type</label>
+                  <label className="mb-1.5 block text-sm font-semibold">Account type</label>
                   <select
                     value={editTransaction.accountType}
                     onChange={(e) => setEditTransaction({ ...editTransaction, accountType: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50"
+                    className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                   >
                     <option value="checking">Checking</option>
                     <option value="savings">Savings</option>
                   </select>
                 </div>
-
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">Date</label>
+                  <label className="mb-1.5 block text-sm font-semibold">Date</label>
                   <input
                     type="date"
                     value={editTransaction.date}
                     onChange={(e) => setEditTransaction({ ...editTransaction, date: e.target.value })}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50"
+                    className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                     required
                   />
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={handleUpdateTransaction}
                   disabled={transactionSaving}
-                  className="flex-1 rounded-xl bg-cyan-400 py-3 text-sm font-semibold text-slate-900 hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex-1 rounded-md bg-[#163B2E] py-2.5 text-sm font-semibold text-white transition hover:bg-[#0F2C22] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {transactionSaving ? 'Updating transaction…' : 'Update Transaction'}
+                  {transactionSaving ? 'Updating transaction…' : 'Update transaction'}
                 </button>
                 <button
                   onClick={() => {
@@ -1254,7 +1316,7 @@ function AdminPage() {
                       date: new Date().toISOString().split('T')[0],
                     });
                   }}
-                  className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-white hover:bg-white/5"
+                  className="flex-1 rounded-md border border-[#c7ccc0] py-2.5 text-sm font-semibold hover:bg-[#FAFAF7]"
                 >
                   Cancel
                 </button>
@@ -1266,59 +1328,52 @@ function AdminPage() {
 
       {/* Send Message Modal */}
       {showSendMessageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-900 p-8">
-            <h2 className="mb-6 text-2xl font-semibold text-white">Send Message to User</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#10182B]/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-lg border-t-4 border-[#A9843C] bg-white p-5 shadow-xl sm:p-6">
+            <h2 className="mb-5 text-xl font-semibold">Send message to user</h2>
             <div className="space-y-4">
               {selectedUserId === '' && (
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">Select User</label>
+                  <label className="mb-1.5 block text-sm font-semibold">Select user</label>
                   <select
                     value={selectedUserId}
                     onChange={(e) => setSelectedUserId(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-cyan-300/50"
+                    className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                     required
                   >
-                    <option value="">Choose a user...</option>
+                    <option value="">Choose a user…</option>
                     {displayUsers.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.name} ({user.email})
-                      </option>
+                      <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
                     ))}
                   </select>
                 </div>
               )}
 
               {selectedUserId && (
-                <div className="rounded-lg border border-white/5 bg-white/5 p-3">
-                  <p className="text-sm text-slate-300">
-                    Sending to: <span className="font-semibold text-white">{displayUsers.find(u => u.id === selectedUserId)?.name}</span>
+                <div className="border border-[#ECEDE7] bg-[#FAFAF7] p-3">
+                  <p className="text-sm text-[#5b6459]">
+                    Sending to: <span className="font-semibold text-[#10182B]">{displayUsers.find((u) => u.id === selectedUserId)?.name}</span>
                   </p>
                 </div>
               )}
 
               <div>
-                <label className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-200">
+                <label className="mb-1.5 flex items-center justify-between text-sm font-semibold">
                   <span>Message</span>
-                  <span className={`text-xs ${adminMessage.length > 1000 ? 'text-red-400' : 'text-slate-500'}`}>
-                    {adminMessage.length}/1000
-                  </span>
+                  <span className={`text-xs font-normal ${adminMessage.length > 1000 ? 'text-[#9B3232]' : 'text-[#8a9081]'}`}>{adminMessage.length}/1000</span>
                 </label>
                 <textarea
                   value={adminMessage}
                   onChange={(e) => setAdminMessage(e.target.value.slice(0, 1000))}
-                  placeholder="Enter your message here. This will be displayed on the user's profile..."
+                  placeholder="Enter your message here. This will be displayed on the user's profile…"
                   rows="6"
-                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-slate-400 outline-none focus:border-cyan-300/50"
+                  className="w-full rounded-md border border-[#c7ccc0] px-3 py-2.5 text-sm outline-none focus:border-[#163B2E] focus:ring-2 focus:ring-[#163B2E]/15"
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={handleSendMessage}
-                  className="flex-1 rounded-xl bg-cyan-400 py-3 text-sm font-semibold text-slate-900 hover:bg-cyan-300"
-                >
-                  Send Message
+              <div className="flex gap-3 pt-2">
+                <button onClick={handleSendMessage} className="flex-1 rounded-md bg-[#163B2E] py-2.5 text-sm font-semibold text-white transition hover:bg-[#0F2C22]">
+                  Send message
                 </button>
                 <button
                   onClick={() => {
@@ -1326,7 +1381,7 @@ function AdminPage() {
                     setAdminMessage('');
                     setSelectedUserId('');
                   }}
-                  className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-semibold text-white hover:bg-white/5"
+                  className="flex-1 rounded-md border border-[#c7ccc0] py-2.5 text-sm font-semibold hover:bg-[#FAFAF7]"
                 >
                   Cancel
                 </button>
