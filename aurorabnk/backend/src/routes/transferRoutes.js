@@ -9,11 +9,11 @@ router.use(protect);
 
 // Transfer routes
 router.post('/internal', (req, res, next) => {
-	console.log('[TRANSFER] POST /internal', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id, body: req.body });
+	console.log('[TRANSFER] POST /internal', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id, fromAccount: req.body?.fromAccount, toAccount: req.body?.toAccount });
 	transferController.internalTransfer(req, res, next);
 });
 router.post('/external', (req, res, next) => {
-	console.log('[TRANSFER] POST /external', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id, body: req.body });
+	console.log('[TRANSFER] POST /external', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id, fromAccount: req.body?.fromAccount });
 	transferController.externalTransfer(req, res, next);
 });
 

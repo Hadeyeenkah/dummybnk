@@ -2,7 +2,24 @@
 // This file centralizes all API endpoint configuration
 
 // Use the deployed backend when configured; local development uses the CRA proxy.
-const configuredApiBase = process.env.REACT_APP_API_BASE || process.env.REACT_APP_API_URL || '';
+// Some deployment dashboards (and old local .env files) accidentally save a
+// second protocol, e.g. `http://https://api.example.com`. Normalize it here
+// once so every consumer — including pages that call API_BASE directly — uses
+// a valid URL.
+const normalizeApiBase = (value) => {
+  if (!value || typeof value !== 'string') return '';
+  const trimmed = value.trim();
+  const schemeRun = trimmed.match(/^(?:https?:\/\/)+/i);
+  if (!schemeRun) return trimmed;
+
+  const schemes = schemeRun[0].match(/https?:\/\//gi) || [];
+  const lastScheme = schemes[schemes.length - 1]?.toLowerCase() || '';
+  return `${lastScheme}${trimmed.slice(schemeRun[0].length)}`;
+};
+
+const configuredApiBase = normalizeApiBase(
+  process.env.REACT_APP_API_BASE || process.env.REACT_APP_API_URL || ''
+);
 export const API_BASE = configuredApiBase
   ? `${configuredApiBase.replace(/\/+$/, '')}${configuredApiBase.endsWith('/api') ? '' : '/api'}`
   : '/api';

@@ -48,16 +48,10 @@ exports.protect = async (req, res, next) => {
 			try {
 				const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'dev-access-secret-change-me');
 				const { generateTokens, setAuthCookies } = require('../utils/tokenUtils');
-				const { accessToken: newAccessToken } = generateTokens(decoded.userId);
-				// Set new access token cookie using setAuthCookies for consistency
-				const isProd = process.env.NODE_ENV === 'production';
-				res.cookie('accessToken', newAccessToken, {
-					httpOnly: true,
-					secure: isProd,
-					sameSite: isProd ? 'strict' : 'lax',
-					maxAge: 15 * 60 * 1000,
-					path: '/',
-				});
+				// Use the same cookie policy as login/explicit refresh. The old
+				// inline cookie used SameSite=strict in production, which made a
+				// silently refreshed session fail on the cross-site frontend.
+				setAuthCookies(res, generateTokens(decoded.userId));
 				// Fetch user from DB and attach to req.user
 				const user = await User.findById(decoded.userId);
 				if (!user) {

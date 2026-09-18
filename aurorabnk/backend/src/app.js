@@ -55,7 +55,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'X-Requested-With', 'Idempotency-Key'],
   exposedHeaders: ['Set-Cookie'],
   preflightContinue: false,
   optionsSuccessStatus: 204
@@ -125,6 +125,11 @@ app.use('/api/auth', authRoutes);
 // Mount transaction routes
 const transactionRoutes = require('./routes/transactionRoutes');
 app.use('/api/transactions', transactionRoutes);
+
+// Money-transfer routes must be mounted before the /api fallback. Without
+// this, the transfer screen receives a JSON 404 for every submission.
+const transferRoutes = require('./routes/transferRoutes');
+app.use('/api/transfers', transferRoutes);
 
 // Mount bill payment routes before the API fallback handler.
 // The Bills page uses GET/POST /api/bills for payment history and new payments.

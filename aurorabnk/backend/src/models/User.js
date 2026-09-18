@@ -176,6 +176,19 @@ const UserSchema = new mongoose.Schema(
       default: 12.5
     },
 
+    // Optional admin-set override for this user's "today's return" on the
+    // stock market page. When null (the default), the return is calculated
+    // automatically from this user's actual submitted paper trades ×
+    // MarketSettings.todaysReturnPercent (see routes/market.js /overview).
+    // When an admin sets this to a number, that dollar figure is shown
+    // instead, with its % derived live from what this user currently has
+    // on trade — so it's always in sync with real trade activity rather
+    // than a percentage frozen at the moment the admin saved it.
+    todaysReturnOverride: {
+      type: Number,
+      default: null
+    },
+
     // Admin messages/notifications for users
     messages: [
       {

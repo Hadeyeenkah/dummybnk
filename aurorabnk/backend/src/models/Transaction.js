@@ -34,7 +34,10 @@ const TransactionSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ['pending', 'completed', 'rejected'],
+      // `processing` is an internal, short-lived state used while an
+      // administrator settles a paired transfer.  It prevents a second
+      // approval request from applying the same transfer twice.
+      enum: ['pending', 'processing', 'completed', 'rejected'],
       default: 'completed',
     },
 
@@ -50,6 +53,15 @@ const TransactionSchema = new mongoose.Schema(
       bankName: String,
       routingNumber: String,
       accountNumber: String,
+      recipientEmail: String,
+      recipientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      recipientAccountNumber: String,
+      recipientRoutingNumber: String,
+      senderName: String,
+      senderEmail: String,
+      senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      senderAccountNumber: String,
+      senderRoutingNumber: String,
     },
 
     note: {
@@ -65,6 +77,28 @@ const TransactionSchema = new mongoose.Schema(
     reference: {
       type: String,
     },
+
+    // A transfer has two ledger entries (a debit and a credit).  `reference`
+    // stays unique per ledger entry, while this value is the shared,
+    // customer-facing transfer reference used to settle the pair together.
+    transferReference: {
+      type: String,
+      index: true,
+    },
+
+    transferRole: {
+      type: String,
+      enum: ['debit', 'credit'],
+    },
+
+    // The browser supplies this once for a submission and reuses it on a
+    // network retry.  It makes POST /transfers safe to retry without creating
+    // another transfer.
+    idempotencyKey: {
+      type: String,
+      trim: true,
+      maxlength: 128,
+    },
   },
   { timestamps: true }
 );
@@ -72,6 +106,14 @@ const TransactionSchema = new mongoose.Schema(
 // Index for faster queries
 TransactionSchema.index({ userId: 1, date: -1 });
 TransactionSchema.index({ status: 1 });
+TransactionSchema.index({ transferReference: 1, transferRole: 1 });
+TransactionSchema.index(
+  { userId: 1, idempotencyKey: 1, transferRole: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { idempotencyKey: { $exists: true } },
+  }
+);
 TransactionSchema.index({ reference: 1, userId: 1 }, { unique: true });
 
 module.exports = mongoose.model('Transaction', TransactionSchema);

@@ -891,6 +891,9 @@ export const BankProvider = ({ children }) => {
     pendingApprovals,
     login,
     logout,
+    // Consumers that mutate account data outside the context (for example a
+    // paper stock order) can refresh the shared dashboard balance safely.
+    refreshProfile: fetchProfile,
     updateProfile,
     addTransaction,
     approveTransaction,

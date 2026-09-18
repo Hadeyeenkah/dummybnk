@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
 import AuroraBankLogo from '../components/AuroraBankLogo';
@@ -6,10 +6,11 @@ import { API_BASE } from '../config';
 import '../App.css';
 
 function TransferPage() {
-  const { currentUser, transferMoney } = useBankContext();
+  const { currentUser, refreshProfile } = useBankContext();
   const navigate = useNavigate();
   const apiBase = API_BASE;
-  const AURORA_ROUTING = '026009593';
+  const recipientLookupVersion = useRef(0);
+  const submission = useRef({ fingerprint: '', idempotencyKey: '' });
   const [formData, setFormData] = useState({
     transferType: 'external',
     recipientName: '',
@@ -38,40 +39,94 @@ function TransferPage() {
     window.print();
   };
 
-  // Lookup recipient by email
-  const handleRecipientLookup = async (email, accountNumber, routingNumber) => {
-    // Skip lookup for account/routing flow to allow any account number without validation
-    if (!email) {
-      return;
-    }
+  const getAuthHeaders = (additionalHeaders = {}) => {
+    const headers = { ...additionalHeaders };
+    const accessToken = localStorage.getItem('accessToken');
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    return headers;
+  };
 
-    if (!email && !accountNumber) {
+  const refreshAccessToken = async () => {
+    const refreshToken = localStorage.getItem('refreshToken');
+    const response = await fetch(`${apiBase}/auth/refresh-token`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      // Cookie-based sessions ignore this field. It is only used by the
+      // existing Safari fallback when third-party cookies are unavailable.
+      body: JSON.stringify(refreshToken ? { refreshToken } : {}),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return false;
+
+    if (data.tokens?.accessToken) localStorage.setItem('accessToken', data.tokens.accessToken);
+    if (data.tokens?.refreshToken) localStorage.setItem('refreshToken', data.tokens.refreshToken);
+    return true;
+  };
+
+  // The transfer endpoints accept cookie sessions and Authorization headers.
+  // Retry exactly once after a refresh so an expired Safari/local-storage
+  // access token does not turn a valid transfer into a misleading failure.
+  const fetchWithAuth = async (url, options = {}) => {
+    const request = () => fetch(url, {
+      ...options,
+      credentials: 'include',
+      headers: getAuthHeaders(options.headers),
+    });
+
+    const response = await request();
+    if (response.status !== 401) return response;
+
+    try {
+      return (await refreshAccessToken()) ? request() : response;
+    } catch (_) {
+      return response;
+    }
+  };
+
+  const createIdempotencyKey = () => {
+    if (typeof window !== 'undefined' && window.crypto?.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+    return `transfer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  };
+
+  // Lookup an Aurora recipient by email or account/routing number. A request
+  // version prevents a slower earlier lookup from overwriting newer input.
+  const handleRecipientLookup = async (email, accountNumber, routingNumber) => {
+    const lookupVersion = ++recipientLookupVersion.current;
+    const normalizedEmail = String(email || '').trim();
+    const normalizedAccount = String(accountNumber || '').trim();
+    const normalizedRouting = String(routingNumber || '').trim();
+
+    if (!normalizedEmail && !normalizedAccount) {
       setRecipientFound(null);
       return;
     }
 
-    if (email && !email.includes('@')) {
+    if (normalizedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setRecipientFound(null);
+      return;
+    }
+
+    if (!normalizedEmail && (normalizedAccount.length !== 12 || normalizedRouting.length !== 9)) {
       setRecipientFound(null);
       return;
     }
 
     try {
       let url = `${apiBase}/auth/lookup?`;
-      if (email) {
-        url += `email=${encodeURIComponent(email)}`;
-      } else if (accountNumber) {
-        url += `accountNumber=${encodeURIComponent(accountNumber)}`;
-        if (routingNumber) {
-          url += `&routingNumber=${encodeURIComponent(routingNumber)}`;
-        }
+      if (normalizedEmail) {
+        url += `email=${encodeURIComponent(normalizedEmail)}`;
+      } else {
+        url += `accountNumber=${encodeURIComponent(normalizedAccount)}&routingNumber=${encodeURIComponent(normalizedRouting)}`;
       }
 
-      const res = await fetch(url, {
-        credentials: 'include',
-      });
+      const res = await fetchWithAuth(url);
+      if (lookupVersion !== recipientLookupVersion.current) return;
       
       if (res.ok) {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (data.user) {
           const found = {
             name: `${data.user.firstName} ${data.user.lastName}`,
@@ -79,8 +134,7 @@ function TransferPage() {
             accountNumber: data.user.accountNumber,
             routingNumber: data.user.routingNumber,
           };
-          const AURORA_ROUTING = '026009593';
-          const isSameBank = String(found.routingNumber) === AURORA_ROUTING;
+          const isSameBank = String(found.routingNumber) === '026009593';
 
           setRecipientFound({ ...found, isSameBank });
 
@@ -107,14 +161,14 @@ function TransferPage() {
         setRecipientFound(null);
       }
     } catch (err) {
-      setRecipientFound(null);
+      if (lookupVersion === recipientLookupVersion.current) setRecipientFound(null);
     }
   };
 
   const buildReceipt = (data, transferType, form) => ({
     reference: data.transfer?.reference || `REF-${Date.now()}`,
     date: new Date(data.transfer?.date || Date.now()).toLocaleString(),
-    amount: data.transfer?.amount || parseFloat(form.amount),
+    amount: data.transfer?.amount ?? parseFloat(form.amount),
     status: data.transfer?.status || (transferType === 'external' ? 'pending' : 'completed'),
     fromAccount: form.fromAccount,
     toAccount: transferType === 'internal' ? form.toAccount : undefined,
@@ -122,8 +176,8 @@ function TransferPage() {
       ? {
           name: data.transfer?.recipientName || form.recipientName,
           email: data.transfer?.recipientEmail || form.recipientEmail,
-          accountNumber: form.recipientAccountNumber,
-          routingNumber: form.recipientRoutingNumber,
+          accountNumber: data.transfer?.recipientAccountNumber || form.recipientAccountNumber,
+          routingNumber: data.transfer?.recipientRoutingNumber || form.recipientRoutingNumber,
         }
       : undefined,
     note: form.note,
@@ -186,10 +240,17 @@ function TransferPage() {
         };
       }
 
-      const res = await fetch(endpoint, {
+      const fingerprint = JSON.stringify({ transferType: formData.transferType, payload });
+      if (submission.current.fingerprint !== fingerprint) {
+        submission.current = { fingerprint, idempotencyKey: createIdempotencyKey() };
+      }
+
+      const res = await fetchWithAuth(endpoint, {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': submission.current.idempotencyKey,
+        },
         body: JSON.stringify(payload),
       });
 
@@ -200,37 +261,30 @@ function TransferPage() {
         data = {};
       }
 
-      const isAuroraRecipient =
-        formData.transferType === 'external' &&
-        String(formData.recipientRoutingNumber) === AURORA_ROUTING;
+      // Never show a receipt or mutate local state for a failed server
+      // response. The server is the source of truth for transfer creation.
+      if (!res.ok || data.status === 'error' || !data.transfer) {
+        if (res.status < 500) submission.current = { fingerprint: '', idempotencyKey: '' };
+        setMessageType('error');
+        setMessage(
+          data.message
+            || (res.status === 401 ? 'Your session expired. Please sign in again.' : 'We could not submit this transfer.')
+        );
+        return;
+      }
 
-      // Force success UX for any destination; mark externals as pending
       setMessageType('success');
-      setMessage(data.message || 'Transfer submitted successfully and pending processing.');
+      setMessage(data.message || 'Transfer submitted successfully.');
 
       const receiptData = buildReceipt(data, formData.transferType, formData);
-      if (formData.transferType === 'external' && !isAuroraRecipient) {
-        receiptData.status = 'pending';
-      }
       setReceipt(receiptData);
       setShowReceiptModal(true);
 
-      // Log transaction locally so it reflects in history immediately
-      transferMoney({
-        fromUserId: currentUser?.id,
-        amount: parseFloat(formData.amount),
-        fromAccount: formData.fromAccount,
-        transferType: formData.transferType,
-        toAccount: formData.transferType === 'internal' ? formData.toAccount : undefined,
-        recipient: {
-          name: formData.recipientName || 'External Account',
-          bankName: formData.bankName || 'External Bank',
-          routingNumber: formData.recipientRoutingNumber,
-          accountNumber: formData.recipientAccountNumber,
-          email: formData.recipientEmail,
-        },
-        note: formData.note,
-      });
+      // Refresh the context from the server rather than creating a second
+      // client-side transaction. This updates balances and activity without
+      // risking duplicate ledger rows.
+      await refreshProfile?.();
+      submission.current = { fingerprint: '', idempotencyKey: '' };
 
       // Reset form
       setFormData({
@@ -307,7 +361,7 @@ function TransferPage() {
                     onChange={() => setFormData({ ...formData, transferType: 'external' })}
                     className="accent-indigo-900"
                   />
-                  External bank transfer (ACH)
+                  Send to an Aurora Bank customer
                 </label>
                 <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 cursor-pointer">
                   <input
@@ -393,7 +447,9 @@ function TransferPage() {
                           onChange={(e) => {
                             const value = e.target.value.replace(/\D/g, '').slice(0, 9);
                             setFormData({ ...formData, recipientRoutingNumber: value });
+                            handleRecipientLookup(null, formData.recipientAccountNumber, value);
                           }}
+                          onBlur={(e) => handleRecipientLookup(null, formData.recipientAccountNumber, e.target.value)}
                           placeholder="026009593 (Aurora Bank)"
                           maxLength="9"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
@@ -411,7 +467,9 @@ function TransferPage() {
                           onChange={(e) => {
                             const value = e.target.value.replace(/\D/g, '').slice(0, 12);
                             setFormData({ ...formData, recipientAccountNumber: value });
+                            handleRecipientLookup(null, value, formData.recipientRoutingNumber);
                           }}
+                          onBlur={(e) => handleRecipientLookup(null, e.target.value, formData.recipientRoutingNumber)}
                           placeholder="Enter 12-digit account number"
                           maxLength="12"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
@@ -582,7 +640,7 @@ function TransferPage() {
               </div>
 
               <div className="border-t border-b border-black py-2 mb-3 text-center">
-                <p>*** TRANSFER SUCCESSFUL ***</p>
+                <p>*** {receipt.status === 'completed' ? 'TRANSFER COMPLETED' : 'TRANSFER SUBMITTED'} ***</p>
               </div>
 
               {/* Transaction Info */}
@@ -597,7 +655,7 @@ function TransferPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>STATUS:</span>
-                  <span>PENDING APPROVAL</span>
+                  <span>{String(receipt.status || 'pending').toUpperCase()}</span>
                 </div>
               </div>
 
@@ -683,8 +741,14 @@ function TransferPage() {
               {/* Notice */}
               <div className="mb-3 text-xs">
                 <p className="text-center mb-1">IMPORTANT NOTICE</p>
-                <p>Your transfer is currently being processed.</p>
-                <p>This takes 1-2 business days.</p>
+                {receipt.status === 'completed' ? (
+                  <p>Your internal transfer has completed.</p>
+                ) : (
+                  <>
+                    <p>Your transfer is currently pending administrator approval.</p>
+                    <p>Funds are held until it is approved or rejected.</p>
+                  </>
+                )}
               </div>
 
               <div className="border-t border-black my-3"></div>

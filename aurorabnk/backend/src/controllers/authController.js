@@ -244,25 +244,27 @@ exports.login = async (req, res) => {
   }
 };
 
-// Refresh access token from refresh cookie
+// Refresh an access token from the httpOnly cookie. The optional request-body
+// fallback supports the app's existing Safari/local-storage compatibility
+// path, where cross-site cookies may be unavailable.
 exports.refreshToken = async (req, res) => {
   try {
-    const refreshToken = req.cookies?.refreshToken;
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
     if (!refreshToken) return res.status(401).json({ message: 'Refresh token required' });
 
     const jwt = require('jsonwebtoken');
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET);
-    const { accessToken } = require('../utils/tokenUtils').generateTokens(decoded.userId);
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'dev-access-secret-change-me'
+    );
+    const user = await User.findById(decoded.userId).select('_id');
+    if (!user) return res.status(401).json({ message: 'Session is no longer valid' });
 
-    const isProd = process.env.NODE_ENV === 'production';
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? 'strict' : 'lax',
-      maxAge: 15 * 60 * 1000,
-      path: '/',
-    });
-    res.json({ message: 'Token refreshed' });
+    const tokens = generateTokens(decoded.userId);
+    setAuthCookies(res, tokens);
+    // Returning the rotated pair keeps the pre-existing Safari fallback in
+    // sync while cookie-based clients continue to use the httpOnly cookies.
+    res.json({ message: 'Token refreshed', tokens });
   } catch (error) {
     console.error('Refresh token error:', error);
     res.status(401).json({ message: 'Invalid refresh token' });

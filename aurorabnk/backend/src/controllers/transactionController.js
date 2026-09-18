@@ -1,7 +1,96 @@
 // src/controllers/transactionController.js
+const crypto = require('crypto');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const { sendNotificationEmail } = require('../utils/email');
+const { withDatabaseTransaction } = require('../utils/withDatabaseTransaction');
+
+class ApprovalError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
+const sessionOptions = (session) => (session ? { session } : {});
+const queryWithSession = (query, session) => (session ? query.session(session) : query);
+const money = (value) => Number(Number(value || 0).toFixed(2));
+const idsMatch = (left, right) => String(left) === String(right);
+const createTransactionReference = (userId) => {
+  const random = typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID().replace(/-/g, '')
+    : crypto.randomBytes(16).toString('hex');
+  return `TXN-${String(userId).slice(-8)}-${random.slice(0, 20).toUpperCase()}`;
+};
+
+const ensureAccounts = (user) => {
+  if (!Array.isArray(user.accounts) || user.accounts.length === 0) {
+    user.accounts = [
+      { accountType: 'checking', balance: money(user.balance) },
+      { accountType: 'savings', balance: 0 },
+    ];
+  }
+  user.accounts.forEach((account) => {
+    account.balance = money(account.balance);
+  });
+};
+
+const accountFor = (user, accountType, createIfMissing = false) => {
+  let account = user.accounts.find((item) => item.accountType === accountType);
+  if (!account && createIfMissing) {
+    user.accounts.push({ accountType, balance: 0 });
+    account = user.accounts[user.accounts.length - 1];
+  }
+  return account;
+};
+
+const recalculateBalance = (user) => {
+  user.balance = money(user.accounts.reduce((total, account) => total + Number(account.balance || 0), 0));
+  user.markModified('accounts');
+};
+
+const externalGroupQuery = (transaction) => (
+  transaction.transferReference
+    ? { transferReference: transaction.transferReference }
+    : { reference: transaction.reference }
+);
+
+const findExternalLegs = async (transaction, session) => {
+  if (!transaction.transferReference && !transaction.reference) {
+    throw new ApprovalError(409, 'This transfer has no reference and cannot be settled automatically.');
+  }
+
+  const legs = await queryWithSession(
+    Transaction.find({ ...externalGroupQuery(transaction), transferType: 'external' }),
+    session
+  );
+  const debit = legs.find((item) => Number(item.amount) < 0);
+  const credit = legs.find((item) => Number(item.amount) > 0);
+
+  if (!debit || !credit) {
+    throw new ApprovalError(409, 'This transfer is missing its matching ledger entry and cannot be settled automatically.');
+  }
+  if (!idsMatch(debit._id, transaction._id)) {
+    throw new ApprovalError(409, 'Approve or reject the sender’s outgoing transfer entry, not the recipient credit entry.');
+  }
+  if (money(Math.abs(Number(debit.amount))) !== money(credit.amount) || idsMatch(debit.userId, credit.userId)) {
+    throw new ApprovalError(409, 'This transfer has invalid matching ledger entries and cannot be settled automatically.');
+  }
+  if (debit.status !== 'pending' || credit.status !== 'pending') {
+    throw new ApprovalError(409, 'This transfer has already been processed.');
+  }
+
+  return { debit, credit };
+};
+
+const notify = async (email, subject, message) => {
+  if (!email) return;
+  try {
+    await sendNotificationEmail(email, subject, message);
+  } catch (error) {
+    console.error('Failed to send transaction email:', error.message);
+  }
+};
 
 // Create a new transaction
 exports.createTransaction = async (req, res) => {
@@ -18,8 +107,10 @@ exports.createTransaction = async (req, res) => {
       date,
     } = req.body;
 
-    // Generate unique reference
-    const reference = `${req.userId}-${Date.now()}`;
+    // Date.now() alone collides when two legitimate ledger writes land in
+    // the same millisecond. Use cryptographic entropy to satisfy the unique
+    // reference index under concurrent requests.
+    const reference = createTransactionReference(req.userId);
 
     const transaction = await Transaction.create({
       userId: req.userId,
@@ -119,218 +210,277 @@ exports.getTransactionById = async (req, res) => {
   }
 };
 
-// Approve pending transaction (admin only)
-exports.approveTransaction = async (req, res) => {
+// Standalone MongoDB cannot run multi-document transactions. Claim the sender
+// debit with a compare-and-set transition before changing any balance, so two
+// admin clicks (or an approve/reject race) cannot settle the same transfer
+// twice. If no balance has changed yet, a failed attempt is returned to
+// pending so it remains reviewable.
+const settleExternalTransferStandalone = async (transactionId, action) => {
+  const requested = await Transaction.findById(transactionId);
+  if (!requested) throw new ApprovalError(404, 'Transaction not found.');
+  if (requested.transferType !== 'external') {
+    throw new ApprovalError(400, 'This is not an external transfer.');
+  }
+
+  await findExternalLegs(requested);
+  const debit = await Transaction.findOneAndUpdate(
+    { _id: requested._id, transferType: 'external', amount: { $lt: 0 }, status: 'pending' },
+    { $set: { status: 'processing' } },
+    { new: true }
+  );
+  if (!debit) {
+    throw new ApprovalError(409, 'This transfer is already being processed or has already been processed.');
+  }
+
+  let credit;
+  let balanceChanged = false;
   try {
-    const transaction = await Transaction.findById(req.params.id);
-    
-    if (!transaction) {
-      return res.status(404).json({ message: 'Transaction not found' });
+    credit = await Transaction.findOneAndUpdate(
+      { ...externalGroupQuery(debit), transferType: 'external', amount: { $gt: 0 }, status: 'pending' },
+      { $set: { status: 'processing' } },
+      { new: true }
+    );
+    if (!credit || money(Math.abs(Number(debit.amount))) !== money(credit.amount) || idsMatch(debit.userId, credit.userId)) {
+      throw new ApprovalError(409, 'This transfer is missing valid matching ledger entries and cannot be settled automatically.');
     }
 
-    if (transaction.status !== 'pending') {
-      return res.status(400).json({ message: 'Transaction is not pending' });
+    const sender = await User.findById(debit.userId);
+    const recipient = await User.findById(credit.userId);
+    if (!sender || !recipient) {
+      throw new ApprovalError(409, 'A transfer participant no longer exists, so this transfer cannot be settled automatically.');
     }
 
-    transaction.status = 'completed';
-    await transaction.save();
-
-    // For external transfers, find and approve the matching recipient transaction
-    if (transaction.transferType === 'external' && transaction.reference) {
-      // Find the corresponding recipient transaction with same reference
-      const recipientTransaction = await Transaction.findOne({
-        reference: transaction.reference,
-        userId: { $ne: transaction.userId }, // Different user
-        status: 'pending',
-      });
-
-      if (recipientTransaction) {
-        recipientTransaction.status = 'completed';
-        await recipientTransaction.save();
-
-        // Credit the recipient's account
-        const recipient = await User.findById(recipientTransaction.userId);
-        if (recipient) {
-          // Initialize accounts if needed
-          if (!recipient.accounts || recipient.accounts.length === 0) {
-            recipient.accounts = [
-              { accountType: 'checking', balance: 0 },
-              { accountType: 'savings', balance: 0 }
-            ];
-          }
-
-          // Find or create the account
-          let recipientAccount = recipient.accounts.find(
-            (a) => a.accountType === recipientTransaction.accountType
-          );
-
-          if (!recipientAccount) {
-            recipient.accounts.push({
-              accountType: recipientTransaction.accountType,
-              balance: 0
-            });
-            recipientAccount = recipient.accounts[recipient.accounts.length - 1];
-          }
-
-          // Credit the recipient account
-          recipientAccount.balance = (recipientAccount.balance || 0) + recipientTransaction.amount;
-
-          // Recalculate total balance
-          recipient.balance = recipient.accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
-          recipient.markModified('accounts');
-          await recipient.save();
-
-          try {
-            await sendNotificationEmail(
-              recipient.email,
-              'Aurora Bank transaction approved'
-            ,
-              `A transfer has been completed and your account has been credited with ${recipientTransaction.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}.`
-            );
-          } catch (emailError) {
-            console.error('⚠️ Failed to send recipient approval email:', emailError.message);
-          }
-
-          console.log(`✅ Approved transfer: Credited $${recipientTransaction.amount} to recipient ${recipient.email}`);
-        }
-      }
-      
-      // For external transfers, sender was already debited when transfer was created
-      // No need to update sender's balance here
+    if (action === 'approve') {
+      ensureAccounts(recipient);
+      const destination = accountFor(recipient, credit.accountType, true);
+      destination.balance = money(destination.balance + Number(credit.amount));
+      recalculateBalance(recipient);
+      await recipient.save();
     } else {
-      // For non-external transfers (deposits, bills, etc.), update balance normally
-      const user = await User.findById(transaction.userId);
-      if (user) {
-        user.balance = (user.balance || 0) + transaction.amount;
-
-        const account = user.accounts?.find((a) => a.accountType === transaction.accountType);
-        if (account) {
-          account.balance = (account.balance || 0) + transaction.amount;
-        }
-
-        await user.save();
-
-          try {
-            await sendNotificationEmail(
-              user.email,
-              'Aurora Bank transaction approved',
-              `Your transaction "${transaction.description}" has been approved and completed.`
-            );
-          } catch (emailError) {
-            console.error('⚠️ Failed to send approval email:', emailError.message);
-          }
-      }
+      ensureAccounts(sender);
+      const source = accountFor(sender, debit.accountType, true);
+      source.balance = money(source.balance + Math.abs(Number(debit.amount)));
+      recalculateBalance(sender);
+      await sender.save();
     }
+    balanceChanged = true;
 
-    res.json({
-      message: 'Transaction approved',
-      transaction,
-    });
+    const finalStatus = action === 'approve' ? 'completed' : 'rejected';
+    await Transaction.updateMany(
+      { _id: { $in: [debit._id, credit._id] }, status: 'processing' },
+      { $set: { status: finalStatus } }
+    );
+    debit.status = finalStatus;
+    credit.status = finalStatus;
+    return { debit, credit, sender, recipient };
   } catch (error) {
-    console.error('Approve transaction error:', error);
-    res.status(500).json({ message: 'Server error' });
+    if (!balanceChanged) {
+      const ids = [debit._id];
+      if (credit?._id) ids.push(credit._id);
+      await Transaction.updateMany(
+        { _id: { $in: ids }, status: 'processing' },
+        { $set: { status: 'pending' } }
+      ).catch(() => {});
+    }
+    throw error;
   }
 };
 
-// Reject pending transaction (admin only)
+const settleExternalTransfer = async (transactionId, action) => withDatabaseTransaction(async (session) => {
+  if (!session) return settleExternalTransferStandalone(transactionId, action);
+
+  const requested = await queryWithSession(Transaction.findById(transactionId), session);
+  if (!requested) throw new ApprovalError(404, 'Transaction not found.');
+  if (requested.transferType !== 'external') {
+    throw new ApprovalError(400, 'This is not an external transfer.');
+  }
+
+  const { debit, credit } = await findExternalLegs(requested, session);
+  const sender = await queryWithSession(User.findById(debit.userId), session);
+  const recipient = await queryWithSession(User.findById(credit.userId), session);
+  if (!sender || !recipient) {
+    throw new ApprovalError(409, 'A transfer participant no longer exists, so this transfer cannot be settled automatically.');
+  }
+
+  if (action === 'approve') {
+    ensureAccounts(recipient);
+    const destination = accountFor(recipient, credit.accountType, true);
+    destination.balance = money(destination.balance + Number(credit.amount));
+    recalculateBalance(recipient);
+
+    debit.status = 'completed';
+    credit.status = 'completed';
+    await recipient.save(sessionOptions(session));
+  } else {
+    ensureAccounts(sender);
+    const source = accountFor(sender, debit.accountType, true);
+    source.balance = money(source.balance + Math.abs(Number(debit.amount)));
+    recalculateBalance(sender);
+
+    debit.status = 'rejected';
+    credit.status = 'rejected';
+    await sender.save(sessionOptions(session));
+  }
+
+  await debit.save(sessionOptions(session));
+  await credit.save(sessionOptions(session));
+
+  return { debit, credit, sender, recipient };
+});
+
+const settleStandardTransactionStandalone = async (transactionId, action) => {
+  const transaction = await Transaction.findOneAndUpdate(
+    { _id: transactionId, status: 'pending' },
+    { $set: { status: 'processing' } },
+    { new: true }
+  );
+  if (!transaction) {
+    throw new ApprovalError(409, 'Transaction is already being processed or has already been processed.');
+  }
+
+  let balanceChanged = false;
+  try {
+    let user = await User.findById(transaction.userId);
+    if (action === 'approve') {
+      if (!user) throw new ApprovalError(404, 'Transaction owner not found.');
+      ensureAccounts(user);
+      const account = accountFor(user, transaction.accountType, true);
+      account.balance = money(account.balance + Number(transaction.amount));
+      recalculateBalance(user);
+      await user.save();
+      balanceChanged = true;
+    }
+
+    transaction.status = action === 'approve' ? 'completed' : 'rejected';
+    await transaction.save();
+    return { transaction, user };
+  } catch (error) {
+    if (!balanceChanged) {
+      await Transaction.updateOne(
+        { _id: transaction._id, status: 'processing' },
+        { $set: { status: 'pending' } }
+      ).catch(() => {});
+    }
+    throw error;
+  }
+};
+
+const settleStandardTransaction = async (transactionId, action) => withDatabaseTransaction(async (session) => {
+  if (!session) return settleStandardTransactionStandalone(transactionId, action);
+
+  const transaction = await queryWithSession(Transaction.findById(transactionId), session);
+  if (!transaction) throw new ApprovalError(404, 'Transaction not found.');
+  if (transaction.status !== 'pending') {
+    throw new ApprovalError(409, 'Transaction has already been processed.');
+  }
+
+  if (action === 'approve') {
+    const user = await queryWithSession(User.findById(transaction.userId), session);
+    if (!user) throw new ApprovalError(404, 'Transaction owner not found.');
+    ensureAccounts(user);
+    const account = accountFor(user, transaction.accountType, true);
+    account.balance = money(account.balance + Number(transaction.amount));
+    recalculateBalance(user);
+    transaction.status = 'completed';
+    await user.save(sessionOptions(session));
+    await transaction.save(sessionOptions(session));
+    return { transaction, user };
+  }
+
+  transaction.status = 'rejected';
+  await transaction.save(sessionOptions(session));
+  return { transaction, user: await queryWithSession(User.findById(transaction.userId), session) };
+});
+
+// Approve a pending transaction. External transfers are always settled as an
+// all-or-nothing debit/credit pair; the recipient entry is never independently
+// actionable, which prevents an accidental second debit or credit.
+exports.approveTransaction = async (req, res) => {
+  try {
+    const requested = await Transaction.findById(req.params.id);
+    if (!requested) return res.status(404).json({ message: 'Transaction not found.' });
+
+    const result = requested.transferType === 'external'
+      ? await settleExternalTransfer(req.params.id, 'approve')
+      : await settleStandardTransaction(req.params.id, 'approve');
+
+    if (requested.transferType === 'external') {
+      const amount = Number(result.credit.amount).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+      await Promise.all([
+        notify(result.sender.email, 'Aurora Bank transfer approved', `Your transfer of ${amount} has been approved and completed.`),
+        notify(result.recipient.email, 'Aurora Bank transfer received', `Your account has been credited with ${amount}.`),
+      ]);
+      return res.json({
+        message: 'External transfer approved and recipient credited.',
+        transaction: result.debit,
+        recipientTransaction: result.credit,
+        transferReference: result.debit.transferReference || result.debit.reference,
+      });
+    }
+
+    await notify(
+      result.user?.email,
+      'Aurora Bank transaction approved',
+      `Your transaction "${result.transaction.description}" has been approved and completed.`
+    );
+    return res.json({ message: 'Transaction approved.', transaction: result.transaction });
+  } catch (error) {
+    console.error('Approve transaction error:', error);
+    return res.status(error.status || 500).json({ message: error.status ? error.message : 'Server error approving transaction.' });
+  }
+};
+
+// Reject a pending transaction. Rejecting an external transfer rejects both
+// ledger entries and releases the held sender funds exactly once.
 exports.rejectTransaction = async (req, res) => {
   try {
-    const transaction = await Transaction.findById(req.params.id);
-    
-    if (!transaction) {
-      return res.status(404).json({ message: 'Transaction not found' });
-    }
+    const requested = await Transaction.findById(req.params.id);
+    if (!requested) return res.status(404).json({ message: 'Transaction not found.' });
 
-    if (transaction.status !== 'pending') {
-      return res.status(400).json({ message: 'Transaction is not pending' });
-    }
+    const result = requested.transferType === 'external'
+      ? await settleExternalTransfer(req.params.id, 'reject')
+      : await settleStandardTransaction(req.params.id, 'reject');
 
-    transaction.status = 'rejected';
-    await transaction.save();
-
-    // For external transfers, refund the sender and reject recipient transaction
-    if (transaction.transferType === 'external' && transaction.reference) {
-      // If this is the sender's transaction (negative amount), refund them
-      if (transaction.amount < 0) {
-        const sender = await User.findById(transaction.userId);
-        if (sender) {
-          // Initialize accounts if needed
-          if (!sender.accounts || sender.accounts.length === 0) {
-            sender.accounts = [
-              { accountType: 'checking', balance: sender.balance || 0 },
-              { accountType: 'savings', balance: 0 }
-            ];
-          }
-
-          // Find the account
-          const senderAccount = sender.accounts.find(
-            (a) => a.accountType === transaction.accountType
-          );
-
-          if (senderAccount) {
-            // Refund the sender (add back the absolute value)
-            senderAccount.balance = (senderAccount.balance || 0) + Math.abs(transaction.amount);
-
-            // Recalculate total balance
-            sender.balance = sender.accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
-            sender.markModified('accounts');
-            await sender.save();
-
-            try {
-              await sendNotificationEmail(
-                sender.email,
-                'Aurora Bank transaction rejected',
-                `Your transaction "${transaction.description}" was rejected and your account has been refunded.`
-              );
-            } catch (emailError) {
-              console.error('⚠️ Failed to send rejection email:', emailError.message);
-            }
-
-            console.log(`✅ Rejected transfer: Refunded $${Math.abs(transaction.amount)} to sender ${sender.email}`);
-          }
-        }
-      }
-
-      // Find and reject the corresponding recipient transaction
-      const recipientTransaction = await Transaction.findOne({
-        reference: transaction.reference,
-        userId: { $ne: transaction.userId },
-        status: 'pending',
+    if (requested.transferType === 'external') {
+      const amount = Number(Math.abs(result.debit.amount)).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+      await Promise.all([
+        notify(result.sender.email, 'Aurora Bank transfer rejected', `Your transfer of ${amount} was rejected and the held funds were returned to your account.`),
+        notify(result.recipient.email, 'Aurora Bank transfer rejected', 'An incoming transfer to your account was rejected.'),
+      ]);
+      return res.json({
+        message: 'External transfer rejected and sender refunded.',
+        transaction: result.debit,
+        recipientTransaction: result.credit,
+        transferReference: result.debit.transferReference || result.debit.reference,
       });
-
-      if (recipientTransaction) {
-        recipientTransaction.status = 'rejected';
-        await recipientTransaction.save();
-
-        const recipient = await User.findById(recipientTransaction.userId);
-        if (recipient?.email) {
-          try {
-            await sendNotificationEmail(
-              recipient.email,
-              'Aurora Bank transaction rejected',
-              `A transfer related to "${transaction.description}" was rejected.`
-            );
-          } catch (emailError) {
-            console.error('⚠️ Failed to send recipient rejection email:', emailError.message);
-          }
-        }
-      }
     }
 
-    res.json({
-      message: 'Transaction rejected',
-      transaction,
-    });
+    await notify(
+      result.user?.email,
+      'Aurora Bank transaction rejected',
+      `Your transaction "${result.transaction.description}" was rejected.`
+    );
+    return res.json({ message: 'Transaction rejected.', transaction: result.transaction });
   } catch (error) {
     console.error('Reject transaction error:', error);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(error.status || 500).json({ message: error.status ? error.message : 'Server error rejecting transaction.' });
   }
 };
 
 // Get all pending transactions (admin only)
 exports.getPendingTransactions = async (req, res) => {
   try {
-    const transactions = await Transaction.find({ status: 'pending' })
+    // An external transfer has a sender debit and a recipient credit. Only
+    // the sender debit is actionable; exposing both created two approval
+    // buttons for one transfer and allowed the credit leg to be settled as if
+    // it were the sender's payment.
+    const transactions = await Transaction.find({
+      status: 'pending',
+      $or: [
+        { transferType: { $ne: 'external' } },
+        { transferType: 'external', amount: { $lt: 0 } },
+      ],
+    })
       .populate('userId', 'firstName lastName email')
       .sort({ date: -1 });
 

@@ -3,8 +3,17 @@ const router = express.Router();
 const { protect, requireRole } = require('../middleware/authMiddleware');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
+const MarketSettings = require('../models/MarketSettings');
+const { getUserTradeTotal: getUserTradeTotals } = require('../utils/marketTotals');
 const { ChatConversation } = require('../models/Chat');
 const { sendNotificationEmail } = require('../utils/email');
+
+// Keep this wrapper so the fields used below remain easy to read while the
+// aggregation itself is shared with the customer market endpoint.
+const getUserTradeTotal = async (userId) => {
+  const { estimatedTradeTotal } = await getUserTradeTotals(userId);
+  return estimatedTradeTotal;
+};
 
 // Get all users
 router.get('/users', protect, requireRole('admin'), async (req, res) => {
@@ -13,20 +22,38 @@ router.get('/users', protect, requireRole('admin'), async (req, res) => {
     console.log('Admin: Fetching all users...');
     const users = await User.find().select('-password');
     console.log(`Admin: Found ${users.length} users`);
-    
-    // Fetch transactions for each user
+
+    const marketSettings = await MarketSettings.findOne({ key: 'primary' });
+    const globalReturnPercent = Number(marketSettings?.todaysReturnPercent ?? 10.5);
+
+    // Fetch transactions and today's return for each user
     const usersWithTransactions = await Promise.all(
       users.map(async (user) => {
         const transactions = await Transaction.find({ userId: user._id }).sort({ date: -1 });
-        
+
         const checking = user.accounts?.find(a => a.accountType === 'checking')?.balance || 0;
         const savings = user.accounts?.find(a => a.accountType === 'savings')?.balance || 0;
-        
+
+        // Same auto-vs-override logic as /market/overview: if this user has
+        // no manual override, their return is calculated live from what
+        // they actually have on trade today × the global rate.
+        const estimatedTradeTotal = await getUserTradeTotal(user._id);
+        const hasReturnOverride = Number.isFinite(user.todaysReturnOverride);
+        const todaysReturn = hasReturnOverride
+          ? user.todaysReturnOverride
+          : Number((estimatedTradeTotal * globalReturnPercent / 100).toFixed(2));
+        const todaysReturnPercent = hasReturnOverride
+          ? Number((estimatedTradeTotal > 0 ? (user.todaysReturnOverride / estimatedTradeTotal) * 100 : 0).toFixed(2))
+          : globalReturnPercent;
+
         return {
           id: user._id,
           name: `${user.firstName} ${user.lastName}`,
           email: user.email,
-          accountNumber: '****' + String(Math.floor(1000 + Math.random() * 9000)),
+          // Do not fabricate a new account suffix on every admin refresh.
+          // Aside from being misleading, it made a stable account look as if
+          // it changed every five seconds in the dashboard.
+          accountNumber: user.accountNumber ? `****${String(user.accountNumber).slice(-4)}` : '—',
           balance: checking + savings,
           checking,
           savings,
@@ -49,6 +76,10 @@ router.get('/users', protect, requireRole('admin'), async (req, res) => {
             accountType: t.accountType,
           })),
           role: user.role,
+          estimatedTradeTotal,
+          todaysReturn,
+          todaysReturnPercent,
+          hasReturnOverride,
         };
       })
     );
@@ -101,12 +132,76 @@ router.patch('/users/:userId/balance', protect, requireRole('admin'), async (req
   }
 });
 
+// Set (or clear) a per-user override for today's return. Send
+// { todaysReturn: <number> } to set it, or { todaysReturn: null } to clear
+// it and go back to the automatic calculation (trade total × global rate).
+// The % is never taken from the request — it's always derived from this
+// user's real, current trade total so it can't go stale.
+router.patch('/users/:userId/return', protect, requireRole('admin'), async (req, res) => {
+  console.log('[ADMIN] PATCH /users/:userId/return', { ip: req.ip, time: new Date().toISOString(), user: req.userId, params: req.params, body: req.body });
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (req.body.todaysReturn === null) {
+      user.todaysReturnOverride = null;
+    } else {
+      const todaysReturn = Number(req.body.todaysReturn);
+      if (!Number.isFinite(todaysReturn)) {
+        return res.status(400).json({ message: 'todaysReturn must be a number (or null to clear the override).' });
+      }
+      user.todaysReturnOverride = todaysReturn;
+    }
+    await user.save();
+
+    const estimatedTradeTotal = await getUserTradeTotal(user._id);
+    const hasReturnOverride = Number.isFinite(user.todaysReturnOverride);
+    let todaysReturn = user.todaysReturnOverride;
+    let todaysReturnPercent = hasReturnOverride
+      ? Number((estimatedTradeTotal > 0 ? (user.todaysReturnOverride / estimatedTradeTotal) * 100 : 0).toFixed(2))
+      : null;
+
+    if (!hasReturnOverride) {
+      const marketSettings = await MarketSettings.findOne({ key: 'primary' });
+      const globalReturnPercent = Number(marketSettings?.todaysReturnPercent ?? 10.5);
+      todaysReturn = Number((estimatedTradeTotal * globalReturnPercent / 100).toFixed(2));
+      todaysReturnPercent = globalReturnPercent;
+    }
+
+    res.json({
+      message: hasReturnOverride ? 'User return override saved.' : 'Override cleared — this user is back to the automatic return.',
+      user: {
+        id: user._id,
+        todaysReturn,
+        todaysReturnPercent,
+        estimatedTradeTotal,
+        hasReturnOverride,
+      },
+    });
+  } catch (error) {
+    console.error('Update user return error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get all pending approvals
 router.get('/pending-approvals', protect, requireRole('admin'), async (req, res) => {
   console.log('[ADMIN] GET /pending-approvals', { ip: req.ip, time: new Date().toISOString(), user: req.userId });
   try {
     console.log('Admin: Fetching pending approvals...');
-    const pendingTransactions = await Transaction.find({ status: 'pending' })
+    // A single external transfer creates a sender debit and a recipient
+    // credit. Only the sender debit is an approval action; showing both lets
+    // an administrator accidentally settle the same transfer twice.
+    const pendingTransactions = await Transaction.find({
+      status: 'pending',
+      $or: [
+        { transferType: { $ne: 'external' } },
+        { transferType: 'external', amount: { $lt: 0 } },
+      ],
+    })
       .populate('userId', 'firstName lastName email')
       .sort({ date: -1 });
 
@@ -122,6 +217,7 @@ router.get('/pending-approvals', protect, requireRole('admin'), async (req, res)
       category: transaction.category,
       status: transaction.status,
       accountType: transaction.accountType,
+      reference: transaction.transferReference || transaction.reference,
     }));
 
     res.json({ pendingApprovals });

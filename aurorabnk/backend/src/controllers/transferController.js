@@ -1,399 +1,503 @@
-// src/controllers/transferController.js
+const crypto = require('crypto');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
-const mongoose = require('mongoose');
+const { withDatabaseTransaction } = require('../utils/withDatabaseTransaction');
 
-// Internal transfer (between own accounts) - instant, no approval needed
+const ACCOUNT_TYPES = new Set(['checking', 'savings']);
+
+class TransferRequestError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.status = status;
+  }
+}
+
+const sessionOptions = (session) => (session ? { session } : {});
+const queryWithSession = (query, session) => (session ? query.session(session) : query);
+
+const createTransferReference = (prefix, userId) => {
+  const random = typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID().replace(/-/g, '')
+    : crypto.randomBytes(16).toString('hex');
+  return `${prefix}-${String(userId).slice(-8)}-${random.slice(0, 20).toUpperCase()}`;
+};
+
+const money = (value) => Number(Number(value || 0).toFixed(2));
+
+const parseAmount = (value) => {
+  if (value === null || value === undefined || value === '') {
+    throw new TransferRequestError(400, 'Enter a valid transfer amount.');
+  }
+
+  const raw = typeof value === 'string' ? value.trim() : value;
+  if (typeof raw === 'string' && !/^\d+(?:\.\d{1,2})?$/.test(raw)) {
+    throw new TransferRequestError(400, 'Transfer amounts must use no more than two decimal places.');
+  }
+
+  const amount = Number(raw);
+  const cents = Math.round(amount * 100);
+  if (!Number.isFinite(amount) || cents <= 0 || Math.abs(amount * 100 - cents) > 1e-7) {
+    throw new TransferRequestError(400, 'Enter a valid transfer amount.');
+  }
+
+  return cents / 100;
+};
+
+const parseAccountType = (value, fallback) => {
+  const accountType = value || fallback;
+  if (!ACCOUNT_TYPES.has(accountType)) {
+    throw new TransferRequestError(400, 'Select a valid checking or savings account.');
+  }
+  return accountType;
+};
+
+const parseNote = (value) => {
+  if (value === undefined || value === null) return '';
+  const note = String(value).trim();
+  if (note.length > 500) {
+    throw new TransferRequestError(400, 'Notes must be 500 characters or fewer.');
+  }
+  return note;
+};
+
+const parseIdempotencyKey = (req) => {
+  const key = req.get('Idempotency-Key');
+  if (!key) return null;
+
+  const normalized = String(key).trim();
+  if (!/^[A-Za-z0-9._:-]{8,128}$/.test(normalized)) {
+    throw new TransferRequestError(400, 'Invalid Idempotency-Key header.');
+  }
+  return normalized;
+};
+
+const parseEmail = (value) => {
+  const email = String(value || '').trim().toLowerCase();
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new TransferRequestError(400, 'Enter a valid recipient email address.');
+  }
+  return email;
+};
+
+const parseDigits = (value, field, length) => {
+  const normalized = String(value || '').trim();
+  if (!new RegExp(`^\\d{${length}}$`).test(normalized)) {
+    throw new TransferRequestError(400, `${field} must contain ${length} digits.`);
+  }
+  return normalized;
+};
+
+const ensureAccounts = (user) => {
+  if (!Array.isArray(user.accounts) || user.accounts.length === 0) {
+    user.accounts = [
+      { accountType: 'checking', balance: money(user.balance) },
+      { accountType: 'savings', balance: 0 },
+    ];
+    return;
+  }
+
+  user.accounts.forEach((account) => {
+    account.balance = money(account.balance);
+  });
+};
+
+const accountFor = (user, accountType, createIfMissing = false) => {
+  let account = user.accounts.find((item) => item.accountType === accountType);
+  if (!account && createIfMissing) {
+    user.accounts.push({ accountType, balance: 0 });
+    account = user.accounts[user.accounts.length - 1];
+  }
+  return account;
+};
+
+const recalculateBalance = (user) => {
+  user.balance = money(user.accounts.reduce((total, account) => total + Number(account.balance || 0), 0));
+  user.markModified('accounts');
+};
+
+const findIdempotentDebit = async (userId, idempotencyKey, session) => {
+  if (!idempotencyKey) return null;
+  return queryWithSession(
+    Transaction.findOne({ userId, idempotencyKey, transferRole: 'debit' }),
+    session
+  );
+};
+
+const groupQuery = (transaction) => (
+  transaction.transferReference
+    ? { transferReference: transaction.transferReference }
+    : { reference: transaction.reference }
+);
+
+const findCounterpart = async (transaction, role, session) => {
+  const filter = {
+    ...groupQuery(transaction),
+    transferRole: role,
+  };
+  return queryWithSession(Transaction.findOne(filter), session);
+};
+
+const transactionSummary = (transaction) => ({
+  id: transaction?._id,
+  amount: transaction?.amount,
+  status: transaction?.status,
+});
+
+const transferBalanceSummary = (user) => ({
+  checking: money(accountFor(user, 'checking')?.balance),
+  savings: money(accountFor(user, 'savings')?.balance),
+  total: money(user.balance),
+});
+
+const internalResponse = (debit, credit, user, idempotent = false) => ({
+  status: 'success',
+  message: debit.status === 'completed'
+    ? 'Transfer completed successfully.'
+    : `Transfer is ${debit.status}.`,
+  ...(idempotent ? { idempotent: true } : {}),
+  transfer: {
+    reference: debit.transferReference || debit.reference,
+    amount: Math.abs(Number(debit.amount)),
+    fromAccount: debit.accountType,
+    toAccount: credit?.accountType,
+    status: debit.status,
+    date: debit.date,
+  },
+  debitTransaction: transactionSummary(debit),
+  creditTransaction: transactionSummary(credit),
+  ...(user ? { balances: transferBalanceSummary(user) } : {}),
+});
+
+const externalResponse = (debit, credit, user, idempotent = false) => {
+  const recipient = debit.recipientMeta || {};
+  return {
+    status: 'success',
+    message: debit.status === 'pending'
+      ? 'Transfer submitted for approval. Funds are on hold until an administrator approves or rejects it.'
+      : `Transfer is ${debit.status}.`,
+    ...(idempotent ? { idempotent: true } : {}),
+    transfer: {
+      reference: debit.transferReference || debit.reference,
+      amount: Math.abs(Number(debit.amount)),
+      fromAccount: debit.accountType,
+      recipientName: recipient.recipientName || 'Aurora Bank recipient',
+      recipientEmail: recipient.recipientEmail,
+      recipientAccountNumber: recipient.recipientAccountNumber || recipient.accountNumber,
+      recipientRoutingNumber: recipient.recipientRoutingNumber || recipient.routingNumber,
+      status: debit.status,
+      date: debit.date,
+    },
+    senderTransaction: transactionSummary(debit),
+    recipientTransaction: transactionSummary(credit),
+    ...(user ? { balances: transferBalanceSummary(user) } : {}),
+  };
+};
+
+const respondWithExistingTransfer = async (res, debit) => {
+  const credit = await findCounterpart(debit, 'credit');
+  const payload = debit.transferType === 'internal'
+    ? internalResponse(debit, credit, null, true)
+    : externalResponse(debit, credit, null, true);
+  return res.status(200).json(payload);
+};
+
+const duplicateKeyError = (error) => error?.code === 11000 || /duplicate key/i.test(error?.message || '');
+
+// Internal transfer (between the signed-in user's accounts) — instant and
+// represented by two linked, individually unique ledger records.
 exports.internalTransfer = async (req, res) => {
+  let idempotencyKey;
   try {
-    const { amount, fromAccount, toAccount, note } = req.body;
     const userId = req.userId;
-
-    console.log('🔄 Internal transfer request:', { userId, amount, fromAccount, toAccount });
-
-    // Validate inputs
-    if (!amount || amount <= 0) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Invalid transfer amount',
-      });
-    }
-
-    if (!fromAccount || !toAccount) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Source and destination accounts are required',
-      });
-    }
+    const amount = parseAmount(req.body.amount);
+    const fromAccount = parseAccountType(req.body.fromAccount);
+    const toAccount = parseAccountType(req.body.toAccount);
+    const note = parseNote(req.body.note);
+    idempotencyKey = parseIdempotencyKey(req);
 
     if (fromAccount === toAccount) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Cannot transfer to the same account',
-      });
+      throw new TransferRequestError(400, 'Choose a different destination account.');
     }
 
-    const numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Invalid amount',
-      });
-    }
+    const existing = await findIdempotentDebit(userId, idempotencyKey);
+    if (existing) return respondWithExistingTransfer(res, existing);
 
-    // Get user
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'User not found',
-      });
-    }
+    const transferReference = createTransferReference('INT', userId);
+    const result = await withDatabaseTransaction(async (session) => {
+      const duplicate = await findIdempotentDebit(userId, idempotencyKey, session);
+      if (duplicate) {
+        return {
+          idempotent: true,
+          debit: duplicate,
+          credit: await findCounterpart(duplicate, 'credit', session),
+        };
+      }
 
-    // Initialize accounts if needed
-    if (!user.accounts || user.accounts.length === 0) {
-      user.accounts = [
-        { accountType: 'checking', balance: user.balance || 0 },
-        { accountType: 'savings', balance: 0 }
-      ];
-    }
+      const user = await queryWithSession(User.findById(userId), session);
+      if (!user) throw new TransferRequestError(404, 'User not found.');
 
-    // Check balance
-    const fromAccountObj = user.accounts.find(a => a.accountType === fromAccount);
-    const fromBalance = fromAccountObj?.balance || 0;
+      ensureAccounts(user);
+      const source = accountFor(user, fromAccount);
+      const destination = accountFor(user, toAccount, true);
+      if (!source) throw new TransferRequestError(400, `Your ${fromAccount} account is unavailable.`);
+      if (money(source.balance) < amount) {
+        throw new TransferRequestError(400, `Insufficient funds in ${fromAccount}. Available: $${money(source.balance).toFixed(2)}`);
+      }
 
-    if (fromBalance < numericAmount) {
-      return res.status(400).json({
-        status: 'error',
-        message: `Insufficient funds in ${fromAccount}. Available: $${fromBalance.toFixed(2)}`,
-      });
-    }
+      source.balance = money(source.balance - amount);
+      destination.balance = money(destination.balance + amount);
+      recalculateBalance(user);
 
-    const randomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const reference = `INT-${userId.toString().substring(0, 8)}-${Date.now()}-${randomId}`;
+      const now = new Date();
+      const idempotency = idempotencyKey ? { idempotencyKey } : {};
+      const [debit, credit] = await Transaction.insertMany([
+        {
+          userId,
+          amount: -amount,
+          description: `Transfer to ${toAccount}`,
+          category: 'Internal Transfer',
+          accountType: fromAccount,
+          status: 'completed',
+          transferType: 'internal',
+          reference: `${transferReference}-D`,
+          transferReference,
+          transferRole: 'debit',
+          note,
+          date: now,
+          ...idempotency,
+        },
+        {
+          userId,
+          amount,
+          description: `Transfer from ${fromAccount}`,
+          category: 'Internal Transfer',
+          accountType: toAccount,
+          status: 'completed',
+          transferType: 'internal',
+          reference: `${transferReference}-C`,
+          transferReference,
+          transferRole: 'credit',
+          note,
+          date: now,
+          ...idempotency,
+        },
+      ], sessionOptions(session));
 
-    // Create debit transaction
-    const debitTransaction = await Transaction.create({
-      userId,
-      amount: -numericAmount,
-      description: `Transfer to ${toAccount}`,
-      category: 'Internal Transfer',
-      accountType: fromAccount,
-      status: 'completed',
-      transferType: 'internal',
-      reference,
-      note: note || '',
-      date: new Date(),
+      try {
+        await user.save(sessionOptions(session));
+      } catch (error) {
+        // A real transaction will roll this back. In the standalone-Mongo
+        // compatibility path, remove the newly-created ledger rows as well.
+        if (!session) {
+          await Transaction.deleteMany({ _id: { $in: [debit._id, credit._id] } }).catch(() => {});
+        }
+        throw error;
+      }
+
+      return { debit, credit, user };
     });
 
-    // Create credit transaction
-    const creditTransaction = await Transaction.create({
-      userId,
-      amount: numericAmount,
-      description: `Transfer from ${fromAccount}`,
-      category: 'Internal Transfer',
-      accountType: toAccount,
-      status: 'completed',
-      transferType: 'internal',
-      reference,
-      note: note || '',
-      date: new Date(),
-    });
-
-    // Update balances
-    const fromIndex = user.accounts.findIndex(a => a.accountType === fromAccount);
-    const toIndex = user.accounts.findIndex(a => a.accountType === toAccount);
-
-    if (fromIndex !== -1) {
-      user.accounts[fromIndex].balance -= numericAmount;
+    if (result.idempotent) {
+      return res.status(200).json(internalResponse(result.debit, result.credit, null, true));
     }
 
-    if (toIndex !== -1) {
-      user.accounts[toIndex].balance += numericAmount;
-    } else {
-      user.accounts.push({ accountType: toAccount, balance: numericAmount });
-    }
-
-    // Recalculate total balance
-    user.balance = user.accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
-    user.markModified('accounts');
-    await user.save();
-
-    console.log('✅ Internal transfer completed');
-
-    res.json({
-      status: 'success',
-      message: 'Transfer completed successfully',
-      transfer: {
-        reference,
-        amount: numericAmount,
-        fromAccount,
-        toAccount,
-        status: 'completed',
-        date: new Date(),
-      },
-      debitTransaction: {
-        id: debitTransaction._id,
-        amount: debitTransaction.amount,
-      },
-      creditTransaction: {
-        id: creditTransaction._id,
-        amount: creditTransaction.amount,
-      },
-    });
+    return res.status(201).json(internalResponse(result.debit, result.credit, result.user));
   } catch (error) {
-    console.error('❌ Internal transfer error:', error);
-    res.status(500).json({
+    if (duplicateKeyError(error) && idempotencyKey) {
+      const existing = await findIdempotentDebit(req.userId, idempotencyKey).catch(() => null);
+      if (existing) return respondWithExistingTransfer(res, existing);
+    }
+    console.error('Internal transfer error:', error);
+    return res.status(error.status || 500).json({
       status: 'error',
-      message: 'Server error processing transfer',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      message: error.status ? error.message : 'Server error processing transfer.',
     });
   }
 };
 
-// External transfer (to another user) - requires admin approval
+// External transfers are currently Aurora-to-Aurora transfers. The sender is
+// debited into a hold immediately; an administrator settles both linked legs.
 exports.externalTransfer = async (req, res) => {
+  let idempotencyKey;
   try {
-    const { amount, fromAccount, recipientEmail, recipientAccountNumber, recipientRoutingNumber, recipientName, note } = req.body;
     const userId = req.userId;
+    const amount = parseAmount(req.body.amount);
+    const fromAccount = parseAccountType(req.body.fromAccount, 'checking');
+    const note = parseNote(req.body.note);
+    idempotencyKey = parseIdempotencyKey(req);
 
-    console.log('💸 External transfer request:', { 
-      userId, 
-      amount, 
-      fromAccount, 
-      recipientEmail,
-      recipientAccountNumber 
+    const hasEmail = Boolean(String(req.body.recipientEmail || '').trim());
+    const recipientEmail = hasEmail ? parseEmail(req.body.recipientEmail) : null;
+    const recipientAccountNumber = hasEmail ? null : parseDigits(req.body.recipientAccountNumber, 'Recipient account number', 12);
+    const recipientRoutingNumber = hasEmail ? null : parseDigits(req.body.recipientRoutingNumber, 'Recipient routing number', 9);
+
+    const existing = await findIdempotentDebit(userId, idempotencyKey);
+    if (existing) return respondWithExistingTransfer(res, existing);
+
+    const transferReference = createTransferReference('EXT', userId);
+    const result = await withDatabaseTransaction(async (session) => {
+      const duplicate = await findIdempotentDebit(userId, idempotencyKey, session);
+      if (duplicate) {
+        return {
+          idempotent: true,
+          debit: duplicate,
+          credit: await findCounterpart(duplicate, 'credit', session),
+        };
+      }
+
+      const sender = await queryWithSession(User.findById(userId), session);
+      if (!sender) throw new TransferRequestError(404, 'User not found.');
+
+      const recipientQuery = recipientEmail
+        ? User.findOne({ email: recipientEmail })
+        : User.findOne({ accountNumber: recipientAccountNumber, routingNumber: recipientRoutingNumber });
+      const recipient = await queryWithSession(recipientQuery, session);
+      if (!recipient) {
+        throw new TransferRequestError(404, 'Recipient not found. They must have an Aurora Bank account.');
+      }
+      if (sender._id.equals(recipient._id)) {
+        throw new TransferRequestError(400, 'You cannot transfer to yourself. Use an internal transfer instead.');
+      }
+
+      ensureAccounts(sender);
+      const source = accountFor(sender, fromAccount);
+      if (!source) throw new TransferRequestError(400, `Your ${fromAccount} account is unavailable.`);
+      if (money(source.balance) < amount) {
+        throw new TransferRequestError(400, `Insufficient funds in ${fromAccount}. Available: $${money(source.balance).toFixed(2)}`);
+      }
+
+      source.balance = money(source.balance - amount);
+      recalculateBalance(sender);
+
+      const recipientName = `${recipient.firstName} ${recipient.lastName}`.trim() || recipient.email;
+      const senderName = `${sender.firstName} ${sender.lastName}`.trim() || sender.email;
+      const now = new Date();
+      const idempotency = idempotencyKey ? { idempotencyKey } : {};
+      const [debit, credit] = await Transaction.insertMany([
+        {
+          userId: sender._id,
+          amount: -amount,
+          description: `Transfer to ${recipientName}`,
+          category: 'External Transfer',
+          accountType: fromAccount,
+          status: 'pending',
+          transferType: 'external',
+          reference: `${transferReference}-D`,
+          transferReference,
+          transferRole: 'debit',
+          note,
+          date: now,
+          recipientMeta: {
+            recipientName,
+            bankName: 'Aurora Bank',
+            routingNumber: recipient.routingNumber,
+            accountNumber: recipient.accountNumber,
+            recipientEmail: recipient.email,
+            recipientId: recipient._id,
+            recipientAccountNumber: recipient.accountNumber,
+            recipientRoutingNumber: recipient.routingNumber,
+          },
+          ...idempotency,
+        },
+        {
+          userId: recipient._id,
+          amount,
+          description: `Transfer from ${senderName}`,
+          category: 'External Transfer',
+          accountType: 'checking',
+          status: 'pending',
+          transferType: 'external',
+          reference: `${transferReference}-C`,
+          transferReference,
+          transferRole: 'credit',
+          note,
+          date: now,
+          recipientMeta: {
+            senderName,
+            senderEmail: sender.email,
+            senderId: sender._id,
+            senderAccountNumber: sender.accountNumber,
+            senderRoutingNumber: sender.routingNumber,
+          },
+          ...idempotency,
+        },
+      ], sessionOptions(session));
+
+      try {
+        await sender.save(sessionOptions(session));
+      } catch (error) {
+        if (!session) {
+          await Transaction.deleteMany({ _id: { $in: [debit._id, credit._id] } }).catch(() => {});
+        }
+        throw error;
+      }
+
+      return { debit, credit, user: sender };
     });
 
-    // Validate inputs
-    if (!amount || amount <= 0) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Invalid transfer amount',
-      });
+    if (result.idempotent) {
+      return res.status(200).json(externalResponse(result.debit, result.credit, null, true));
     }
 
-    // Must provide either email OR account number + routing number
-    if (!recipientEmail && (!recipientAccountNumber || !recipientRoutingNumber)) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Recipient email or account/routing number is required',
-      });
-    }
-
-    const numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Invalid amount',
-      });
-    }
-
-    // Get sender
-    const sender = await User.findById(userId);
-    if (!sender) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'User not found',
-      });
-    }
-
-    // Find recipient by email OR account number + routing number
-    let recipient;
-    if (recipientEmail) {
-      recipient = await User.findOne({ email: recipientEmail.toLowerCase() });
-    } else if (recipientAccountNumber && recipientRoutingNumber) {
-      recipient = await User.findOne({ 
-        accountNumber: recipientAccountNumber,
-        routingNumber: recipientRoutingNumber 
-      });
-    }
-
-    if (!recipient) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Recipient not found. They must have an account with Aurora Bank.',
-      });
-    }
-
-    // Check if trying to send to self
-    if (sender._id.equals(recipient._id)) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Cannot transfer to yourself. Use internal transfer instead.',
-      });
-    }
-
-    // Initialize accounts if needed
-    if (!sender.accounts || sender.accounts.length === 0) {
-      sender.accounts = [
-        { accountType: 'checking', balance: sender.balance || 0 },
-        { accountType: 'savings', balance: 0 }
-      ];
-    }
-
-    // Check balance
-    const sourceAccount = fromAccount || 'checking';
-    const fromAccountObj = sender.accounts.find(a => a.accountType === sourceAccount);
-    const fromBalance = fromAccountObj?.balance || 0;
-
-    if (fromBalance < numericAmount) {
-      return res.status(400).json({
-        status: 'error',
-        message: `Insufficient funds in ${sourceAccount}. Available: $${fromBalance.toFixed(2)}`,
-      });
-    }
-
-    const randomId = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const reference = `EXT-${userId.toString().substring(0, 8)}-${Date.now()}-${randomId}`;
-
-    // Deduct from sender immediately and create pending transaction
-    const senderTransaction = await Transaction.create({
-      userId: sender._id,
-      amount: -numericAmount,
-      description: `Transfer to ${recipient.firstName} ${recipient.lastName}`,
-      category: 'External Transfer',
-      accountType: sourceAccount,
-      status: 'pending', // Pending approval
-      transferType: 'external',
-      reference,
-      note: note || '',
-      date: new Date(),
-      recipientMeta: {
-        recipientName: `${recipient.firstName} ${recipient.lastName}`,
-        recipientEmail: recipient.email,
-        recipientId: recipient._id,
-        recipientAccountNumber: recipient.accountNumber,
-        recipientRoutingNumber: recipient.routingNumber,
-      },
-    });
-
-    // Create pending incoming transaction for recipient (not applied yet)
-    const recipientTransaction = await Transaction.create({
-      userId: recipient._id,
-      amount: numericAmount,
-      description: `Transfer from ${sender.firstName} ${sender.lastName}`,
-      category: 'External Transfer',
-      accountType: 'checking', // Default to checking for incoming
-      status: 'pending', // Pending approval
-      transferType: 'external',
-      reference,
-      note: note || '',
-      date: new Date(),
-      recipientMeta: {
-        senderId: sender._id,
-        senderName: `${sender.firstName} ${sender.lastName}`,
-        senderEmail: sender.email,
-        senderAccountNumber: sender.accountNumber,
-        senderRoutingNumber: sender.routingNumber,
-      },
-    });
-
-    // Deduct from sender's account immediately (funds on hold)
-    const fromIndex = sender.accounts.findIndex(a => a.accountType === sourceAccount);
-    if (fromIndex !== -1) {
-      sender.accounts[fromIndex].balance -= numericAmount;
-    }
-
-    // Recalculate total balance
-    sender.balance = sender.accounts.reduce((sum, acc) => sum + (acc.balance || 0), 0);
-    sender.markModified('accounts');
-    await sender.save();
-
-    console.log('✅ External transfer created (pending approval)');
-
-    res.json({
-      status: 'success',
-      message: 'Transfer submitted for approval. Funds will be released once approved by admin.',
-      transfer: {
-        reference,
-        amount: numericAmount,
-        fromAccount: sourceAccount,
-        recipientName: `${recipient.firstName} ${recipient.lastName}`,
-        recipientEmail: recipient.email,
-        recipientAccountNumber: recipient.accountNumber,
-        recipientRoutingNumber: recipient.routingNumber,
-        status: 'pending',
-        date: new Date(),
-      },
-      senderTransaction: {
-        id: senderTransaction._id,
-        amount: senderTransaction.amount,
-        status: 'pending',
-      },
-      recipientTransaction: {
-        id: recipientTransaction._id,
-        amount: recipientTransaction.amount,
-        status: 'pending',
-      },
-    });
+    return res.status(201).json(externalResponse(result.debit, result.credit, result.user));
   } catch (error) {
-    console.error('❌ External transfer error:', error);
-    res.status(500).json({
+    if (duplicateKeyError(error) && idempotencyKey) {
+      const existing = await findIdempotentDebit(req.userId, idempotencyKey).catch(() => null);
+      if (existing) return respondWithExistingTransfer(res, existing);
+    }
+    console.error('External transfer error:', error);
+    return res.status(error.status || 500).json({
       status: 'error',
-      message: 'Server error processing transfer',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      message: error.status ? error.message : 'Server error processing transfer.',
     });
   }
 };
 
-// Get beneficiaries (saved recipients)
+// Saved recipients are derived from completed or pending outgoing transfers.
 exports.getBeneficiaries = async (req, res) => {
   try {
-    const userId = req.userId;
-
-    // Get recent external transfers to build beneficiary list
     const recentTransfers = await Transaction.find({
-      userId,
+      userId: req.userId,
       transferType: 'external',
+      transferRole: { $ne: 'credit' },
       'recipientMeta.recipientEmail': { $exists: true },
     })
       .sort({ date: -1 })
-      .limit(10)
+      .limit(50)
       .lean();
 
-    // Extract unique recipients
     const beneficiaries = [];
     const seen = new Set();
-
-    for (const tx of recentTransfers) {
-      const email = tx.recipientMeta?.recipientEmail;
-      if (email && !seen.has(email)) {
-        seen.add(email);
-        beneficiaries.push({
-          id: email,
-          name: tx.recipientMeta.recipientName || 'Unknown',
-          email: email,
-          lastUsed: tx.date,
-        });
-      }
+    for (const transaction of recentTransfers) {
+      const recipient = transaction.recipientMeta || {};
+      const key = recipient.recipientEmail || recipient.accountNumber;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      beneficiaries.push({
+        id: key,
+        name: recipient.recipientName || 'Aurora Bank recipient',
+        email: recipient.recipientEmail || '',
+        accountNumber: recipient.recipientAccountNumber || recipient.accountNumber || '',
+        routingNumber: recipient.recipientRoutingNumber || recipient.routingNumber || '',
+        lastUsed: transaction.date,
+      });
     }
 
-    res.json({
-      status: 'success',
-      beneficiaries,
-    });
+    return res.json({ status: 'success', beneficiaries });
   } catch (error) {
-    console.error('❌ Get beneficiaries error:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Error fetching beneficiaries',
-    });
+    console.error('Get beneficiaries error:', error);
+    return res.status(500).json({ status: 'error', message: 'Error fetching beneficiaries.' });
   }
 };
 
-// Add beneficiary (placeholder - currently auto-populated from transfers)
-exports.addBeneficiary = async (req, res) => {
-  res.json({
-    status: 'success',
-    message: 'Beneficiaries are automatically added when you make transfers',
-  });
-};
+// Beneficiaries are intentionally derived from successful submissions, so a
+// separate POST would imply persistence that does not exist.
+exports.addBeneficiary = async (_req, res) => res.status(501).json({
+  status: 'error',
+  message: 'Beneficiaries are added automatically after a transfer is submitted.',
+});
 
-// Delete beneficiary (placeholder)
-exports.deleteBeneficiary = async (req, res) => {
-  res.json({
-    status: 'success',
-    message: 'Beneficiary management coming soon',
-  });
-};
+exports.deleteBeneficiary = async (_req, res) => res.status(501).json({
+  status: 'error',
+  message: 'Saved beneficiaries cannot be deleted yet.',
+});
