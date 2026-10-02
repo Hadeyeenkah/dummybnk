@@ -32,9 +32,18 @@ const defaultOrigins = [
   'https://aurorabank.net',
   'https://www.aurorabank.net',
   'http://localhost:3000',
-  'http://localhost:5001'
+  'http://localhost:3005',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3005',
+  'http://localhost:5001',
+  'http://127.0.0.1:5001'
 ];
 const allowedOrigins = Array.from(new Set([...envOrigins, ...defaultOrigins]));
+const isLocalOrLanOrigin = (origin) => {
+  if (!origin) return true;
+  return /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d+)?$/i.test(origin)
+    || /^https?:\/\/(10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|169\.254\.\d+\.\d+)(?::\d+)?$/i.test(origin);
+};
 
 const corsOptions = {
   origin: function(origin, callback) {
@@ -44,8 +53,9 @@ const corsOptions = {
       return callback(null, true);
     }
     const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin || '');
+    const isAllowed = allowedOrigins.includes(origin) || isVercelPreview || isLocalOrLanOrigin(origin);
 
-    if (allowedOrigins.includes(origin) || isVercelPreview) {
+    if (isAllowed) {
       console.log(`[CORS] Allowed origin: ${origin}`);
       return callback(null, true);
     }
@@ -66,9 +76,9 @@ app.options('*', cors(corsOptions));
 
 // Additional middleware to ensure Safari/Apple devices can authenticate
 app.use((req, res, next) => {
-  // Ensure CORS headers are set for Safari
+  // Ensure CORS headers are set for Safari and local/mobile devices.
   const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && (allowedOrigins.includes(origin) || isLocalOrLanOrigin(origin) || /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Vary', 'Origin');

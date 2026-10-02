@@ -68,15 +68,15 @@ const loginValidation = [
 
 // Routes
 router.post('/register', registerValidation, handleValidationErrors, (req, res, next) => {
-  console.log('[AUTH] POST /register', { ip: req.ip, time: new Date().toISOString(), body: req.body });
+  console.log('[AUTH] POST /register', { ip: req.ip, time: new Date().toISOString() });
   authController.register(req, res, next);
 });
 router.get('/verify-email', (req, res, next) => {
-  console.log('[AUTH] GET /verify-email', { ip: req.ip, time: new Date().toISOString(), query: req.query });
+  console.log('[AUTH] GET /verify-email', { ip: req.ip, time: new Date().toISOString() });
   authController.verifyEmail(req, res, next);
 });
 router.post('/login', loginValidation, handleValidationErrors, (req, res, next) => {
-  console.log('[AUTH] POST /login', { ip: req.ip, time: new Date().toISOString(), body: req.body });
+  console.log('[AUTH] POST /login', { ip: req.ip, time: new Date().toISOString() });
   authController.login(req, res, next);
 });
 router.post('/refresh-token', (req, res, next) => {
@@ -127,17 +127,17 @@ router.post('/change-password', protect, (req, res, next) => {
 
 // Password reset routes
 router.post('/forgot-password', (req, res, next) => {
-  console.log('[AUTH] POST /forgot-password', { ip: req.ip, time: new Date().toISOString(), body: req.body });
+  console.log('[AUTH] POST /forgot-password', { ip: req.ip, time: new Date().toISOString() });
   authController.forgotPassword(req, res, next);
 });
 router.post('/reset-password', (req, res, next) => {
-  console.log('[AUTH] POST /reset-password', { ip: req.ip, time: new Date().toISOString(), body: req.body });
+  console.log('[AUTH] POST /reset-password', { ip: req.ip, time: new Date().toISOString() });
   authController.resetPassword(req, res, next);
 });
 
 // User lookup (for transfers)
 router.get('/lookup', protect, (req, res, next) => {
-  console.log('[AUTH] GET /lookup', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id, query: req.query });
+  console.log('[AUTH] GET /lookup', { ip: req.ip, time: new Date().toISOString(), user: req.user?._id });
   authController.lookupUser(req, res, next);
 });
 
