@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
 import AuroraBankLogo from '../components/AuroraBankLogo';
-import { API_BASE } from '../config';
+import { API_BASE, getAuthHeaders } from '../config';
 
 const money = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Number(value || 0));
 const date = (value) => { const valueDate = new Date(value); return Number.isNaN(valueDate.getTime()) ? '—' : valueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
@@ -23,7 +23,7 @@ function TransactionsPage() {
     const load = async () => {
       setLoading(true); setError('');
       try {
-        const response = await fetch(`${API_BASE}/transactions?limit=100`, { credentials: 'include' });
+        const response = await fetch(`${API_BASE}/transactions?limit=100`, { credentials: 'include', headers: getAuthHeaders() });
         if (!response.ok) throw new Error('Unable to load account activity');
         const payload = await response.json();
         const transactions = (payload.transactions || []).map((item) => ({ id: item._id || item.id, date: item.date, description: item.description, amount: Number(item.amount || 0), category: item.category || 'Other', accountType: item.accountType || 'checking', status: item.status || 'completed', note: item.note || '', reference: item.reference || '' }));

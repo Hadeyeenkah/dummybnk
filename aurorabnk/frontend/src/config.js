@@ -25,6 +25,21 @@ export const API_BASE = configuredApiBase
   : '/api';
 export const API_URL = API_BASE;
 
+export const getAuthHeaders = (additionalHeaders = {}) => {
+  const headers = { ...additionalHeaders };
+
+  if (typeof window !== 'undefined') {
+    try {
+      const token = window.localStorage.getItem('accessToken');
+      if (token) headers.Authorization = `Bearer ${token}`;
+    } catch (_) {
+      // Fall back to cookies when browser storage is restricted.
+    }
+  }
+
+  return headers;
+};
+
 // Log configuration in development
 if (process.env.NODE_ENV === 'development') {
   console.log('🔧 API Configuration:', {

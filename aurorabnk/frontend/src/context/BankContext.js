@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { API_BASE } from '../config';
+import { API_BASE, getAuthHeaders } from '../config';
 
 console.log('🌍 Environment:', process.env.NODE_ENV);
 console.log('🔗 API_BASE:', API_BASE);
@@ -94,16 +94,6 @@ export const BankProvider = ({ children }) => {
   // Helper to get API base (for local dev or env override)
   const getApiBase = () => {
     return API_BASE;
-  };
-
-  // Helper to get auth headers for Safari/Apple device fallback
-  const getAuthHeaders = (additionalHeaders = {}) => {
-    const headers = { 'Content-Type': 'application/json', ...additionalHeaders };
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    return headers;
   };
 
   // Map logical API paths to Netlify function endpoints for production
@@ -399,7 +389,7 @@ export const BankProvider = ({ children }) => {
       const res = await fetch(getEndpoint('/auth/profile'), {
         credentials: 'include',
         method: 'PUT',
-        headers: getAuthHeaders(),
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(profileData),
       });
       if (!res.ok) {
@@ -656,7 +646,7 @@ export const BankProvider = ({ children }) => {
       const saveDebit = fetch(getEndpoint('/transactions'), {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           amount: -numericAmount,
           description: debitTx.description,
@@ -673,7 +663,7 @@ export const BankProvider = ({ children }) => {
       const saveCredit = fetch(getEndpoint('/transactions'), {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           amount: numericAmount,
           description: creditTx.description,
@@ -755,7 +745,7 @@ export const BankProvider = ({ children }) => {
     fetch(getEndpoint('/transactions'), {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({
         amount: -numericAmount,
         description: pendingTx.description,
@@ -814,7 +804,7 @@ export const BankProvider = ({ children }) => {
       const res = await fetch(getEndpoint('/bills'), {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           payee: billData.payee,
           amount: parseFloat(billData.amount),
@@ -873,15 +863,13 @@ export const BankProvider = ({ children }) => {
   };
 
   // Update current user with transactions (for lazy loading)
-  const updateTransactions = (transactions, pendingTransactions) => {
-    if (currentUser) {
-      setCurrentUser(prev => ({
-        ...prev,
-        transactions: transactions || prev.transactions || [],
-        pendingTransactions: pendingTransactions || prev.pendingTransactions || [],
-      }));
-    }
-  };
+  const updateTransactions = useCallback((transactions, pendingTransactions) => {
+    setCurrentUser((prev) => prev ? {
+      ...prev,
+      transactions: transactions || prev.transactions || [],
+      pendingTransactions: pendingTransactions || prev.pendingTransactions || [],
+    } : prev);
+  }, []);
 
   const value = {
     currentUser,

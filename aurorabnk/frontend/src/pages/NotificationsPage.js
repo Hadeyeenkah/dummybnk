@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
 import AuroraBankLogo from '../components/AuroraBankLogo';
-import { API_BASE } from '../config';
+import { API_BASE, getAuthHeaders } from '../config';
 
 function NotificationsPage() {
-  const { currentUser } = useBankContext();
+  const { currentUser, updateTransactions } = useBankContext();
   const location = useLocation();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
@@ -22,6 +22,7 @@ function NotificationsPage() {
       try {
         const res = await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages`, {
           credentials: 'include',
+          headers: getAuthHeaders(),
         });
         if (res.ok) {
           const data = await res.json();
@@ -36,6 +37,40 @@ function NotificationsPage() {
     const interval = setInterval(fetchAdminMessages, 10000);
     return () => clearInterval(interval);
   }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (!currentUser?.id || currentUser.transactions?.length > 0) return;
+    let active = true;
+
+    const fetchTransactions = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/transactions?limit=100`, {
+          credentials: 'include',
+          headers: getAuthHeaders(),
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const transactions = (data.transactions || []).map((tx) => ({
+          id: tx._id || tx.id,
+          date: tx.date ? new Date(tx.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          description: tx.description,
+          amount: Number(tx.amount || 0),
+          category: tx.category,
+          status: tx.status,
+          accountType: tx.accountType,
+          note: tx.note,
+        }));
+
+        if (active) updateTransactions(transactions, transactions.filter((tx) => tx.status === 'pending'));
+      } catch (err) {
+        console.error('Failed to fetch transactions for notifications:', err);
+      }
+    };
+
+    fetchTransactions();
+    return () => { active = false; };
+  }, [currentUser?.id, currentUser?.transactions?.length, updateTransactions]);
 
   // Apply intent from Dashboard bell clicks
   useEffect(() => {
@@ -236,10 +271,12 @@ function NotificationsPage() {
         await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages/${notif.messageId}/read`, {
           method: 'PATCH',
           credentials: 'include',
+          headers: getAuthHeaders(),
         });
         // Refresh admin messages
         const res = await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages`, {
           credentials: 'include',
+          headers: getAuthHeaders(),
         });
         if (res.ok) {
           const data = await res.json();
@@ -263,12 +300,14 @@ function NotificationsPage() {
           fetch(`${API_BASE}/admin/users/${currentUser.id}/messages/${m._id}/read`, {
             method: 'PATCH',
             credentials: 'include',
+            headers: getAuthHeaders(),
           })
         )
       );
       // Refresh
       const res = await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages`, {
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const data = await res.json();

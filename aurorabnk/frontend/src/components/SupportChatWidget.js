@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useBankContext } from '../context/BankContext';
-import { API_BASE } from '../config';
+import { API_BASE, getAuthHeaders } from '../config';
 import '../App.css';
 
 function SupportChatWidget({ isOpen = false, onOpen, onClose }) {
@@ -24,6 +24,7 @@ function SupportChatWidget({ isOpen = false, onOpen, onClose }) {
     try {
       const res = await fetch(`${apiBase}/chat/messages/${convId}`, {
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -33,6 +34,7 @@ function SupportChatWidget({ isOpen = false, onOpen, onClose }) {
         await fetch(`${apiBase}/chat/messages/${convId}/read`, {
           method: 'PUT',
           credentials: 'include',
+          headers: getAuthHeaders(),
         });
       }
     } catch (err) {
@@ -48,6 +50,7 @@ function SupportChatWidget({ isOpen = false, onOpen, onClose }) {
     try {
       const res = await fetch(`${apiBase}/chat/conversation`, {
         credentials: 'include',
+        headers: getAuthHeaders(),
       });
       if (res.ok) {
         const data = await res.json();
@@ -118,7 +121,7 @@ function SupportChatWidget({ isOpen = false, onOpen, onClose }) {
       const res = await fetch(`${apiBase}/chat/messages`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({
           conversationId: convId,
           message: trimmed,
