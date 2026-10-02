@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useBankContext } from './context/BankContext';
 import AuroraBankLogo from './components/AuroraBankLogo';
 import SupportChatWidget from './components/SupportChatWidget';
-import { API_BASE } from './config';
+import { API_BASE, getAuthHeaders } from './config';
 import './App.css';
 
 // API base for all fetch calls
@@ -169,12 +169,14 @@ function Dashboard() {
             fetch(`${API_BASE}/admin/users/${currentUser.id}/messages/${m._id}/read`, {
               method: 'PATCH',
               credentials: 'include',
+              headers: getAuthHeaders(),
             })
           )
         );
         // Refresh admin messages after marking
         const res = await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages`, {
           credentials: 'include',
+          headers: getAuthHeaders(),
         });
         if (res.ok) {
           const data = await res.json();
@@ -206,6 +208,7 @@ function Dashboard() {
       try {
         const res = await fetch(`${API_BASE}/transactions?limit=100`, {
           credentials: 'include',
+          headers: getAuthHeaders(),
         });
         if (res.ok) {
           const data = await res.json();
@@ -350,6 +353,7 @@ function Dashboard() {
 
         const res = await fetch(`${API_BASE}/admin/users/${currentUser.id}/messages`, {
           credentials: 'include',
+          headers: getAuthHeaders(),
         });
 
         console.log('📡 Response status:', res.status);
@@ -382,6 +386,7 @@ function Dashboard() {
         // First get or create conversation ID
         const convRes = await fetch(`${API_BASE}/chat/conversation`, {
           credentials: 'include',
+          headers: getAuthHeaders(),
         });
 
         if (convRes.ok) {
@@ -392,6 +397,7 @@ function Dashboard() {
             // Fetch messages for this conversation
             const msgRes = await fetch(`${API_BASE}/chat/messages/${convId}`, {
               credentials: 'include',
+              headers: getAuthHeaders(),
             });
 
             if (msgRes.ok) {
