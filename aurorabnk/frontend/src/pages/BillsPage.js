@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
 import AuroraBankLogo from '../components/AuroraBankLogo';
-import { API_BASE } from '../config';
+import { API_BASE, getAuthHeaders } from '../config';
 import '../App.css';
 
 function BillsPage() {
@@ -48,9 +48,7 @@ function BillsPage() {
         const res = await fetch(`${apiBase}/bills?limit=10`, {
           method: 'GET',
           credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         });
         
         // Handle all response types gracefully
