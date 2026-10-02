@@ -1,11 +1,12 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const { protect, requireRole } = require('../middleware/authMiddleware');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const MarketSettings = require('../models/MarketSettings');
 const { getUserTradeTotal: getUserTradeTotals } = require('../utils/marketTotals');
-const { ChatConversation } = require('../models/Chat');
+const { ChatConversation, ChatMessage } = require('../models/Chat');
 const { sendNotificationEmail } = require('../utils/email');
 
 // Keep this wrapper so the fields used below remain easy to read while the
@@ -612,6 +613,32 @@ router.get('/conversations', protect, requireRole('admin'), async (req, res) => 
   } catch (error) {
     console.error('Get conversations error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+router.delete('/conversations/:conversationId/messages', protect, requireRole('admin'), async (req, res) => {
+  const { conversationId } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(conversationId)) {
+    return res.status(400).json({ success: false, message: 'Invalid conversation ID' });
+  }
+
+  try {
+    const conversation = await ChatConversation.findById(conversationId);
+    if (!conversation) {
+      return res.status(404).json({ success: false, message: 'Conversation not found' });
+    }
+
+    const result = await ChatMessage.deleteMany({ conversationId });
+    conversation.lastMessage = '';
+    conversation.lastMessageTime = null;
+    conversation.unreadCount = 0;
+    await conversation.save();
+
+    return res.json({ success: true, deletedCount: result.deletedCount });
+  } catch (error) {
+    console.error('Clear conversation messages error:', error);
+    return res.status(500).json({ success: false, message: 'Unable to clear conversation messages' });
   }
 });
 

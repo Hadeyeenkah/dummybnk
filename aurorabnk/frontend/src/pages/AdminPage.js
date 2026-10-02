@@ -99,6 +99,7 @@ function AdminPage() {
   const [conversationMessages, setConversationMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatSending, setChatSending] = useState(false);
+  const [chatClearing, setChatClearing] = useState(false);
   const [marketSettings, setMarketSettings] = useState(defaultMarketSettings);
   const [marketForm, setMarketForm] = useState(() => createMarketForm());
   const [marketSaving, setMarketSaving] = useState(false);
@@ -113,6 +114,7 @@ function AdminPage() {
   const marketSettingsVersion = useRef(0);
   const adminFetchInFlight = useRef(false);
   const selectedConversationIdRef = useRef(null);
+  const conversationMessagesRequestVersion = useRef(0);
   const isMounted = useRef(false);
   // Today's return is per user (user A's return can differ from user B's),
   // so it's edited as a draft keyed by user id rather than one global value.
@@ -448,6 +450,7 @@ function AdminPage() {
 
   // Fetch messages for a conversation
   const fetchConversationMessages = async (convId) => {
+    const requestVersion = ++conversationMessagesRequestVersion.current;
     try {
       const res = await fetch(`${API_BASE}/chat/messages/${encodeURIComponent(convId)}`, {
         credentials: 'include',
@@ -457,7 +460,11 @@ function AdminPage() {
         const data = await readResponseData(res);
         // A slower response for a conversation that was just deselected must
         // not replace the messages for the newly selected conversation.
-        if (isMounted.current && selectedConversationIdRef.current === convId) {
+        if (
+          isMounted.current
+          && selectedConversationIdRef.current === convId
+          && conversationMessagesRequestVersion.current === requestVersion
+        ) {
           setConversationMessages(Array.isArray(data.messages) ? data.messages : []);
         }
       } else if (handleAuthorizationFailure(res)) {
@@ -465,6 +472,40 @@ function AdminPage() {
       }
     } catch (err) {
       console.error('Error fetching messages:', err);
+    }
+  };
+
+  const handleClearChat = async () => {
+    const conversationId = selectedConversationIdRef.current;
+    if (!conversationId || chatClearing || conversationMessages.length === 0) return;
+
+    const conversation = conversations.find((item) => item._id === conversationId);
+    const userName = conversation?.userName || 'this user';
+    if (!window.confirm(`Clear the chat history with ${userName} for both the user and admins? This cannot be undone.`)) return;
+
+    setChatClearing(true);
+    try {
+      const res = await fetch(`${API_BASE}/admin/conversations/${encodeURIComponent(conversationId)}/messages`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: getAuthHeaders(),
+      });
+      const data = await readResponseData(res);
+      if (!res.ok) {
+        if (handleAuthorizationFailure(res)) return;
+        throw new Error(data.message || 'Unable to clear chat history.');
+      }
+
+      conversationMessagesRequestVersion.current += 1;
+      if (isMounted.current && selectedConversationIdRef.current === conversationId) {
+        setConversationMessages([]);
+      }
+      await fetchConversations();
+    } catch (err) {
+      console.error('Clear chat error:', err);
+      alert(err.message || 'Unable to clear chat history.');
+    } finally {
+      if (isMounted.current) setChatClearing(false);
     }
   };
 
@@ -1410,6 +1451,19 @@ function AdminPage() {
                       </div>
                     ) : (
                       <>
+                        <div className="flex items-center justify-between gap-3 border-b border-[#D9DBD2] bg-white px-4 py-3">
+                          <p className="truncate text-sm font-semibold text-[#163B2E]">
+                            {conversations.find((conversation) => conversation._id === selectedConversationId)?.userName || 'User chat'}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleClearChat}
+                            disabled={chatClearing || conversationMessages.length === 0}
+                            className="shrink-0 rounded-md border border-[#9B3232] px-3 py-2 text-xs font-semibold text-[#9B3232] transition hover:bg-[#fbf1f1] disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {chatClearing ? 'Clearing…' : 'Clear chat'}
+                          </button>
+                        </div>
                         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
                           {conversationMessages.length === 0 ? (
                             <p className="py-8 text-center text-sm text-[#8a9081]">No messages yet</p>
