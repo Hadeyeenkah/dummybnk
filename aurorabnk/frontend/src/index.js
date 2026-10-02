@@ -12,3 +12,11 @@ root.render(
     </BrowserRouter>
   </React.StrictMode>
 );
+
+if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${process.env.PUBLIC_URL}/service-worker.js`).catch((error) => {
+      console.error('Service worker registration failed:', error);
+    });
+  });
+}

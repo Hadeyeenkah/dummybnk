@@ -9,6 +9,7 @@ import {
   ChartCandlestick,
   CircleDollarSign,
   CreditCard,
+  Download,
   Landmark,
   ReceiptText,
   ScanLine,
@@ -96,10 +97,38 @@ function Dashboard() {
   const [editMode, setEditMode] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [supportChatOpen, setSupportChatOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const [appInstalled, setAppInstalled] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [adminMessages, setAdminMessages] = useState([]);
   const [supportChatMessages, setSupportChatMessages] = useState([]);
   const unreadCount = notifications.filter((n) => !n.read).length;
+
+  useEffect(() => {
+    const displayMode = window.matchMedia('(display-mode: standalone)');
+    const updateInstalledState = () => {
+      setAppInstalled(displayMode.matches || window.navigator.standalone === true);
+    };
+    const handleInstallPrompt = (event) => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const handleAppInstalled = () => {
+      setAppInstalled(true);
+      setInstallPrompt(null);
+    };
+
+    updateInstalledState();
+    displayMode.addEventListener?.('change', updateInstalledState);
+    window.addEventListener('beforeinstallprompt', handleInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => {
+      displayMode.removeEventListener?.('change', updateInstalledState);
+      window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
 
   const formatTime = (isoString) => {
     const date = new Date(isoString);
@@ -458,6 +487,24 @@ function Dashboard() {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleInstallApp = async () => {
+    setShowProfileMenu(false);
+    if (!installPrompt) {
+      setShowInstallHelp(true);
+      return;
+    }
+
+    try {
+      await installPrompt.prompt();
+      const choice = await installPrompt.userChoice;
+      if (choice.outcome === 'accepted') setAppInstalled(true);
+      setInstallPrompt(null);
+    } catch (error) {
+      console.error('App installation prompt failed:', error);
+      setShowInstallHelp(true);
+    }
   };
 
   const handleNavigate = (path) => {
@@ -819,6 +866,15 @@ function Dashboard() {
                         {item.label}
                       </button>
                     ))}
+                    {!appInstalled && (
+                      <button
+                        onClick={handleInstallApp}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                      >
+                        <Download className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                        Install app
+                      </button>
+                    )}
                     <div className="my-1 border-t border-slate-200" />
                     <button
                       onClick={handleLogout}
@@ -1117,7 +1173,7 @@ function Dashboard() {
       </main>
 
       {/* Mobile bottom navigation */}
-      <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white lg:hidden">
+      <nav aria-label="Mobile navigation" className="dashboard-mobile-nav fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white lg:hidden">
         <div className="mx-auto grid max-w-md grid-cols-4">
           {[
             { to: '/dashboard', label: 'Accounts', icon: 'home', active: true },
@@ -1311,6 +1367,35 @@ function Dashboard() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {showInstallHelp && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-labelledby="install-app-title">
+          <section className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <h2 id="install-app-title" className="text-lg font-bold text-[#0a2540]">Install Aurora Bank</h2>
+              <button
+                type="button"
+                onClick={() => setShowInstallHelp(false)}
+                aria-label="Close install instructions"
+                className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100"
+              >
+                <Icon name="close" className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
+              <p><strong className="text-slate-900">Android:</strong> Open your browser menu and choose Install app or Add to Home screen.</p>
+              <p><strong className="text-slate-900">iPhone or iPad:</strong> In Safari, tap Share, then Add to Home Screen.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowInstallHelp(false)}
+              className="mt-5 w-full rounded-md bg-[#0b5cab] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0a4a8f]"
+            >
+              Done
+            </button>
+          </section>
         </div>
       )}
 
