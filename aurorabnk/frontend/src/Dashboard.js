@@ -4,6 +4,15 @@ import { useBankContext } from './context/BankContext';
 import AuroraBankLogo from './components/AuroraBankLogo';
 import SupportChatWidget from './components/SupportChatWidget';
 import { API_BASE, getAuthHeaders } from './config';
+import {
+  ArrowLeftRight,
+  ChartCandlestick,
+  CircleDollarSign,
+  CreditCard,
+  Landmark,
+  ReceiptText,
+  ScanLine,
+} from 'lucide-react';
 import './App.css';
 
 // API base for all fetch calls
@@ -437,13 +446,13 @@ function Dashboard() {
   const recentTransactions = currentUser.transactions.slice(0, 5);
 
   const quickActions = [
-    { title: 'Transfer money', icon: '↗', link: '/transfer', description: 'Move money' },
-    { title: 'Wire transfer', icon: '⇄', link: '/wire-transfer', description: 'Send a wire' },
-    { title: 'Pay bills', icon: '▣', link: '/bills', description: 'Pay a bill' },
-    { title: 'Deposit a check', icon: '▤', link: '/deposit', description: 'Mobile deposit' },
-    { title: 'Fund Stock market', icon: '₿', link: '/crypto-deposit', description: 'Fund Stock market' },
-    { title: 'Buy stocks', icon: '↗', link: '/stocks', description: 'Invest in markets' },
-    { title: 'Manage cards', icon: '◫', link: '/cards', description: 'Card controls' },
+    { title: 'Transfer money', icon: ArrowLeftRight, link: '/transfer', description: 'Move money' },
+    { title: 'Wire transfer', icon: Landmark, link: '/wire-transfer', description: 'Send a wire' },
+    { title: 'Pay bills', icon: ReceiptText, link: '/bills', description: 'Pay a bill' },
+    { title: 'Deposit a check', icon: ScanLine, link: '/deposit', description: 'Mobile deposit' },
+    { title: 'Fund Stock market', icon: CircleDollarSign, link: '/crypto-deposit', description: 'Fund Stock market' },
+    { title: 'Buy stocks', icon: ChartCandlestick, link: '/stocks', description: 'Invest in markets' },
+    { title: 'Manage cards', icon: CreditCard, link: '/cards', description: 'Card controls' },
   ];
 
   const handleLogout = () => {
@@ -933,19 +942,27 @@ function Dashboard() {
             <section className="dashboard-actions">
               <h2 className={`${sectionTitleCls} mb-3`}>Quick actions</h2>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {quickActions.map((action) => (
-                  <Link
-                    key={action.title}
-                    to={action.link}
-                    className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 transition hover:border-[#0b5cab] focus:outline-none focus:ring-2 focus:ring-[#0b5cab]/40"
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#e8f0fa] text-lg font-bold text-[#0b5cab]" aria-hidden="true">{action.icon}</span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-sm font-semibold text-[#0a2540]">{action.title}</span>
-                      <span className="hidden truncate text-xs text-slate-500 sm:block">{action.description}</span>
-                    </span>
-                  </Link>
-                ))}
+                {quickActions.map((action) => {
+                  const ActionIcon = action.icon;
+                  return (
+                    <Link
+                      key={action.title}
+                      to={action.link}
+                      className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 transition hover:border-[#0b5cab] focus:outline-none focus:ring-2 focus:ring-[#0b5cab]/40"
+                    >
+                      <span
+                        className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/80 bg-gradient-to-br from-white via-[#e8f0fa] to-[#d1e0ef] text-[#0b5cab] shadow-[0_3px_0_#b9cde1,0_7px_12px_rgba(10,37,64,0.12)] transition duration-200 group-hover:-translate-y-0.5 group-hover:rotate-[-3deg] group-hover:shadow-[0_4px_0_#b9cde1,0_9px_14px_rgba(10,37,64,0.16)] group-active:translate-y-0.5 group-active:shadow-[0_1px_0_#b9cde1,0_2px_4px_rgba(10,37,64,0.12)]"
+                        aria-hidden="true"
+                      >
+                        <ActionIcon size={19} strokeWidth={2} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-[#0a2540]">{action.title}</span>
+                        <span className="hidden truncate text-xs text-slate-500 sm:block">{action.description}</span>
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
             </section>
 

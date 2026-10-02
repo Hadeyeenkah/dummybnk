@@ -4,7 +4,7 @@ const MarketSettings = require('../models/MarketSettings');
 const MarketOrder = require('../models/MarketOrder');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
-const { getUserTradeTotal } = require('../utils/marketTotals');
+const { getUserTradeTotal, startOfTodayUtc } = require('../utils/marketTotals');
 
 const router = express.Router();
 
@@ -220,6 +220,26 @@ const settingsPayload = (settings) => ({
   updatedAt: settings?.updatedAt,
 });
 
+const getTodaysReturn = (user, settings, estimatedTradeTotal) => {
+  const globalReturnPercent = Number(settings?.todaysReturnPercent ?? 10.5);
+  const hasOverride = Number.isFinite(user.todaysReturnOverride);
+  return {
+    todaysReturn: hasOverride
+      ? Number(user.todaysReturnOverride.toFixed(2))
+      : Number((estimatedTradeTotal * globalReturnPercent / 100).toFixed(2)),
+    todaysReturnPercent: hasOverride
+      ? Number((estimatedTradeTotal > 0 ? (user.todaysReturnOverride / estimatedTradeTotal) * 100 : 0).toFixed(2))
+      : globalReturnPercent,
+  };
+};
+
+const returnWithdrawalSummary = (transaction) => transaction ? ({
+  id: transaction._id,
+  amount: Number(transaction.amount),
+  status: transaction.status,
+  date: transaction.date,
+}) : null;
+
 // This lightweight endpoint keeps the administration console independent of
 // slow third-party quote requests when it only needs persisted controls.
 router.get('/settings', protect, requireRole('admin'), async (_req, res) => {
@@ -233,7 +253,8 @@ router.get('/settings', protect, requireRole('admin'), async (_req, res) => {
 
 router.get('/overview', protect, async (req, res) => {
   try {
-    const [settings, quotes, { estimatedTradeTotal, tradeCount }] = await Promise.all([
+    const todayStart = startOfTodayUtc();
+    const [settings, quotes, tradeTotals, latestReturnWithdrawal] = await Promise.all([
       getSettings(),
       Promise.all(fallbackQuotes.map(fetchYahooQuote)),
       // Scoped to the logged-in user only — this used to aggregate every
@@ -241,20 +262,21 @@ router.get('/overview', protect, async (req, res) => {
       // the exact same "today's return" number regardless of what they
       // personally had invested.
       getUserTradeTotal(req.user._id),
+      Transaction.findOne({
+        userId: req.user._id,
+        transferType: 'withdrawal',
+        reference: /^market-return-/,
+        $or: [
+          { status: { $in: ['pending', 'processing'] } },
+          { date: { $gte: todayStart } },
+        ],
+      }).sort({ date: -1 }),
     ]);
 
-    const globalReturnPercent = Number(settings.todaysReturnPercent ?? 10.5);
-    const autoTodaysReturn = Number((estimatedTradeTotal * globalReturnPercent / 100).toFixed(2));
-
-    // An admin can override this specific user's return with a dollar
-    // figure (User.todaysReturnOverride). When set, the % shown is derived
-    // live from what this user actually has on trade today, not frozen at
-    // whatever it was when the admin saved the override.
-    const hasOverride = Number.isFinite(req.user.todaysReturnOverride);
-    const todaysReturn = hasOverride ? Number(req.user.todaysReturnOverride.toFixed(2)) : autoTodaysReturn;
-    const todaysReturnPercent = hasOverride
-      ? Number((estimatedTradeTotal > 0 ? (req.user.todaysReturnOverride / estimatedTradeTotal) * 100 : 0).toFixed(2))
-      : globalReturnPercent;
+    const { estimatedTradeTotal, tradeCount } = tradeTotals;
+    // An admin may override this user's return; automatic returns use their
+    // own current-day paper trades and the global rate.
+    const { todaysReturn, todaysReturnPercent } = getTodaysReturn(req.user, settings, estimatedTradeTotal);
 
     const displayQuotes = applyWatchlistChanges(quotes, settings.watchlistChanges);
 
@@ -266,6 +288,7 @@ router.get('/overview', protect, async (req, res) => {
         estimatedTradeTotal,
         tradeCount,
       },
+      returnWithdrawal: returnWithdrawalSummary(latestReturnWithdrawal),
       balance: {
         checking: req.user.accounts?.find((account) => account.accountType === 'checking')?.balance || 0,
         total: req.user.balance || 0,
@@ -276,6 +299,87 @@ router.get('/overview', protect, async (req, res) => {
   } catch (error) {
     console.error('Market overview error:', error);
     res.status(500).json({ message: 'Unable to load market data' });
+  }
+});
+
+router.post('/return-withdrawal', protect, async (req, res) => {
+  try {
+    const [settings, { estimatedTradeTotal }] = await Promise.all([
+      getSettings(),
+      getUserTradeTotal(req.user._id),
+    ]);
+    const { todaysReturn } = getTodaysReturn(req.user, settings, estimatedTradeTotal);
+    if (!Number.isFinite(todaysReturn) || todaysReturn <= 0) {
+      return res.status(400).json({ message: 'There is no positive return available to withdraw.' });
+    }
+
+    const activeRequest = await Transaction.findOne({
+      userId: req.user._id,
+      transferType: 'withdrawal',
+      reference: /^market-return-/,
+      status: { $in: ['pending', 'processing'] },
+    }).sort({ date: -1 });
+    if (activeRequest) {
+      return res.status(409).json({
+        message: 'A return withdrawal is already awaiting admin approval.',
+        returnWithdrawal: returnWithdrawalSummary(activeRequest),
+      });
+    }
+
+    const dateKey = startOfTodayUtc().toISOString().slice(0, 10);
+    const reference = `market-return-${dateKey}`;
+    const existing = await Transaction.findOne({ userId: req.user._id, reference });
+    if (existing && existing.status !== 'rejected') {
+      return res.status(409).json({
+        message: 'Today’s return has already been withdrawn or requested.',
+        returnWithdrawal: returnWithdrawalSummary(existing),
+      });
+    }
+
+    const requestFields = {
+      amount: todaysReturn,
+      description: 'Withdraw today’s stock market return',
+      category: 'Investment',
+      accountType: 'checking',
+      status: 'pending',
+      transferType: 'withdrawal',
+      note: 'Awaiting admin approval before crediting checking.',
+      date: new Date(),
+      reference,
+    };
+
+    let transaction;
+    let statusCode = 201;
+    if (existing) {
+      transaction = await Transaction.findOneAndUpdate(
+        { _id: existing._id, status: 'rejected' },
+        { $set: requestFields },
+        { new: true, runValidators: true },
+      );
+      if (!transaction) {
+        return res.status(409).json({ message: 'This return withdrawal is already being processed.' });
+      }
+      statusCode = 200;
+    } else {
+      try {
+        transaction = await Transaction.create({ userId: req.user._id, ...requestFields });
+      } catch (error) {
+        if (error.code !== 11000) throw error;
+        const duplicate = await Transaction.findOne({ userId: req.user._id, reference });
+        return res.status(409).json({
+          message: 'Today’s return has already been requested.',
+          returnWithdrawal: returnWithdrawalSummary(duplicate),
+        });
+      }
+    }
+
+    return res.status(statusCode).json({
+      message: 'Return withdrawal submitted for admin approval.',
+      returnWithdrawal: returnWithdrawalSummary(transaction),
+    });
+  } catch (error) {
+    console.error('Market return withdrawal error:', error);
+    return res.status(500).json({ message: 'Unable to request a return withdrawal.' });
   }
 });
 

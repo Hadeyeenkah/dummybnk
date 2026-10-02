@@ -190,12 +190,15 @@ function StockMarketPage() {
   const [searching, setSearching] = useState(false);
   const [availableBalance, setAvailableBalance] = useState(() => finiteNumber(currentUser?.checking ?? currentUser?.balance));
   const [successOrder, setSuccessOrder] = useState(null);
+  const [returnWithdrawal, setReturnWithdrawal] = useState(null);
+  const [withdrawalSubmitting, setWithdrawalSubmitting] = useState(false);
   const isMounted = useRef(false);
   const marketLoadInFlight = useRef(false);
 
   const selectedQuote = useMemo(() => quotes.find((quote) => quote.symbol === selectedSymbol) || quotes[0], [quotes, selectedSymbol]);
   const estimatedOrderValue = finiteNumber(quantity) * finiteNumber(selectedQuote?.price);
   const marketIsOpen = settings.marketStatus === 'open';
+  const returnWithdrawalPending = ['pending', 'processing'].includes(returnWithdrawal?.status);
 
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem('accessToken');
@@ -220,6 +223,7 @@ function StockMarketPage() {
       if (isMounted.current) {
         const nextSettings = { ...defaultMarketSettings, ...data.settings };
         setSettings(nextSettings);
+        setReturnWithdrawal(data.returnWithdrawal || null);
         setMarketLoaded(true);
         setQuotes((currentQuotes) => mergeMarketQuotes(data.quotes, currentQuotes, nextSettings.watchlistChanges));
 
@@ -292,6 +296,34 @@ function StockMarketPage() {
       price: selectedQuote.price,
       total: numericQuantity * selectedQuote.price,
     });
+  };
+
+  const handleWithdrawReturn = async () => {
+    if (withdrawalSubmitting || !marketLoaded || finiteNumber(settings.todaysReturn) <= 0) return;
+
+    setWithdrawalSubmitting(true);
+    setError('');
+    setNotice('');
+    try {
+      const response = await fetch(`${API_BASE}/market/return-withdrawal`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      });
+      const data = await readResponseData(response);
+      if (!response.ok) {
+        if (data.returnWithdrawal) setReturnWithdrawal(data.returnWithdrawal);
+        throw new Error(data.message || 'Unable to request a return withdrawal.');
+      }
+
+      setReturnWithdrawal(data.returnWithdrawal || null);
+      setNotice(data.message || 'Return withdrawal submitted for admin approval.');
+      await loadMarket();
+    } catch (withdrawalError) {
+      setError(withdrawalError.message || 'Unable to request a return withdrawal.');
+    } finally {
+      setWithdrawalSubmitting(false);
+    }
   };
 
   const handleConfirmOrder = async () => {
@@ -445,6 +477,29 @@ function StockMarketPage() {
               {settings.todaysReturn >= 0 ? '+' : '-'}{money(Math.abs(settings.todaysReturn))}
             </p>
             <p className="mt-1 text-xs text-[#8a9081]">{percent(settings.todaysReturnPercent)} of {money(settings.estimatedTradeTotal)} in user trades</p>
+            {(returnWithdrawal || finiteNumber(settings.todaysReturn) > 0) && (
+              <div className="mt-4 border-t border-[#ECEDE7] pt-4">
+                {returnWithdrawalPending ? (
+                  <p className="text-sm font-medium text-[#8a6c2e]" role="status">Withdrawal request pending admin approval</p>
+                ) : returnWithdrawal?.status === 'completed' ? (
+                  <p className="text-sm font-medium text-[#1E7245]" role="status">Today&apos;s return has been added to checking</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleWithdrawReturn}
+                    disabled={!marketLoaded || withdrawalSubmitting || finiteNumber(settings.todaysReturn) <= 0}
+                    className="w-full rounded-md bg-[#163B2E] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0F2C22] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {withdrawalSubmitting
+                      ? 'Submitting request…'
+                      : returnWithdrawal?.status === 'rejected'
+                        ? 'Request withdrawal again'
+                        : 'Request withdrawal'}
+                  </button>
+                )}
+                <p className="mt-2 text-xs leading-5 text-[#8a9081]">Funds are added to checking only after admin approval.</p>
+              </div>
+            )}
           </div>
           <div className="bg-white p-5">
             <p className="text-sm text-[#5b6459]">Available to invest</p>
