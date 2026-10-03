@@ -305,6 +305,17 @@ body {
   box-shadow: 0 18px 32px rgba(11, 71, 122, 0.18);
 }
 
+.dashboard-account-balance {
+  container-type: inline-size;
+}
+
+.dashboard-account-balance > p {
+  font-size: 1.5rem;
+  font-size: clamp(0.625rem, calc(100cqi / (var(--balance-length) * 0.62)), 1.5rem);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
 .dashboard-balance-card::after {
   content: "";
   position: absolute;

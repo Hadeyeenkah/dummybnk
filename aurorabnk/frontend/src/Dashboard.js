@@ -157,25 +157,11 @@ function Dashboard() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const getBalanceSizeClass = (value) => {
-    const length = formatCurrency(value).length;
-
-    if (length > 18) return 'text-xl sm:text-2xl md:text-3xl';
-    if (length > 15) return 'text-2xl sm:text-3xl md:text-4xl';
-    if (length > 12) return 'text-3xl sm:text-4xl md:text-5xl';
-    return 'text-4xl sm:text-5xl md:text-6xl';
-  };
-
-  // Helper for checking/savings amounts in smaller containers
-  const getAccountBalanceSizeClass = (value) => {
-    const formatted = `$${value.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
-    const length = formatted.length;
-
-    if (length > 15) return 'text-sm sm:text-base';
-    if (length > 12) return 'text-base sm:text-lg';
-    if (length > 10) return 'text-lg sm:text-xl';
-    return 'text-xl sm:text-2xl';
-  };
+  const getAccountBalanceLayoutClass = (value) => (
+    formatCurrency(value).length > 15
+      ? 'grid-cols-1'
+      : 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
+  );
   const [formData, setFormData] = useState({
     firstName: currentUser?.name.split(' ')[0] || '',
     lastName: currentUser?.name.split(' ').slice(1).join(' ') || '',
@@ -952,23 +938,33 @@ function Dashboard() {
               </div>
 
               <div className="divide-y divide-slate-200">
-                <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
-                  <div>
+                <div className={`grid ${getAccountBalanceLayoutClass(user.checking)} items-center gap-3 px-5 py-4 sm:px-6`}>
+                  <div className="min-w-0">
                     <p className="font-semibold text-[#0a2540]">Checking</p>
                     <p className="text-xs text-slate-500">Everyday Checking · ending in {String(user.accountNumber || '0000').slice(-4)}</p>
                   </div>
-                  <p className={`${getAccountBalanceSizeClass(user.checking)} break-all text-right font-bold tabular-nums text-slate-900`}>
-                    {showBalance ? `$${user.checking.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : hidden}
-                  </p>
+                  <div className="dashboard-account-balance min-w-0 text-right">
+                    <p
+                      className="break-all text-right font-bold tabular-nums text-slate-900"
+                      style={{ '--balance-length': showBalance ? formatCurrency(user.checking).length : 6 }}
+                    >
+                      {showBalance ? formatCurrency(user.checking) : hidden}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
-                  <div>
+                <div className={`grid ${getAccountBalanceLayoutClass(user.savings)} items-center gap-3 px-5 py-4 sm:px-6`}>
+                  <div className="min-w-0">
                     <p className="font-semibold text-[#0a2540]">Savings</p>
                     <p className="text-xs text-slate-500">Available balance</p>
                   </div>
-                  <p className={`${getAccountBalanceSizeClass(user.savings)} break-all text-right font-bold tabular-nums text-slate-900`}>
-                    {showBalance ? `$${user.savings.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : hidden}
-                  </p>
+                  <div className="dashboard-account-balance min-w-0 text-right">
+                    <p
+                      className="break-all text-right font-bold tabular-nums text-slate-900"
+                      style={{ '--balance-length': showBalance ? formatCurrency(user.savings).length : 6 }}
+                    >
+                      {showBalance ? formatCurrency(user.savings) : hidden}
+                    </p>
+                  </div>
                 </div>
                 <div className="px-5 py-1 sm:px-6">
                   <div className="divide-y divide-slate-100">
