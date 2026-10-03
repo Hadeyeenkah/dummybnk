@@ -16,7 +16,7 @@ function TransferPage() {
     recipientName: '',
     recipientEmail: '',
     recipientAccountNumber: '',
-    recipientRoutingNumber: '026009593', // Aurora Bank routing number
+    recipientRoutingNumber: '',
     lookupMethod: 'email', // 'email' or 'account'
     bankName: '',
     routingNumber: '',
@@ -146,6 +146,7 @@ function TransferPage() {
               recipientEmail: found.email,
               recipientAccountNumber: found.accountNumber,
               recipientRoutingNumber: found.routingNumber,
+              bankName: 'Aurora Bank',
             }));
           } else {
             // if not same bank, set only email so user can still see it but allow typing name
@@ -178,6 +179,7 @@ function TransferPage() {
           email: data.transfer?.recipientEmail || form.recipientEmail,
           accountNumber: data.transfer?.recipientAccountNumber || form.recipientAccountNumber,
           routingNumber: data.transfer?.recipientRoutingNumber || form.recipientRoutingNumber,
+          bankName: data.transfer?.recipientBankName || form.bankName,
         }
       : undefined,
     note: form.note,
@@ -211,6 +213,12 @@ function TransferPage() {
         setLoading(false);
         return;
       }
+      if (formData.lookupMethod === 'account' && (!formData.bankName.trim() || !formData.recipientName.trim())) {
+        setMessageType('error');
+        setMessage('Recipient name and bank name are required.');
+        setLoading(false);
+        return;
+      }
     }
 
     try {
@@ -227,7 +235,7 @@ function TransferPage() {
           note: formData.note,
         };
       } else {
-        // External transfer to another user
+        // External transfer to another bank account or Aurora customer
         endpoint = `${apiBase}/transfers/external`;
         payload = {
           amount: parseFloat(formData.amount),
@@ -236,6 +244,7 @@ function TransferPage() {
           recipientAccountNumber: formData.lookupMethod === 'account' ? formData.recipientAccountNumber : undefined,
           recipientRoutingNumber: formData.lookupMethod === 'account' ? formData.recipientRoutingNumber : undefined,
           recipientName: formData.recipientName,
+          bankName: formData.lookupMethod === 'account' ? formData.bankName : undefined,
           note: formData.note,
         };
       }
@@ -280,10 +289,13 @@ function TransferPage() {
       setReceipt(receiptData);
       setShowReceiptModal(true);
 
-      // Refresh the context from the server rather than creating a second
-      // client-side transaction. This updates balances and activity without
-      // risking duplicate ledger rows.
-      await refreshProfile?.();
+      // The server has already accepted the transfer. A failed profile refresh
+      // must not turn that successful submission into a client-side error.
+      try {
+        await refreshProfile?.();
+      } catch (refreshError) {
+        console.warn('Transfer was submitted, but the profile refresh failed:', refreshError);
+      }
       submission.current = { fingerprint: '', idempotencyKey: '' };
 
       // Reset form
@@ -292,7 +304,7 @@ function TransferPage() {
         recipientName: '',
         recipientEmail: '',
         recipientAccountNumber: '',
-        recipientRoutingNumber: '026009593',
+        recipientRoutingNumber: '',
         lookupMethod: 'email',
         bankName: '',
         routingNumber: '',
@@ -331,9 +343,9 @@ function TransferPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
+    <div className="min-h-[100dvh] overflow-x-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
       <header className="border-b border-slate-200 bg-white/80 backdrop-blur-xl shadow-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center gap-3">
             <AuroraBankLogo />
             <span className="text-lg font-semibold tracking-tight bg-gradient-to-r from-indigo-900 to-slate-950 bg-clip-text text-transparent">Aurora Bank</span>
@@ -344,12 +356,12 @@ function TransferPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-12">
-        <h1 className="mb-2 text-3xl font-semibold text-slate-900">Transfer Money</h1>
-        <p className="mb-8 text-slate-600">Send ACH-style transfers to external banks or move money between your accounts</p>
+      <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
+        <h1 className="mb-2 text-2xl font-semibold text-slate-900 sm:text-3xl">Transfer Money</h1>
+        <p className="mb-6 text-sm text-slate-600 sm:mb-8 sm:text-base">Send to another bank or move money between your accounts</p>
 
         <div className="grid gap-6 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg md:col-span-2">
+          <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-lg sm:rounded-2xl sm:p-6 md:col-span-2">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 cursor-pointer">
@@ -361,7 +373,7 @@ function TransferPage() {
                     onChange={() => setFormData({ ...formData, transferType: 'external' })}
                     className="accent-indigo-900"
                   />
-                  Send to an Aurora Bank customer
+                  Send to a bank account
                 </label>
                 <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 cursor-pointer">
                   <input
@@ -378,8 +390,8 @@ function TransferPage() {
 
               {formData.transferType === 'external' && (
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900">
-                    💡 Enter the recipient's Aurora Bank email or account details. Transfer will be pending until admin approval.
+                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900 sm:p-4">
+                    Enter an email address or any bank account details. Mock transfers remain pending until admin approval.
                   </div>
 
                   {/* Lookup method toggle */}
@@ -410,7 +422,7 @@ function TransferPage() {
                           : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                       }`}
                     >
-                      🏦 By Account Number
+                      🏦 By Bank Account
                     </button>
                   </div>
                   
@@ -450,12 +462,11 @@ function TransferPage() {
                             handleRecipientLookup(null, formData.recipientAccountNumber, value);
                           }}
                           onBlur={(e) => handleRecipientLookup(null, formData.recipientAccountNumber, e.target.value)}
-                          placeholder="026009593 (Aurora Bank)"
+                          placeholder="9-digit routing number"
                           maxLength="9"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                           required
                         />
-                        <p className="text-xs text-slate-500">Aurora Bank Routing: 026009593</p>
                       </div>
                       
                       <div className="space-y-2">
@@ -465,13 +476,14 @@ function TransferPage() {
                           inputMode="numeric"
                           value={formData.recipientAccountNumber}
                           onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, '').slice(0, 12);
+                            const value = e.target.value.replace(/\D/g, '').slice(0, 17);
                             setFormData({ ...formData, recipientAccountNumber: value });
                             handleRecipientLookup(null, value, formData.recipientRoutingNumber);
                           }}
                           onBlur={(e) => handleRecipientLookup(null, e.target.value, formData.recipientRoutingNumber)}
-                          placeholder="Enter 12-digit account number"
-                          maxLength="12"
+                          placeholder="Enter account number"
+                          maxLength="17"
+                          minLength="4"
                           className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                           required
                         />
@@ -492,13 +504,30 @@ function TransferPage() {
                     </div>
                   )}
 
+                  {formData.lookupMethod === 'account' && (
+                    <div className="space-y-2">
+                      <label className="text-sm text-slate-700">Bank Name *</label>
+                      <input
+                        type="text"
+                        value={formData.bankName}
+                        onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                        placeholder="Recipient’s bank"
+                        maxLength="100"
+                        required
+                        className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
+                      />
+                    </div>
+                  )}
+
                   <div className="space-y-2">
-                    <label className="text-sm text-slate-700">Recipient Name (auto-filled for Aurora users, editable)</label>
+                    <label className="text-sm text-slate-700">Recipient Name {formData.lookupMethod === 'account' ? '*' : '(optional)'}</label>
                     <input
                       type="text"
                       value={formData.recipientName}
                       onChange={(e) => setFormData({ ...formData, recipientName: e.target.value })}
                       placeholder={recipientFound?.isSameBank ? "Auto-filled from Aurora Bank" : "Enter recipient name"}
+                      maxLength="100"
+                      required={formData.lookupMethod === 'account'}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
                     />
                   </div>
@@ -581,13 +610,13 @@ function TransferPage() {
             </form>
           </div>
 
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
+          <div className="min-w-0 space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-lg sm:rounded-2xl sm:p-6">
               <h3 className="mb-3 text-sm font-semibold text-slate-900">Available Balance</h3>
               <p className="text-2xl font-semibold text-indigo-900">${Number(currentUser?.balance ?? 0).toFixed(2)}</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2 text-sm text-slate-600">
-              <p>💡 <strong>External transfers</strong> to other Aurora Bank users require admin approval before funds are released.</p>
+              <p>💡 <strong>External transfers</strong> to any bank require admin approval before funds are released.</p>
               <p>↔️ <strong>Internal transfers</strong> between your Checking and Savings move instantly.</p>
               <p>🔒 Funds are deducted immediately but held pending approval for external transfers.</p>
             </div>
@@ -604,12 +633,23 @@ function TransferPage() {
           }
           body * { visibility: hidden; }
           .printable, .printable * { visibility: visible; }
+          .receipt-overlay {
+            position: static !important;
+            display: block !important;
+            inset: auto !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            background: white !important;
+          }
           .printable { 
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
+            max-width: none !important;
+            max-height: none !important;
             height: auto;
+            overflow: visible !important;
             margin: 0;
             padding: 0;
             background: white !important;
@@ -628,10 +668,10 @@ function TransferPage() {
       `}</style>
 
       {showReceiptModal && receipt && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+        <div className="receipt-overlay fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:p-6">
           <div className="printable my-auto w-full max-w-xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto bg-white text-slate-900 shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
             {/* Typewriter Style Receipt - Professional & Organized */}
-            <div className="p-8 font-mono text-xs leading-relaxed bg-white" style={{fontFamily: "'Courier New', 'Courier', monospace"}}>
+            <div className="p-5 font-mono text-xs leading-relaxed bg-white sm:p-8" style={{fontFamily: "'Courier New', 'Courier', monospace"}}>
               
               {/* Header */}
               <div className="text-center mb-3">
@@ -705,12 +745,18 @@ function TransferPage() {
                     <p className="ml-2">{receipt.recipient?.recipientName || receipt.recipient?.name || 'External Account'}</p>
                     <div className="ml-2 flex justify-between">
                       <span>BANK:</span>
-                      <span>{receipt.recipient?.bankName || 'Aurora Bank'}</span>
+                      <span className="ml-2 text-right">{receipt.recipient?.bankName || (receipt.recipient?.email ? 'Aurora Bank' : 'External bank')}</span>
                     </div>
                     {receipt.recipient?.accountNumber && (
                       <div className="ml-2 flex justify-between">
                         <span>ACCT #:</span>
                         <span>****{String(receipt.recipient.accountNumber).slice(-4)}</span>
+                      </div>
+                    )}
+                    {receipt.recipient?.email && (
+                      <div className="ml-2 flex justify-between">
+                        <span>EMAIL:</span>
+                        <span className="ml-2 break-all text-right">{receipt.recipient.email}</span>
                       </div>
                     )}
                     {receipt.recipient?.routingNumber && (
@@ -742,10 +788,10 @@ function TransferPage() {
               <div className="mb-3 text-xs">
                 <p className="text-center mb-1">IMPORTANT NOTICE</p>
                 {receipt.status === 'completed' ? (
-                  <p>Your internal transfer has completed.</p>
+                  <p>{receipt.transferType === 'internal' ? 'Your internal transfer has completed.' : 'Your external mock transfer was approved and marked complete.'}</p>
                 ) : (
                   <>
-                    <p>Your transfer is currently pending administrator approval.</p>
+                    <p>Your transfer is pending administrator approval.</p>
                     <p>Funds are held until it is approved or rejected.</p>
                   </>
                 )}

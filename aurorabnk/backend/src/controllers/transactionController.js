@@ -328,6 +328,50 @@ const settleExternalTransfer = async (transactionId, action) => withDatabaseTran
   return { debit, credit, sender, recipient };
 });
 
+const settleExternalBankTransfer = async (transactionId, action) => withDatabaseTransaction(async (session) => {
+  const debit = await queryWithSession(
+    Transaction.findOneAndUpdate(
+      { _id: transactionId, transferType: 'external', amount: { $lt: 0 }, status: 'pending' },
+      { $set: { status: 'processing' } },
+      { new: true },
+    ),
+    session,
+  );
+  if (!debit) {
+    throw new ApprovalError(409, 'This transfer is already being processed or has already been processed.');
+  }
+
+  let balanceChanged = false;
+  try {
+    const sender = await queryWithSession(User.findById(debit.userId), session);
+    if (!sender) throw new ApprovalError(404, 'Transaction owner not found.');
+
+    if (action === 'reject') {
+      ensureAccounts(sender);
+      const source = accountFor(sender, debit.accountType, true);
+      source.balance = money(source.balance + Math.abs(Number(debit.amount)));
+      recalculateBalance(sender);
+      await sender.save(sessionOptions(session));
+      balanceChanged = true;
+    }
+
+    debit.status = action === 'approve' ? 'completed' : 'rejected';
+    await debit.save(sessionOptions(session));
+    return { debit, sender, credit: null, recipient: null };
+  } catch (error) {
+    if (!balanceChanged) {
+      await queryWithSession(
+        Transaction.updateOne(
+          { _id: debit._id, status: 'processing' },
+          { $set: { status: 'pending' } },
+        ),
+        session,
+      ).catch(() => {});
+    }
+    throw error;
+  }
+});
+
 const settleStandardTransactionStandalone = async (transactionId, action) => {
   const transaction = await Transaction.findOneAndUpdate(
     { _id: transactionId, status: 'pending' },
@@ -392,19 +436,29 @@ const settleStandardTransaction = async (transactionId, action) => withDatabaseT
   return { transaction, user: await queryWithSession(User.findById(transaction.userId), session) };
 });
 
-// Approve a pending transaction. External transfers are always settled as an
-// all-or-nothing debit/credit pair; the recipient entry is never independently
-// actionable, which prevents an accidental second debit or credit.
+// Aurora transfers settle their paired entries together; outbound bank
+// requests complete the held sender debit without a local recipient credit.
 exports.approveTransaction = async (req, res) => {
   try {
     const requested = await Transaction.findById(req.params.id);
     if (!requested) return res.status(404).json({ message: 'Transaction not found.' });
 
     const result = requested.transferType === 'external'
-      ? await settleExternalTransfer(req.params.id, 'approve')
+      ? requested.recipientMeta?.externalBank
+        ? await settleExternalBankTransfer(req.params.id, 'approve')
+        : await settleExternalTransfer(req.params.id, 'approve')
       : await settleStandardTransaction(req.params.id, 'approve');
 
     if (requested.transferType === 'external') {
+      if (requested.recipientMeta?.externalBank) {
+        const amount = Number(Math.abs(result.debit.amount)).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        await notify(result.sender.email, 'Aurora Bank transfer approved', `Your transfer of ${amount} to ${requested.recipientMeta.bankName} has been approved.`);
+        return res.json({
+          message: 'External bank transfer approved.',
+          transaction: result.debit,
+          transferReference: result.debit.transferReference || result.debit.reference,
+        });
+      }
       const amount = Number(result.credit.amount).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
       await Promise.all([
         notify(result.sender.email, 'Aurora Bank transfer approved', `Your transfer of ${amount} has been approved and completed.`),
@@ -438,11 +492,21 @@ exports.rejectTransaction = async (req, res) => {
     if (!requested) return res.status(404).json({ message: 'Transaction not found.' });
 
     const result = requested.transferType === 'external'
-      ? await settleExternalTransfer(req.params.id, 'reject')
+      ? requested.recipientMeta?.externalBank
+        ? await settleExternalBankTransfer(req.params.id, 'reject')
+        : await settleExternalTransfer(req.params.id, 'reject')
       : await settleStandardTransaction(req.params.id, 'reject');
 
     if (requested.transferType === 'external') {
       const amount = Number(Math.abs(result.debit.amount)).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+      if (requested.recipientMeta?.externalBank) {
+        await notify(result.sender.email, 'Aurora Bank transfer rejected', `Your transfer of ${amount} was rejected and the held funds were returned to your account.`);
+        return res.json({
+          message: 'External bank transfer rejected and sender refunded.',
+          transaction: result.debit,
+          transferReference: result.debit.transferReference || result.debit.reference,
+        });
+      }
       await Promise.all([
         notify(result.sender.email, 'Aurora Bank transfer rejected', `Your transfer of ${amount} was rejected and the held funds were returned to your account.`),
         notify(result.recipient.email, 'Aurora Bank transfer rejected', 'An incoming transfer to your account was rejected.'),
@@ -470,10 +534,8 @@ exports.rejectTransaction = async (req, res) => {
 // Get all pending transactions (admin only)
 exports.getPendingTransactions = async (req, res) => {
   try {
-    // An external transfer has a sender debit and a recipient credit. Only
-    // the sender debit is actionable; exposing both created two approval
-    // buttons for one transfer and allowed the credit leg to be settled as if
-    // it were the sender's payment.
+    // Aurora transfers have paired entries, but only the sender debit is
+    // actionable. Outbound bank transfers have only that sender debit.
     const transactions = await Transaction.find({
       status: 'pending',
       $or: [

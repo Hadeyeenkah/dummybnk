@@ -193,9 +193,8 @@ router.get('/pending-approvals', protect, requireRole('admin'), async (req, res)
   console.log('[ADMIN] GET /pending-approvals', { ip: req.ip, time: new Date().toISOString(), user: req.userId });
   try {
     console.log('Admin: Fetching pending approvals...');
-    // A single external transfer creates a sender debit and a recipient
-    // credit. Only the sender debit is an approval action; showing both lets
-    // an administrator accidentally settle the same transfer twice.
+    // Only sender debits are actionable; Aurora recipient credits must not
+    // create a second approval action for the same transfer.
     const pendingTransactions = await Transaction.find({
       status: 'pending',
       $or: [
@@ -219,6 +218,13 @@ router.get('/pending-approvals', protect, requireRole('admin'), async (req, res)
       status: transaction.status,
       accountType: transaction.accountType,
       reference: transaction.transferReference || transaction.reference,
+      recipient: transaction.recipientMeta?.externalBank ? {
+        name: transaction.recipientMeta.recipientName,
+        bankName: transaction.recipientMeta.bankName,
+        email: transaction.recipientMeta.recipientEmail,
+        accountNumber: transaction.recipientMeta.recipientAccountNumber || transaction.recipientMeta.accountNumber,
+        routingNumber: transaction.recipientMeta.recipientRoutingNumber || transaction.recipientMeta.routingNumber,
+      } : null,
     }));
 
     res.json({ pendingApprovals });

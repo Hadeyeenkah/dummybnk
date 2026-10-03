@@ -87,6 +87,30 @@ const parseDigits = (value, field, length) => {
   return normalized;
 };
 
+const parseAccountNumber = (value) => {
+  const normalized = String(value || '').trim();
+  if (!/^\d{4,17}$/.test(normalized)) {
+    throw new TransferRequestError(400, 'Recipient account number must contain 4 to 17 digits.');
+  }
+  return normalized;
+};
+
+const parseRecipientName = (value) => {
+  const name = String(value || '').trim();
+  if (!name || name.length > 100) {
+    throw new TransferRequestError(400, 'Enter the recipient’s full name (up to 100 characters).');
+  }
+  return name;
+};
+
+const parseBankName = (value) => {
+  const bankName = String(value || '').trim();
+  if (!bankName || bankName.length > 100) {
+    throw new TransferRequestError(400, 'Enter the recipient’s bank name (up to 100 characters).');
+  }
+  return bankName;
+};
+
 const ensureAccounts = (user) => {
   if (!Array.isArray(user.accounts) || user.accounts.length === 0) {
     user.accounts = [
@@ -181,6 +205,7 @@ const externalResponse = (debit, credit, user, idempotent = false) => {
       amount: Math.abs(Number(debit.amount)),
       fromAccount: debit.accountType,
       recipientName: recipient.recipientName || 'Aurora Bank recipient',
+      recipientBankName: recipient.bankName || 'Aurora Bank',
       recipientEmail: recipient.recipientEmail,
       recipientAccountNumber: recipient.recipientAccountNumber || recipient.accountNumber,
       recipientRoutingNumber: recipient.recipientRoutingNumber || recipient.routingNumber,
@@ -315,8 +340,9 @@ exports.internalTransfer = async (req, res) => {
   }
 };
 
-// External transfers are currently Aurora-to-Aurora transfers. The sender is
-// debited into a hold immediately; an administrator settles both linked legs.
+// External transfers debit the sender into a hold immediately. Aurora
+// recipients receive a paired pending credit; other banks are recorded as an
+// outbound-only request for admin review.
 exports.externalTransfer = async (req, res) => {
   let idempotencyKey;
   try {
@@ -328,8 +354,14 @@ exports.externalTransfer = async (req, res) => {
 
     const hasEmail = Boolean(String(req.body.recipientEmail || '').trim());
     const recipientEmail = hasEmail ? parseEmail(req.body.recipientEmail) : null;
-    const recipientAccountNumber = hasEmail ? null : parseDigits(req.body.recipientAccountNumber, 'Recipient account number', 12);
+    const recipientAccountNumber = hasEmail ? null : parseAccountNumber(req.body.recipientAccountNumber);
     const recipientRoutingNumber = hasEmail ? null : parseDigits(req.body.recipientRoutingNumber, 'Recipient routing number', 9);
+    const requestedRecipientName = hasEmail
+      ? (String(req.body.recipientName || '').trim() ? parseRecipientName(req.body.recipientName) : recipientEmail)
+      : parseRecipientName(req.body.recipientName);
+    const requestedBankName = hasEmail
+      ? (String(req.body.bankName || '').trim() ? parseBankName(req.body.bankName) : 'External bank')
+      : parseBankName(req.body.bankName);
 
     const existing = await findIdempotentDebit(userId, idempotencyKey);
     if (existing) return respondWithExistingTransfer(res, existing);
@@ -352,12 +384,14 @@ exports.externalTransfer = async (req, res) => {
         ? User.findOne({ email: recipientEmail })
         : User.findOne({ accountNumber: recipientAccountNumber, routingNumber: recipientRoutingNumber });
       const recipient = await queryWithSession(recipientQuery, session);
-      if (!recipient) {
-        throw new TransferRequestError(404, 'Recipient not found. They must have an Aurora Bank account.');
-      }
-      if (sender._id.equals(recipient._id)) {
+      if (recipient && sender._id.equals(recipient._id)) {
         throw new TransferRequestError(400, 'You cannot transfer to yourself. Use an internal transfer instead.');
       }
+      const isAuroraRecipient = Boolean(recipient);
+      const recipientName = isAuroraRecipient
+        ? `${recipient.firstName} ${recipient.lastName}`.trim() || recipient.email
+        : requestedRecipientName;
+      const bankName = isAuroraRecipient ? 'Aurora Bank' : requestedBankName;
 
       ensureAccounts(sender);
       const source = accountFor(sender, fromAccount);
@@ -369,12 +403,10 @@ exports.externalTransfer = async (req, res) => {
       source.balance = money(source.balance - amount);
       recalculateBalance(sender);
 
-      const recipientName = `${recipient.firstName} ${recipient.lastName}`.trim() || recipient.email;
       const senderName = `${sender.firstName} ${sender.lastName}`.trim() || sender.email;
       const now = new Date();
       const idempotency = idempotencyKey ? { idempotencyKey } : {};
-      const [debit, credit] = await Transaction.insertMany([
-        {
+      const debitData = {
           userId: sender._id,
           amount: -amount,
           description: `Transfer to ${recipientName}`,
@@ -389,17 +421,18 @@ exports.externalTransfer = async (req, res) => {
           date: now,
           recipientMeta: {
             recipientName,
-            bankName: 'Aurora Bank',
-            routingNumber: recipient.routingNumber,
-            accountNumber: recipient.accountNumber,
-            recipientEmail: recipient.email,
-            recipientId: recipient._id,
-            recipientAccountNumber: recipient.accountNumber,
-            recipientRoutingNumber: recipient.routingNumber,
+            bankName,
+            routingNumber: isAuroraRecipient ? recipient.routingNumber : recipientRoutingNumber,
+            accountNumber: isAuroraRecipient ? recipient.accountNumber : recipientAccountNumber,
+            recipientEmail: isAuroraRecipient ? recipient.email : (hasEmail ? recipientEmail : undefined),
+            recipientId: isAuroraRecipient ? recipient._id : undefined,
+            recipientAccountNumber: isAuroraRecipient ? recipient.accountNumber : recipientAccountNumber,
+            recipientRoutingNumber: isAuroraRecipient ? recipient.routingNumber : recipientRoutingNumber,
+            externalBank: !isAuroraRecipient,
           },
           ...idempotency,
-        },
-        {
+        };
+      const creditData = isAuroraRecipient ? {
           userId: recipient._id,
           amount,
           description: `Transfer from ${senderName}`,
@@ -420,26 +453,34 @@ exports.externalTransfer = async (req, res) => {
             senderRoutingNumber: sender.routingNumber,
           },
           ...idempotency,
-        },
-      ], sessionOptions(session));
+        } : null;
+      const ledgerEntries = await Transaction.insertMany(
+        creditData ? [debitData, creditData] : [debitData],
+        sessionOptions(session),
+      );
+      const [debit, credit] = ledgerEntries;
 
       try {
         await sender.save(sessionOptions(session));
       } catch (error) {
         if (!session) {
-          await Transaction.deleteMany({ _id: { $in: [debit._id, credit._id] } }).catch(() => {});
+          await Transaction.deleteMany({ _id: { $in: ledgerEntries.map((entry) => entry._id) } }).catch(() => {});
         }
         throw error;
       }
 
-      return { debit, credit, user: sender };
+      return { debit, credit: credit || null, user: sender, isAuroraRecipient };
     });
 
     if (result.idempotent) {
       return res.status(200).json(externalResponse(result.debit, result.credit, null, true));
     }
 
-    return res.status(201).json(externalResponse(result.debit, result.credit, result.user));
+    const response = externalResponse(result.debit, result.credit, result.user);
+    if (!result.isAuroraRecipient) {
+      response.message = 'External bank transfer submitted for admin approval. Funds are held until it is approved or rejected.';
+    }
+    return res.status(201).json(response);
   } catch (error) {
     if (duplicateKeyError(error) && idempotencyKey) {
       const existing = await findIdempotentDebit(req.userId, idempotencyKey).catch(() => null);

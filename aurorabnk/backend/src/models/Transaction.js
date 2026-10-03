@@ -57,6 +57,7 @@ const TransactionSchema = new mongoose.Schema(
       recipientId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       recipientAccountNumber: String,
       recipientRoutingNumber: String,
+      externalBank: { type: Boolean, default: false },
       senderName: String,
       senderEmail: String,
       senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

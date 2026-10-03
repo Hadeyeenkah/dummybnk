@@ -1284,6 +1284,11 @@ function AdminPage() {
                           <p className="font-semibold">{transaction.description}</p>
                           <p className="text-sm text-[#5b6459]">{transaction.userName} · {transaction.date} · {transaction.category}</p>
                           <p className="mt-0.5 text-xs text-[#8a9081]">From: {transaction.accountType}</p>
+                          {transaction.recipient && (
+                            <p className="mt-1 break-all text-xs text-[#5b6459]">
+                              To: {transaction.recipient.name} · {transaction.recipient.bankName}{transaction.recipient.email ? ` · ${transaction.recipient.email}` : ''}{transaction.recipient.accountNumber ? ` · Acct ${transaction.recipient.accountNumber}` : ''}{transaction.recipient.routingNumber ? ` · Routing ${transaction.recipient.routingNumber}` : ''}
+                            </p>
+                          )}
                         </div>
                         <div className="flex shrink-0 items-center gap-4">
                           <span className={`text-lg font-semibold tabular-nums ${transaction.amount < 0 ? 'text-[#9B3232]' : 'text-[#1E7245]'}`}>
