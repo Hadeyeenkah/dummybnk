@@ -5,9 +5,12 @@ import AuroraBankLogo from './components/AuroraBankLogo';
 import SupportChatWidget from './components/SupportChatWidget';
 import { API_BASE, getAuthHeaders } from './config';
 import {
+  ArrowDownLeft,
   ArrowLeftRight,
+  ArrowUpRight,
   ChartCandlestick,
   CircleDollarSign,
+  Clock,
   CreditCard,
   Download,
   Landmark,
@@ -53,20 +56,36 @@ function Icon({ name, className = 'w-5 h-5' }) {
   );
 }
 
-// Reveal / copy row used for account + routing numbers (header card and settings modal)
+// Text that shrinks to fit its container, so amounts never clip or wrap on any screen.
+function Fit({ text, min = 12, max = 24, className = '' }) {
+  const value = String(text);
+  return (
+    <div className="fit-box">
+      <p
+        className={`fit-text ${className}`}
+        style={{ '--len': Math.max(value.length, 4), '--min': `${min}px`, '--max': `${max}px` }}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+// Reveal / copy row used for account + routing numbers (main card and settings modal)
 function DetailRow({ label, value, shown, onToggle, onCopy, copied }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-3">
-      <div className="min-w-0">
-        <p className="text-xs text-slate-500">{label}</p>
-        <p className="mt-0.5 font-mono text-[15px] font-semibold tracking-wide text-slate-900">{value}</p>
+    <div className="flex items-center justify-between gap-2 py-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <p className="mt-0.5 truncate font-mono text-sm font-semibold tracking-wide text-slate-900 sm:text-[15px]">{value}</p>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center">
         <button
           type="button"
           onClick={onToggle}
           title={shown ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
-          className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-[#0b4a8f] focus:outline-none focus:ring-2 focus:ring-[#0b5cab]/40"
+          aria-label={shown ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+          className="rounded-full p-2.5 text-slate-500 hover:bg-slate-100 hover:text-[#0b4a8f]"
         >
           <Icon name={shown ? 'eye' : 'eyeOff'} className="w-4 h-4" />
         </button>
@@ -75,7 +94,8 @@ function DetailRow({ label, value, shown, onToggle, onCopy, copied }) {
             type="button"
             onClick={onCopy}
             title={`Copy ${label.toLowerCase()}`}
-            className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-[#0b4a8f] focus:outline-none focus:ring-2 focus:ring-[#0b5cab]/40"
+            aria-label={`Copy ${label.toLowerCase()}`}
+            className="rounded-full p-2.5 text-slate-500 hover:bg-slate-100 hover:text-[#0b4a8f]"
           >
             <Icon name={copied ? 'check' : 'copy'} className="w-4 h-4" />
           </button>
@@ -85,8 +105,9 @@ function DetailRow({ label, value, shown, onToggle, onCopy, copied }) {
   );
 }
 
-const cardCls = 'rounded-xl border border-slate-200 bg-white';
-const sectionTitleCls = 'text-lg font-semibold text-[#0a2540]';
+const cardCls = 'rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(10,37,64,0.05)]';
+const sectionTitleCls = 'text-base font-bold text-[#0a2540] sm:text-lg';
+const inputCls = 'w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 placeholder-slate-400 outline-none transition focus:border-[#0b5cab] focus:ring-2 focus:ring-[#0b5cab]/20 sm:text-sm';
 
 function Dashboard() {
   const { currentUser, logout, updateProfile, updateTransactions } = useBankContext();
@@ -207,7 +228,6 @@ function Dashboard() {
     return () => { active = false; };
   }, [currentUser?.id]);
 
-
   const handleToggleNotifications = async () => {
     setShowNotifications((prev) => !prev);
     // If opening the dropdown, mark unread as read locally and on server for admin messages
@@ -216,7 +236,6 @@ function Dashboard() {
       setNotifications((existing) => existing.map((n) => ({ ...n, read: true })));
 
       try {
-        // Use unified API_BASE
         // For admin-sourced notifications, call API to mark as read
         const unreadAdmin = adminMessages.filter((m) => !m.read && m._id);
         await Promise.all(
@@ -476,10 +495,10 @@ function Dashboard() {
 
   if (!currentUser) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f4f6f9]">
-        <div className={`${cardCls} px-8 py-10 text-center`}>
+      <div className="bank-dashboard flex min-h-screen items-center justify-center bg-[#eef2f7] p-4">
+        <div className={`${cardCls} w-full max-w-sm px-6 py-10 text-center`}>
           <p className="text-slate-700">Please log in to access your dashboard</p>
-          <Link to="/login" className="mt-4 inline-block rounded-lg bg-[#0b5cab] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#0a4a8f]">
+          <Link to="/login" className="mt-4 inline-block rounded-xl bg-[#0b5cab] px-5 py-3 text-sm font-semibold text-white hover:bg-[#0a4a8f]">
             Go to Login
           </Link>
         </div>
@@ -492,13 +511,13 @@ function Dashboard() {
   const recentTransactions = currentUser.transactions.slice(0, 5);
 
   const quickActions = [
-    { title: 'Transfer money', icon: ArrowLeftRight, link: '/transfer', description: 'Move money' },
-    { title: 'Wire transfer', icon: Landmark, link: '/wire-transfer', description: 'Send a wire' },
+    { title: 'Transfer', icon: ArrowLeftRight, link: '/transfer', description: 'Move money' },
+    { title: 'Wire', icon: Landmark, link: '/wire-transfer', description: 'Send a wire' },
     { title: 'Pay bills', icon: ReceiptText, link: '/bills', description: 'Pay a bill' },
-    { title: 'Deposit a check', icon: ScanLine, link: '/deposit', description: 'Mobile deposit' },
-    { title: 'Fund Stock market', icon: CircleDollarSign, link: '/crypto-deposit', description: 'Fund Stock market' },
-    { title: 'Buy stocks', icon: ChartCandlestick, link: '/stocks', description: 'Invest in markets' },
-    { title: 'Manage cards', icon: CreditCard, link: '/cards', description: 'Card controls' },
+    { title: 'Deposit', icon: ScanLine, link: '/deposit', description: 'Mobile deposit' },
+    { title: 'Fund market', icon: CircleDollarSign, link: '/crypto-deposit', description: 'Fund Stock market' },
+    { title: 'Stocks', icon: ChartCandlestick, link: '/stocks', description: 'Invest in markets' },
+    { title: 'Cards', icon: CreditCard, link: '/cards', description: 'Card controls' },
   ];
 
   const handleLogout = () => {
@@ -642,6 +661,7 @@ function Dashboard() {
   const firstName = user.name.split(' ')[0];
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+  const lastFour = String(user.accountNumber || '0000').slice(-4);
 
   const unreadAdmin = adminMessages.filter(m => !m.read);
   const latestUnreadAdmin = unreadAdmin.length
@@ -650,14 +670,14 @@ function Dashboard() {
 
   const Avatar = ({ size = 'h-10 w-10', text = 'text-base', src = user.avatarUrl }) =>
     src ? (
-      <img src={src} alt="Profile avatar" className={`${size} rounded-full object-cover border border-slate-300`} />
+      <img src={src} alt="Profile avatar" className={`${size} shrink-0 rounded-full object-cover border border-slate-300`} />
     ) : (
-      <div className={`${size} ${text} flex items-center justify-center rounded-full bg-[#0a2540] font-semibold text-white`}>
+      <div className={`${size} ${text} flex shrink-0 items-center justify-center rounded-full bg-[#0a2540] font-bold text-white`}>
         {user.name.charAt(0).toUpperCase()}
       </div>
     );
 
-  const navLinkBase = 'rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-[#0a2540]';
+  const navLinkBase = 'rounded-full px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-[#0a2540]';
 
   /* ---------------- spending this month ---------------- */
   const renderSpending = () => {
@@ -693,11 +713,11 @@ function Dashboard() {
 
     return categories.map((item) => (
       <div key={item.category}>
-        <div className="mb-1.5 flex justify-between text-sm">
-          <span className="text-slate-700">{item.category}</span>
-          <span className="font-semibold tabular-nums text-slate-900">${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+        <div className="mb-1.5 flex items-baseline justify-between gap-3 text-sm">
+          <span className="min-w-0 truncate text-slate-700">{item.category} <span className="text-xs text-slate-400">{item.percent}%</span></span>
+          <span className="shrink-0 font-semibold tabular-nums text-slate-900">${item.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
         </div>
-        <div className="h-1.5 rounded-full bg-slate-100">
+        <div className="h-2 rounded-full bg-slate-100">
           <div className="h-full rounded-full bg-[#0b5cab]" style={{ width: `${item.percent}%` }} />
         </div>
       </div>
@@ -710,6 +730,8 @@ function Dashboard() {
     const isRejected = transaction.status === 'rejected';
     const isCredit = Number(transaction.amount) >= 0;
     return {
+      isPending,
+      isRejected,
       isCredit,
       statusLabel: isPending ? 'Pending' : isRejected ? 'Declined' : 'Posted',
       statusClass: isPending ? 'bg-amber-50 text-amber-800' : isRejected ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-800',
@@ -765,51 +787,51 @@ function Dashboard() {
   ];
 
   return (
-    <div className="bank-dashboard min-h-screen bg-[#f4f6f9] pb-20 text-slate-900 lg:pb-0">
+    <div className="bank-dashboard text-slate-900">
       {/* ============================ Header ============================ */}
-      <header className="dashboard-header sticky top-0 z-30 border-b border-slate-200 bg-white">
-        <div className="dashboard-header-inner mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 md:px-6">
-          <div className="flex min-w-0 items-center gap-6">
-            <div className="flex items-center gap-2.5">
+      <header className="dashboard-header sticky top-0 z-30 border-b border-slate-200">
+        <div className="dashboard-header-inner mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2.5 sm:px-4 md:px-6">
+          <div className="flex min-w-0 items-center gap-4 lg:gap-6">
+            <div className="flex min-w-0 items-center gap-2">
               <AuroraBankLogo />
-              <span className="truncate text-lg font-bold tracking-tight text-[#0a2540]">Aurora Bank</span>
+              <span className="truncate text-lg font-extrabold tracking-tight text-[#0a2540]">Aurora Bank</span>
             </div>
             <nav aria-label="Primary navigation" className="hidden items-center gap-1 lg:flex">
-              <Link to="/dashboard" className="rounded-md bg-[#e8f0fa] px-3 py-2 text-sm font-semibold text-[#0a4a8f]">Accounts</Link>
+              <Link to="/dashboard" className="rounded-full bg-[#e8f0fa] px-4 py-2 text-sm font-bold text-[#0a4a8f]">Accounts</Link>
               <Link to="/transfer" className={navLinkBase}>Transfer</Link>
               <Link to="/bills" className={navLinkBase}>Pay &amp; manage</Link>
               <Link to="/cards" className={navLinkBase}>Cards</Link>
             </nav>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             {/* Notifications */}
             <div className="relative">
               <button
                 onClick={handleToggleNotifications}
                 aria-label="Notifications"
-                className="relative rounded-full p-2.5 text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0b5cab]/40"
+                className="relative rounded-full p-2.5 text-slate-700 hover:bg-slate-100"
               >
                 <Icon name="bell" />
                 {unreadCount > 0 && (
-                  <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#c8102e] px-1 text-[10px] font-bold text-white">
+                  <span className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#c8102e] px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </button>
 
               {showNotifications && (
-                <div className="fixed left-4 right-4 top-16 z-50 max-h-96 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96">
-                  <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5">
-                    <span className="text-sm font-semibold text-[#0a2540]">Notifications</span>
+                <div className="fixed left-3 right-3 top-[calc(4rem+env(safe-area-inset-top))] z-50 max-h-[70vh] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96">
+                  <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                    <span className="text-sm font-bold text-[#0a2540]">Notifications</span>
                     <button
-                      className="text-xs font-semibold text-[#0b5cab] hover:underline"
+                      className="rounded-full px-2 py-1 text-xs font-semibold text-[#0b5cab] hover:bg-slate-100"
                       onClick={() => setNotifications([])}
                     >
                       Clear all
                     </button>
                   </div>
-                  <div className="max-h-72 overflow-y-auto">
+                  <div className="max-h-[50vh] overflow-y-auto sm:max-h-72">
                     {notifications.length === 0 && (
                       <div className="p-8 text-center text-sm text-slate-500">No new notifications</div>
                     )}
@@ -826,7 +848,7 @@ function Dashboard() {
                       return (
                         <div
                           key={n.id}
-                          className={`cursor-pointer border-b px-5 py-3.5 transition ${borderColor} ${bgColor}`}
+                          className={`flex cursor-pointer items-start gap-3 border-b px-4 py-3 transition ${borderColor} ${bgColor}`}
                           onClick={() => {
                             setShowNotifications(false);
                             if (n.type === 'chat') {
@@ -839,17 +861,20 @@ function Dashboard() {
                             });
                           }}
                         >
-                          <div className="text-sm font-semibold text-slate-900">{n.title}</div>
-                          <div className="mt-0.5 text-xs text-slate-600">{n.detail}</div>
-                          <div className="mt-1 text-[11px] text-slate-500">{formatTime(n.time)}</div>
+                          <span className="mt-0.5 shrink-0 text-lg leading-none" aria-hidden="true">{n.icon}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="break-words text-sm font-semibold text-slate-900">{n.title}</div>
+                            <div className="mt-0.5 break-words text-xs text-slate-600">{n.detail}</div>
+                            <div className="mt-1 text-[11px] text-slate-500">{formatTime(n.time)}</div>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
-                  <div className="border-t border-slate-200 px-5 py-3 text-right">
+                  <div className="border-t border-slate-200 px-4 py-2.5 text-right">
                     <button
                       onClick={() => handleNavigate('/notifications')}
-                      className="text-sm font-semibold text-[#0b5cab] hover:underline"
+                      className="rounded-full px-3 py-1.5 text-sm font-semibold text-[#0b5cab] hover:bg-slate-100"
                     >
                       View all
                     </button>
@@ -862,21 +887,22 @@ function Dashboard() {
             <div className="relative">
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center gap-3 rounded-full py-1 pl-1 pr-3 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0b5cab]/40"
+                aria-label="Profile menu"
+                className="flex items-center gap-3 rounded-full p-1 transition hover:bg-slate-100 md:py-1 md:pl-1 md:pr-3"
               >
                 <Avatar />
-                <div className="hidden text-left md:block">
-                  <div className="text-sm font-semibold leading-tight text-slate-900">{user.name}</div>
-                  <div className="font-mono text-xs text-slate-500">{user.accountNumber || 'Loading...'}</div>
+                <div className="hidden max-w-[11rem] text-left md:block">
+                  <div className="truncate text-sm font-semibold leading-tight text-slate-900">{user.name}</div>
+                  <div className="truncate font-mono text-xs text-slate-500">{user.accountNumber || 'Loading...'}</div>
                 </div>
               </button>
 
               {showProfileMenu && (
-                <div className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                <div className="absolute right-0 z-50 mt-2 w-[min(16rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
                   <div className="flex items-center gap-3 border-b border-slate-200 p-4">
                     <Avatar size="h-12 w-12" text="text-lg" />
                     <div className="min-w-0">
-                      <div className="truncate font-semibold text-slate-900">{user.name}</div>
+                      <div className="truncate font-bold text-slate-900">{user.name}</div>
                       <div className="truncate text-xs text-slate-600">{user.email}</div>
                     </div>
                   </div>
@@ -885,27 +911,27 @@ function Dashboard() {
                       <button
                         key={item.label}
                         onClick={item.onClick}
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
                       >
-                        <Icon name={item.icon} className="w-4 h-4 text-slate-500" />
+                        <Icon name={item.icon} className="w-4 h-4 shrink-0 text-slate-500" />
                         {item.label}
                       </button>
                     ))}
                     {!appInstalled && (
                       <button
                         onClick={handleInstallApp}
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                        className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-100"
                       >
-                        <Download className="h-4 w-4 text-slate-500" aria-hidden="true" />
+                        <Download className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
                         Install app
                       </button>
                     )}
                     <div className="my-1 border-t border-slate-200" />
                     <button
                       onClick={handleLogout}
-                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50"
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50"
                     >
-                      <Icon name="logout" className="w-4 h-4" />
+                      <Icon name="logout" className="w-4 h-4 shrink-0" />
                       Logout
                     </button>
                   </div>
@@ -917,31 +943,29 @@ function Dashboard() {
       </header>
 
       {/* ============================= Main ============================= */}
-      <main className="dashboard-main mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
-        <div className="dashboard-welcome mb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-[#0a2540] sm:text-3xl">Good {greeting}, {firstName}</h1>
-          <p className="mt-1 text-sm text-slate-600 sm:text-base">Review your balances, recent activity, and next steps.</p>
+      <main className="dashboard-main mx-auto max-w-7xl px-3 py-4 sm:px-4 md:px-6 md:py-6">
+        <div className="mb-4">
+          <h1 className="text-xl font-extrabold tracking-tight text-[#0a2540] sm:text-2xl lg:text-3xl">Good {greeting}, {firstName}</h1>
+          <p className="mt-0.5 text-sm text-slate-600">Your money at a glance.</p>
         </div>
 
         {/* Admin message banner */}
         {latestUnreadAdmin && (
-          <div className="mb-6 flex flex-col gap-3 rounded-xl border border-[#c9dcf2] bg-[#eef5fc] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 flex-1 items-center gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#0b5cab]">
-                <Icon name="megaphone" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-[#0a2540]">{latestUnreadAdmin.message}</p>
-                {unreadAdmin.length > 1 && (
-                  <p className="mt-0.5 text-xs text-slate-600">
-                    +{unreadAdmin.length - 1} more message{unreadAdmin.length - 1 !== 1 ? 's' : ''}
-                  </p>
-                )}
-              </div>
+          <div className="mb-4 flex items-center gap-3 rounded-2xl border border-[#c9dcf2] bg-[#eef5fc] px-3 py-3 sm:px-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#0b5cab]">
+              <Icon name="megaphone" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="line-clamp-2 text-sm font-semibold text-[#0a2540]">{latestUnreadAdmin.message}</p>
+              {unreadAdmin.length > 1 && (
+                <p className="mt-0.5 text-xs text-slate-600">
+                  +{unreadAdmin.length - 1} more message{unreadAdmin.length - 1 !== 1 ? 's' : ''}
+                </p>
+              )}
             </div>
             <button
               onClick={() => navigate('/notifications', { state: { filter: 'admin' } })}
-              className="flex shrink-0 items-center gap-1 text-sm font-semibold text-[#0b5cab] hover:underline"
+              className="flex shrink-0 items-center gap-0.5 rounded-full px-3 py-2 text-sm font-semibold text-[#0b5cab] hover:bg-white"
             >
               View
               <Icon name="chevron" className="w-4 h-4" />
@@ -949,261 +973,225 @@ function Dashboard() {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
           {/* ------------------------ Left / main column ------------------------ */}
-          <div className="space-y-6 lg:col-span-2">
-            {/* Accounts */}
-            <section className={`dashboard-accounts ${cardCls} overflow-hidden`}>
-              <div className="dashboard-balance-card flex flex-wrap items-start justify-between gap-3 bg-[#0a2540] px-5 py-5 text-white sm:px-6 sm:py-6">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm text-slate-300">Total balance</p>
-                  <div className="mt-1 flex w-full min-w-0 items-center gap-2">
-                    <div className="dashboard-total-balance-value min-w-0 flex-1">
-                      <p
-                        className="dashboard-total-balance-amount font-bold tabular-nums"
-                        style={{ '--balance-length': showBalance ? formatCurrency(user.balance).length : 6 }}
-                      >
-                        {showBalance ? formatCurrency(user.balance) : '$ •••••••'}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setShowBalance(!showBalance)}
-                      className="shrink-0 rounded-md p-1.5 text-white/70 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40"
-                      title={showBalance ? 'Hide balance' : 'Show balance'}
-                    >
-                      <Icon name={showBalance ? 'eye' : 'eyeOff'} />
-                    </button>
-                  </div>
+          <div className="min-w-0 space-y-4 lg:space-y-6">
+            {/* Balance hero */}
+            <section className="hero-card rounded-3xl p-4 text-white sm:p-6">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-1">
+                  <p className="text-sm font-medium text-blue-100">Total balance</p>
+                  <button
+                    onClick={() => setShowBalance(!showBalance)}
+                    className="shrink-0 rounded-full p-2 text-white/80 hover:bg-white/10 hover:text-white"
+                    title={showBalance ? 'Hide balance' : 'Show balance'}
+                    aria-label={showBalance ? 'Hide balance' : 'Show balance'}
+                  >
+                    <Icon name={showBalance ? 'eye' : 'eyeOff'} className="w-[18px] h-[18px]" />
+                  </button>
                 </div>
-                <span className="flex items-center gap-1.5 rounded-full border border-white/25 px-3 py-1.5 text-xs font-semibold text-white">
+                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-semibold text-white sm:text-xs">
                   <Icon name="shield" className="w-3.5 h-3.5" />
-                  FDIC insured · Member FDIC
+                  FDIC insured
                 </span>
               </div>
+              <div className="mt-1">
+                <Fit
+                  text={showBalance ? formatCurrency(user.balance) : '$ •••••••'}
+                  min={20}
+                  max={48}
+                  className="font-extrabold tracking-tight"
+                />
+              </div>
+              <p className="mt-1 text-xs text-blue-100">Member FDIC · Everyday Checking ending in {lastFour}</p>
 
-              <div className="divide-y divide-slate-200">
-                <div className="grid grid-cols-1 items-center gap-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-3 sm:px-6">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-[#0a2540]">Checking</p>
-                    <p className="text-xs text-slate-500">Everyday Checking · ending in {String(user.accountNumber || '0000').slice(-4)}</p>
-                  </div>
-                  <div className="dashboard-account-balance min-w-0 text-right">
-                    <p
-                      className="text-right font-semibold tabular-nums text-slate-900"
-                      style={{ '--balance-length': showBalance ? formatCurrency(user.checking).length : 6 }}
-                    >
-                      {showBalance ? formatCurrency(user.checking) : hidden}
-                    </p>
+              <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
+                <div className="min-w-0 rounded-2xl bg-white/10 p-3 sm:p-4">
+                  <p className="text-xs font-medium text-blue-100">Checking</p>
+                  <div className="mt-1">
+                    <Fit text={showBalance ? formatCurrency(user.checking) : hidden} min={12} max={24} className="font-bold" />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 items-center gap-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-3 sm:px-6">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-[#0a2540]">Savings</p>
-                    <p className="text-xs text-slate-500">Available balance</p>
+                <div className="min-w-0 rounded-2xl bg-white/10 p-3 sm:p-4">
+                  <p className="text-xs font-medium text-blue-100">Savings</p>
+                  <div className="mt-1">
+                    <Fit text={showBalance ? formatCurrency(user.savings) : hidden} min={12} max={24} className="font-bold" />
                   </div>
-                  <div className="dashboard-account-balance min-w-0 text-right">
-                    <p
-                      className="text-right font-semibold tabular-nums text-slate-900"
-                      style={{ '--balance-length': showBalance ? formatCurrency(user.savings).length : 6 }}
-                    >
-                      {showBalance ? formatCurrency(user.savings) : hidden}
-                    </p>
-                  </div>
-                </div>
-                <div className="px-5 py-1 sm:px-6">
-                  <div className="divide-y divide-slate-100">
-                    <DetailRow
-                      label="Account number"
-                      value={accountNumberDisplay}
-                      shown={showAccountNumber}
-                      onToggle={() => setShowAccountNumber(!showAccountNumber)}
-                      onCopy={user.accountNumber && showAccountNumber ? () => handleCopyToClipboard(user.accountNumber, 'account') : null}
-                      copied={copiedField === 'account'}
-                    />
-                    <DetailRow
-                      label="Routing number"
-                      value={routingNumberDisplay}
-                      shown={showRoutingNumber}
-                      onToggle={() => setShowRoutingNumber(!showRoutingNumber)}
-                      onCopy={showRoutingNumber ? () => handleCopyToClipboard(user.routingNumber || '026009593', 'routing') : null}
-                      copied={copiedField === 'routing'}
-                    />
-                  </div>
-                  <p className="pb-3 text-xs text-slate-500">Share these details to receive transfers</p>
                 </div>
               </div>
             </section>
 
+            {/* Account details */}
+            <section className={`${cardCls} px-4 sm:px-5`}>
+              <div className="grid divide-y divide-slate-100 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
+                <div className="sm:pr-4">
+                  <DetailRow
+                    label="Account number"
+                    value={accountNumberDisplay}
+                    shown={showAccountNumber}
+                    onToggle={() => setShowAccountNumber(!showAccountNumber)}
+                    onCopy={user.accountNumber && showAccountNumber ? () => handleCopyToClipboard(user.accountNumber, 'account') : null}
+                    copied={copiedField === 'account'}
+                  />
+                </div>
+                <div className="sm:pl-4">
+                  <DetailRow
+                    label="Routing number"
+                    value={routingNumberDisplay}
+                    shown={showRoutingNumber}
+                    onToggle={() => setShowRoutingNumber(!showRoutingNumber)}
+                    onCopy={showRoutingNumber ? () => handleCopyToClipboard(user.routingNumber || '026009593', 'routing') : null}
+                    copied={copiedField === 'routing'}
+                  />
+                </div>
+              </div>
+              <p className="border-t border-slate-100 py-2.5 text-xs text-slate-500">Share these details to receive transfers</p>
+            </section>
+
             {/* Quick actions */}
-            <section className="dashboard-actions">
+            <section className={`${cardCls} p-4 sm:p-5`}>
               <h2 className={`${sectionTitleCls} mb-3`}>Quick actions</h2>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-4 gap-x-1 gap-y-4 sm:grid-cols-7 sm:gap-x-2">
                 {quickActions.map((action) => {
                   const ActionIcon = action.icon;
                   return (
                     <Link
                       key={action.title}
                       to={action.link}
-                      className="group flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5 transition hover:border-[#0b5cab] focus:outline-none focus:ring-2 focus:ring-[#0b5cab]/40"
+                      title={action.description}
+                      className="group flex min-w-0 flex-col items-center gap-1.5 rounded-xl px-0.5 py-1 text-center"
                     >
                       <span
-                        className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/80 bg-gradient-to-br from-white via-[#e8f0fa] to-[#d1e0ef] text-[#0b5cab] shadow-[0_3px_0_#b9cde1,0_7px_12px_rgba(10,37,64,0.12)] transition duration-200 group-hover:-translate-y-0.5 group-hover:rotate-[-3deg] group-hover:shadow-[0_4px_0_#b9cde1,0_9px_14px_rgba(10,37,64,0.16)] group-active:translate-y-0.5 group-active:shadow-[0_1px_0_#b9cde1,0_2px_4px_rgba(10,37,64,0.12)]"
+                        className="flex h-12 w-12 items-center justify-center rounded-full bg-[#e8f0fa] text-[#0b5cab] transition group-hover:bg-[#0b5cab] group-hover:text-white group-active:scale-95 sm:h-14 sm:w-14"
                         aria-hidden="true"
                       >
-                        <ActionIcon size={19} strokeWidth={2} />
+                        <ActionIcon size={22} strokeWidth={2} />
                       </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-semibold text-[#0a2540]">{action.title}</span>
-                        <span className="hidden truncate text-xs text-slate-500 sm:block">{action.description}</span>
-                      </span>
+                      <span className="w-full break-words text-[11px] font-semibold leading-tight text-[#0a2540] sm:text-xs">{action.title}</span>
                     </Link>
                   );
                 })}
               </div>
             </section>
 
-            {/* Recent transactions */}
-            <section className="dashboard-activity">
-              <div className="mb-3 flex items-end justify-between gap-3">
-                <div>
-                  <h2 className={sectionTitleCls}>Recent transactions</h2>
-                  <p className="text-sm text-slate-500">Everyday Checking · ending in {String(user.accountNumber || '0000').slice(-4)}</p>
+            {/* Account summary */}
+            <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+              {summaryItems.map((item) => (
+                <div key={item.label} className={`${cardCls} min-w-0 p-3.5 sm:p-4`}>
+                  <p className="truncate text-xs font-medium text-slate-600 sm:text-sm">{item.label}</p>
+                  <div className="mt-1.5">
+                    <Fit text={item.value} min={14} max={24} className="font-extrabold text-[#0a2540]" />
+                  </div>
+                  {item.progress !== undefined && (
+                    <div className="mt-2 h-1.5 rounded-full bg-slate-100">
+                      <div className="h-full rounded-full bg-emerald-600" style={{ width: `${item.progress}%` }} />
+                    </div>
+                  )}
+                  <p className="mt-1.5 break-words text-[11px] leading-snug text-slate-500 sm:text-xs">{item.sub}</p>
+                  <span className={`mt-2 inline-block max-w-full truncate rounded-full px-2 py-0.5 text-[11px] font-semibold ${item.badgeClass}`}>{item.badge}</span>
                 </div>
-                <Link to="/transactions" className="flex shrink-0 items-center gap-1 text-sm font-semibold text-[#0b5cab] hover:underline">
-                  View all activity
+              ))}
+            </section>
+
+            {/* Recent transactions */}
+            <section className={`${cardCls} overflow-hidden`}>
+              <div className="flex items-start justify-between gap-3 px-4 pb-2 pt-4 sm:px-5">
+                <div className="min-w-0">
+                  <h2 className={sectionTitleCls}>Recent transactions</h2>
+                  <p className="truncate text-xs text-slate-500 sm:text-sm">Everyday Checking · ending in {lastFour}</p>
+                </div>
+                <Link to="/transactions" className="flex shrink-0 items-center gap-0.5 rounded-full px-2 py-1.5 text-sm font-semibold text-[#0b5cab] hover:bg-slate-100">
+                  View all
                   <Icon name="chevron" className="w-4 h-4" />
                 </Link>
               </div>
-              <div className={`${cardCls} overflow-hidden`}>
-                {recentTransactions.length === 0 ? (
-                  <div className="px-6 py-12 text-center">
-                    <p className="font-semibold text-[#0a2540]">No recent activity</p>
-                    <p className="mt-1 text-sm text-slate-500">New account transactions will appear here.</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="hidden overflow-x-auto md:block">
-                      <table className="w-full table-fixed border-collapse text-left">
-                        <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">
-                          <tr>
-                            <th className="w-32 px-6 py-3">Date</th>
-                            <th className="px-4 py-3">Description</th>
-                            <th className="w-28 px-4 py-3">Type</th>
-                            <th className="w-28 px-4 py-3">Status</th>
-                            <th className="w-36 px-6 py-3 text-right">Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {recentTransactions.map((transaction) => {
-                            const m = txMeta(transaction);
-                            return (
-                              <tr key={transaction.id} className="transition hover:bg-slate-50">
-                                <td className="px-6 py-4 text-sm text-slate-600">{formatTransactionDate(transaction.date)}</td>
-                                <td className="px-4 py-4">
-                                  <p className="truncate text-sm font-semibold text-[#0a2540]">{transaction.description || 'Account transaction'}</p>
-                                  <p className="mt-0.5 truncate text-xs text-slate-500">{transaction.note || 'Everyday Checking'}</p>
-                                </td>
-                                <td className="px-4 py-4 text-sm text-slate-600">{transaction.category || 'Other'}</td>
-                                <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${m.statusClass}`}>{m.statusLabel}</span></td>
-                                <td className={`px-6 py-4 text-right text-sm font-bold tabular-nums ${m.isCredit ? 'text-emerald-700' : 'text-red-700'}`}>{m.amountText}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="divide-y divide-slate-100 md:hidden">
-                      {recentTransactions.map((transaction) => {
-                        const m = txMeta(transaction);
-                        return (
-                          <div key={transaction.id} className="px-4 py-4">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-[#0a2540]">{transaction.description || 'Account transaction'}</p>
-                                <p className="mt-1 text-xs text-slate-500">{formatTransactionDate(transaction.date)} · {transaction.category || 'Other'}</p>
-                              </div>
-                              <p className={`shrink-0 text-sm font-bold tabular-nums ${m.isCredit ? 'text-emerald-700' : 'text-red-700'}`}>{m.amountText}</p>
-                            </div>
-                            <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${m.statusClass}`}>{m.statusLabel}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                )}
-                {recentTransactions.length > 0 && (
-                  <div className="border-t border-slate-200 bg-slate-50 px-6 py-3 text-xs text-slate-500">
-                    Transactions may take time to post. Pending transactions are not final.
-                  </div>
-                )}
-              </div>
+
+              {recentTransactions.length === 0 ? (
+                <div className="px-6 py-12 text-center">
+                  <p className="font-semibold text-[#0a2540]">No recent activity</p>
+                  <p className="mt-1 text-sm text-slate-500">New account transactions will appear here.</p>
+                </div>
+              ) : (
+                <ul className="divide-y divide-slate-100">
+                  {recentTransactions.map((transaction) => {
+                    const m = txMeta(transaction);
+                    const RowIcon = m.isPending ? Clock : m.isCredit ? ArrowDownLeft : ArrowUpRight;
+                    const iconTone = m.isPending
+                      ? 'bg-amber-50 text-amber-700'
+                      : m.isRejected
+                        ? 'bg-rose-50 text-rose-600'
+                        : m.isCredit
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-slate-100 text-slate-600';
+                    return (
+                      <li key={transaction.id} className="flex items-center gap-3 px-4 py-3.5 transition hover:bg-slate-50 sm:px-5">
+                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconTone}`} aria-hidden="true">
+                          <RowIcon size={18} strokeWidth={2.25} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-[#0a2540]">{transaction.description || 'Account transaction'}</p>
+                          <p className="mt-0.5 truncate text-xs text-slate-500">
+                            {formatTransactionDate(transaction.date)} · {transaction.category || 'Other'}
+                          </p>
+                          {transaction.note && <p className="mt-0.5 hidden truncate text-xs text-slate-400 sm:block">{transaction.note}</p>}
+                        </div>
+                        <div className="w-[6.5rem] shrink-0 text-right sm:w-36">
+                          <Fit
+                            text={m.amountText}
+                            min={11}
+                            max={16}
+                            className={`text-right font-bold ${m.isCredit ? 'text-emerald-600' : 'text-red-600'}`}
+                          />
+                          <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${m.statusClass}`}>{m.statusLabel}</span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {recentTransactions.length > 0 && (
+                <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-500 sm:px-5">
+                  Transactions may take time to post. Pending transactions are not final.
+                </div>
+              )}
             </section>
           </div>
 
           {/* ------------------------ Right rail ------------------------ */}
-          <aside className="space-y-6">
+          <aside className="min-w-0 space-y-4 lg:space-y-6">
             {/* Make a transfer */}
-            <section className={`dashboard-transfer-card ${cardCls} p-5`}>
+            <section className={`${cardCls} p-4 sm:p-5`}>
               <h2 className={sectionTitleCls}>Make a transfer</h2>
-              <form className="mt-4 space-y-3" onSubmit={(event) => { event.preventDefault(); navigate('/transfer'); }}>
-                <input
-                  type="text"
-                  placeholder="Recipient"
-                  aria-label="Transfer recipient"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-[#0b5cab] focus:ring-2 focus:ring-[#0b5cab]/20"
-                />
-                <input
-                  type="number"
-                  placeholder="Amount"
-                  aria-label="Transfer amount"
-                  className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-[#0b5cab] focus:ring-2 focus:ring-[#0b5cab]/20"
-                />
-                <button type="submit" className="w-full rounded-lg bg-[#0b5cab] py-3 text-sm font-semibold text-white transition hover:bg-[#0a4a8f] focus:outline-none focus:ring-4 focus:ring-[#0b5cab]/25">
+              <form className="mt-3 space-y-3" onSubmit={(event) => { event.preventDefault(); navigate('/transfer'); }}>
+                <input type="text" placeholder="Recipient" aria-label="Transfer recipient" className={inputCls} />
+                <input type="number" inputMode="decimal" placeholder="Amount" aria-label="Transfer amount" className={inputCls} />
+                <button type="submit" className="w-full rounded-xl bg-[#c8102e] py-3.5 text-sm font-bold text-white transition hover:bg-[#a90d26] active:scale-[0.99]">
                   Continue to transfer
                 </button>
               </form>
               <p className="mt-3 text-xs leading-5 text-slate-500">For your protection, we’ll confirm transfer details before money is sent.</p>
             </section>
 
-            {/* Account summary */}
-            <section className={`dashboard-summary ${cardCls} divide-y divide-slate-100`}>
-              {summaryItems.map((item) => (
-                <div key={item.label} className="p-5">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-sm text-slate-600">{item.label}</p>
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${item.badgeClass}`}>{item.badge}</span>
-                  </div>
-                  <p className="mt-1 text-2xl font-bold tabular-nums text-[#0a2540]">{item.value}</p>
-                  {item.progress !== undefined && (
-                    <div className="mt-2 h-1.5 rounded-full bg-slate-100">
-                      <div className="h-full rounded-full bg-emerald-600" style={{ width: `${item.progress}%` }} />
-                    </div>
-                  )}
-                  <p className="mt-1.5 text-xs text-slate-500">{item.sub}</p>
-                </div>
-              ))}
-            </section>
-
             {/* Spending */}
-            <section className={`${cardCls} p-5`}>
+            <section className={`${cardCls} p-4 sm:p-5`}>
               <h3 className={`${sectionTitleCls} mb-4`}>Spending this month</h3>
               <div className="space-y-4">{renderSpending()}</div>
             </section>
 
             {/* Insights */}
-            <section className={`${cardCls} p-5`}>
+            <section className={`${cardCls} p-4 sm:p-5`}>
               <h3 className={`${sectionTitleCls} mb-4`}>Financial insights</h3>
               <div className="space-y-3">
-                <div className="border-l-4 border-emerald-600 bg-emerald-50 px-4 py-3">
-                  <p className="text-sm font-semibold text-emerald-900">On Track</p>
+                <div className="rounded-xl border-l-4 border-emerald-600 bg-emerald-50 px-4 py-3">
+                  <p className="text-sm font-bold text-emerald-900">On Track</p>
                   <p className="mt-0.5 text-sm text-emerald-800">You're spending 15% less than last month. Great job!</p>
                 </div>
-                <div className="border-l-4 border-[#0b5cab] bg-[#eef5fc] px-4 py-3">
-                  <p className="text-sm font-semibold text-[#0a2540]">Tip</p>
+                <div className="rounded-xl border-l-4 border-[#0b5cab] bg-[#eef5fc] px-4 py-3">
+                  <p className="text-sm font-bold text-[#0a2540]">Tip</p>
                   <p className="mt-0.5 text-sm text-slate-700">Set up automatic transfers to savings to reach your $50K goal faster.</p>
                 </div>
-                <div className="border-l-4 border-slate-400 bg-slate-50 px-4 py-3">
-                  <p className="text-sm font-semibold text-slate-900">Forecast</p>
+                <div className="rounded-xl border-l-4 border-slate-400 bg-slate-50 px-4 py-3">
+                  <p className="text-sm font-bold text-slate-900">Forecast</p>
                   <p className="mt-0.5 text-sm text-slate-700">At this rate, you'll save $3,200 by the end of the quarter.</p>
                 </div>
               </div>
@@ -1214,7 +1202,7 @@ function Dashboard() {
 
       {/* Mobile bottom navigation */}
       <nav aria-label="Mobile navigation" className="dashboard-mobile-nav fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white lg:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-4">
+        <div className="mx-auto grid max-w-md grid-cols-4 px-2">
           {[
             { to: '/dashboard', label: 'Accounts', icon: 'home', active: true },
             { to: '/transfer', label: 'Transfer', icon: 'swap' },
@@ -1224,10 +1212,13 @@ function Dashboard() {
             <Link
               key={item.to}
               to={item.to}
-              className={`flex flex-col items-center gap-1 py-2.5 text-xs font-medium ${item.active ? 'text-[#0b5cab]' : 'text-slate-500'}`}
+              aria-current={item.active ? 'page' : undefined}
+              className={`flex min-w-0 flex-col items-center gap-0.5 py-2 text-[11px] font-semibold ${item.active ? 'text-[#0b5cab]' : 'text-slate-500'}`}
             >
-              <Icon name={item.icon} className="w-5 h-5" />
-              {item.label}
+              <span className={`flex h-7 w-12 items-center justify-center rounded-full ${item.active ? 'bg-[#e8f0fa]' : ''}`}>
+                <Icon name={item.icon} className="w-5 h-5" />
+              </span>
+              <span className="max-w-full truncate">{item.label}</span>
             </Link>
           ))}
         </div>
@@ -1236,46 +1227,46 @@ function Dashboard() {
       {/* ========================= Settings Modal ========================= */}
       {showSettingsModal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 sm:items-center sm:p-4">
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-2xl border border-slate-200 bg-white shadow-2xl sm:rounded-2xl">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
-              <h2 className="text-xl font-bold text-[#0a2540]">Profile Settings</h2>
+          <div className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:rounded-3xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3.5 sm:px-6 sm:py-4">
+              <h2 className="text-lg font-extrabold text-[#0a2540] sm:text-xl">Profile Settings</h2>
               <button
                 onClick={() => setShowSettingsModal(false)}
                 aria-label="Close"
-                className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               >
                 <Icon name="close" className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="space-y-8 p-6">
+            <div className="space-y-7 p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:p-6">
               {saveError && (
-                <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{saveError}</div>
+                <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">{saveError}</div>
               )}
 
               {/* Profile picture */}
               <div className="flex flex-col items-center gap-3">
                 <Avatar size="h-24 w-24" text="text-4xl" src={formData.avatarUrl} />
-                <label className="cursor-pointer rounded-lg border border-[#0b5cab] px-5 py-2 text-sm font-semibold text-[#0b5cab] transition hover:bg-[#eef5fc]">
+                <label className="cursor-pointer rounded-full border border-[#0b5cab] px-5 py-2.5 text-sm font-semibold text-[#0b5cab] transition hover:bg-[#eef5fc]">
                   Change Picture
                   <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
                 </label>
-                <p className="text-xs text-slate-500">JPG, PNG up to 5MB (auto-compressed)</p>
+                <p className="text-center text-xs text-slate-500">JPG, PNG up to 5MB (auto-compressed)</p>
               </div>
 
               {/* Personal information */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className={sectionTitleCls}>Personal Information</h3>
                   {!editMode && (
-                    <button onClick={() => setEditMode(true)} className="text-sm font-semibold text-[#0b5cab] hover:underline">
+                    <button onClick={() => setEditMode(true)} className="rounded-full px-3 py-1.5 text-sm font-semibold text-[#0b5cab] hover:bg-slate-100">
                       Edit
                     </button>
                   )}
                 </div>
 
                 {editMode ? (
-                  <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-5">
+                  <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       {[
                         ['First Name', 'firstName', 'text', 'First name'],
@@ -1287,7 +1278,7 @@ function Dashboard() {
                             type={type}
                             value={formData[key]}
                             onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
-                            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-[#0b5cab] focus:ring-2 focus:ring-[#0b5cab]/20"
+                            className={inputCls}
                             placeholder={ph}
                           />
                         </div>
@@ -1303,7 +1294,7 @@ function Dashboard() {
                           type={type}
                           value={formData[key]}
                           onChange={(e) => setFormData({ ...formData, [key]: e.target.value })}
-                          className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-[#0b5cab] focus:ring-2 focus:ring-[#0b5cab]/20"
+                          className={inputCls}
                           placeholder={ph}
                         />
                       </div>
@@ -1311,21 +1302,21 @@ function Dashboard() {
                     <div className="flex gap-3 pt-2">
                       <button
                         onClick={handleSaveProfile}
-                        className="flex-1 rounded-lg bg-[#0b5cab] px-4 py-3 font-semibold text-white transition hover:bg-[#0a4a8f] disabled:opacity-50"
+                        className="flex-1 rounded-xl bg-[#0b5cab] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#0a4a8f] disabled:opacity-50"
                         disabled={savingProfile}
                       >
                         {savingProfile ? 'Saving...' : 'Save Changes'}
                       </button>
                       <button
                         onClick={() => setEditMode(false)}
-                        className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
+                        className="flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
                       >
                         Cancel
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+                  <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200">
                     {[
                       ['First Name', user.name.split(' ')[0]],
                       ['Last Name', user.name.split(' ').slice(1).join(' ')],
@@ -1333,8 +1324,8 @@ function Dashboard() {
                       ['Phone Number', user.phone || 'Not provided'],
                     ].map(([label, value]) => (
                       <div key={label} className="flex items-center justify-between gap-4 px-4 py-3">
-                        <p className="text-sm text-slate-500">{label}</p>
-                        <p className="truncate text-sm font-semibold text-slate-900">{value}</p>
+                        <p className="shrink-0 text-sm text-slate-500">{label}</p>
+                        <p className="min-w-0 truncate text-sm font-semibold text-slate-900">{value}</p>
                       </div>
                     ))}
                   </div>
@@ -1342,10 +1333,10 @@ function Dashboard() {
               </div>
 
               {/* Account information */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <h3 className={sectionTitleCls}>Account Information</h3>
 
-                <div className="rounded-xl border border-[#c9dcf2] bg-[#eef5fc] px-4">
+                <div className="rounded-2xl border border-[#c9dcf2] bg-[#eef5fc] px-4">
                   <div className="divide-y divide-[#c9dcf2]">
                     <DetailRow
                       label="Account number"
@@ -1367,34 +1358,22 @@ function Dashboard() {
                   <p className="pb-3 text-xs text-slate-600">Share these with others to receive transfers to your Aurora Bank account</p>
                 </div>
 
-                <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
-                  <div className="grid grid-cols-1 items-center gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-4">
-                    <p className="text-sm text-slate-500">Total Balance</p>
-                    <div className="dashboard-account-balance min-w-0">
-                      <p className="text-right font-semibold tabular-nums text-slate-900" style={{ '--balance-length': showBalance ? formatCurrency(user.balance).length : 6 }}>
-                        {showBalance ? formatCurrency(user.balance) : '$ •••••••'}
-                      </p>
+                <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200">
+                  {[
+                    ['Total Balance', showBalance ? formatCurrency(user.balance) : '$ •••••••'],
+                    ['Checking Balance', showBalance ? formatCurrency(user.checking) : hidden],
+                    ['Savings Balance', showBalance ? formatCurrency(user.savings) : hidden],
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex items-center gap-3 px-4 py-3">
+                      <p className="w-28 shrink-0 text-sm text-slate-500 sm:w-36">{label}</p>
+                      <div className="min-w-0 flex-1">
+                        <Fit text={value} min={12} max={16} className="text-right font-semibold text-slate-900" />
+                      </div>
                     </div>
-                  </div>
+                  ))}
                   <div className="flex items-center justify-between gap-4 px-4 py-3">
-                    <p className="text-sm text-slate-500">Account Type</p>
-                    <p className="text-sm font-semibold text-slate-900">Personal Checking & Savings</p>
-                  </div>
-                  <div className="grid grid-cols-1 items-center gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-4">
-                    <p className="text-sm text-slate-500">Checking Balance</p>
-                    <div className="dashboard-account-balance min-w-0">
-                      <p className="text-right font-semibold tabular-nums text-slate-900" style={{ '--balance-length': showBalance ? formatCurrency(user.checking).length : 6 }}>
-                        {showBalance ? formatCurrency(user.checking) : hidden}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 items-center gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-4">
-                    <p className="text-sm text-slate-500">Savings Balance</p>
-                    <div className="dashboard-account-balance min-w-0">
-                      <p className="text-right font-semibold tabular-nums text-slate-900" style={{ '--balance-length': showBalance ? formatCurrency(user.savings).length : 6 }}>
-                        {showBalance ? formatCurrency(user.savings) : hidden}
-                      </p>
-                    </div>
+                    <p className="shrink-0 text-sm text-slate-500">Account Type</p>
+                    <p className="min-w-0 text-right text-sm font-semibold text-slate-900">Personal Checking &amp; Savings</p>
                   </div>
                 </div>
               </div>
@@ -1402,13 +1381,13 @@ function Dashboard() {
               {/* Security */}
               <div className="space-y-3">
                 <h3 className={sectionTitleCls}>Security</h3>
-                <button className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-4 py-3.5 text-left font-medium text-slate-700 transition hover:bg-slate-50">
+                <button className="flex w-full items-center justify-between rounded-2xl border border-slate-200 px-4 py-3.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
                   <span>Change Password</span>
                   <Icon name="chevron" className="w-5 h-5 text-slate-400" />
                 </button>
-                <button className="flex w-full items-center justify-between rounded-xl border border-slate-200 px-4 py-3.5 text-left font-medium text-slate-700 transition hover:bg-slate-50">
-                  <span>Two-Factor Authentication</span>
-                  <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">Enabled</span>
+                <button className="flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 px-4 py-3.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+                  <span className="min-w-0">Two-Factor Authentication</span>
+                  <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">Enabled</span>
                 </button>
               </div>
             </div>
@@ -1418,14 +1397,14 @@ function Dashboard() {
 
       {showInstallHelp && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/50 p-4" role="dialog" aria-modal="true" aria-labelledby="install-app-title">
-          <section className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6">
+          <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl sm:p-6">
             <div className="flex items-start justify-between gap-4">
-              <h2 id="install-app-title" className="text-lg font-bold text-[#0a2540]">Install Aurora Bank</h2>
+              <h2 id="install-app-title" className="text-lg font-extrabold text-[#0a2540]">Install Aurora Bank</h2>
               <button
                 type="button"
                 onClick={() => setShowInstallHelp(false)}
                 aria-label="Close install instructions"
-                className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100"
+                className="rounded-full p-2 text-slate-500 hover:bg-slate-100"
               >
                 <Icon name="close" className="h-5 w-5" />
               </button>
@@ -1437,7 +1416,7 @@ function Dashboard() {
             <button
               type="button"
               onClick={() => setShowInstallHelp(false)}
-              className="mt-5 w-full rounded-md bg-[#0b5cab] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0a4a8f]"
+              className="mt-5 w-full rounded-xl bg-[#0b5cab] px-4 py-3 text-sm font-bold text-white hover:bg-[#0a4a8f]"
             >
               Done
             </button>
