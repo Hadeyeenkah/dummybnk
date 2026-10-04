@@ -1,6 +1,7 @@
 // src/controllers/transactionController.js
 const crypto = require('crypto');
 const Transaction = require('../models/Transaction');
+const Bill = require('../models/Bill');
 const User = require('../models/User');
 const { sendNotificationEmail } = require('../utils/email');
 const { withDatabaseTransaction } = require('../utils/withDatabaseTransaction');
@@ -385,7 +386,15 @@ const settleStandardTransactionStandalone = async (transactionId, action) => {
   let balanceChanged = false;
   try {
     let user = await User.findById(transaction.userId);
-    if (action === 'approve') {
+    if (transaction.transferType === 'bill' && action === 'reject') {
+      if (!user) throw new ApprovalError(404, 'Transaction owner not found.');
+      ensureAccounts(user);
+      const account = accountFor(user, transaction.accountType, true);
+      account.balance = money(account.balance + Math.abs(Number(transaction.amount)));
+      recalculateBalance(user);
+      await user.save();
+      balanceChanged = true;
+    } else if (action === 'approve' && transaction.transferType !== 'bill') {
       if (!user) throw new ApprovalError(404, 'Transaction owner not found.');
       ensureAccounts(user);
       const account = accountFor(user, transaction.accountType, true);
@@ -397,6 +406,12 @@ const settleStandardTransactionStandalone = async (transactionId, action) => {
 
     transaction.status = action === 'approve' ? 'completed' : 'rejected';
     await transaction.save();
+    if (transaction.transferType === 'bill') {
+      await Bill.findOneAndUpdate(
+        { transactionId: transaction._id },
+        { $set: { status: action === 'approve' ? 'completed' : 'failed' } }
+      );
+    }
     return { transaction, user };
   } catch (error) {
     if (!balanceChanged) {
@@ -416,6 +431,28 @@ const settleStandardTransaction = async (transactionId, action) => withDatabaseT
   if (!transaction) throw new ApprovalError(404, 'Transaction not found.');
   if (transaction.status !== 'pending') {
     throw new ApprovalError(409, 'Transaction has already been processed.');
+  }
+
+  if (transaction.transferType === 'bill') {
+    if (action === 'reject') {
+      const user = await queryWithSession(User.findById(transaction.userId), session);
+      if (!user) throw new ApprovalError(404, 'Transaction owner not found.');
+      ensureAccounts(user);
+      const account = accountFor(user, transaction.accountType, true);
+      account.balance = money(account.balance + Math.abs(Number(transaction.amount)));
+      recalculateBalance(user);
+      await user.save(sessionOptions(session));
+    }
+
+    const bill = await queryWithSession(Bill.findOne({ transactionId: transaction._id }), session);
+    if (bill) {
+      bill.status = action === 'approve' ? 'completed' : 'failed';
+      await bill.save(sessionOptions(session));
+    }
+
+    transaction.status = action === 'approve' ? 'completed' : 'rejected';
+    await transaction.save(sessionOptions(session));
+    return { transaction, user: await queryWithSession(User.findById(transaction.userId), session) };
   }
 
   if (action === 'approve') {

@@ -3,7 +3,7 @@ const Bill = require('../models/Bill');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 
-// Pay a bill - creates both bill record and transaction
+// Submit a bill payment for admin approval and hold the requested funds.
 exports.payBill = async (req, res) => {
   try {
     console.log('📝 Bill payment request:', req.body);
@@ -107,7 +107,7 @@ exports.payBill = async (req, res) => {
       description: payee,
       category: category || 'Bills',
       accountType: targetAccount,
-      status: 'completed',
+      status: 'pending',
       transferType: 'bill',
       reference,
       note: note || `Payment to ${payee}`,
@@ -129,7 +129,7 @@ exports.payBill = async (req, res) => {
       category: category || 'Other',
       accountNumber: accountNumber || '',
       fromAccount: targetAccount,
-      status: 'completed',
+      status: 'pending',
       transactionId: transaction._id,
       note: note || '',
       dueDate: dueDate ? new Date(dueDate) : null,
@@ -157,11 +157,11 @@ exports.payBill = async (req, res) => {
     user.markModified('accounts');
     await user.save();
 
-    console.log('✅ Bill payment completed successfully');
+    console.log('✅ Bill payment submitted for approval');
 
     res.status(201).json({
       status: 'success',
-      message: 'Bill payment completed successfully',
+      message: 'Bill payment submitted for admin approval. Funds are held until it is approved or rejected.',
       bill: {
         id: bill._id,
         payee: bill.payee,

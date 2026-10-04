@@ -185,7 +185,7 @@ function BillsPage() {
 
       if (result.success) {
         setMessageType('success');
-        setMessage('✓ Bill payment completed successfully!');
+        setMessage('Bill payment submitted and is awaiting admin approval.');
         
         // Create receipt with proper data
         const billData = result.bill || {};

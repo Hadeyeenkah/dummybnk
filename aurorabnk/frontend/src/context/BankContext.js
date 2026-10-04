@@ -849,7 +849,7 @@ export const BankProvider = ({ children }) => {
 
       return {
         success: true,
-        message: 'Bill payment completed successfully',
+        message: data.message || 'Bill payment submitted for admin approval',
         bill: data.bill,
         transaction: data.transaction,
       };
