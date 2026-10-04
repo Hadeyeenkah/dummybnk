@@ -3,7 +3,72 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
 import AuroraBankLogo from '../components/AuroraBankLogo';
 import { API_BASE } from '../config';
+import {
+  AtSign,
+  ArrowLeft,
+  ArrowLeftRight,
+  ArrowUpDown,
+  BadgeCheck,
+  Clock,
+  Landmark,
+  Send,
+  ShieldCheck,
+  Wallet,
+  PiggyBank,
+  X,
+} from 'lucide-react';
 import '../App.css';
+
+const AURORA_ROUTING = '026009593';
+const QUICK_AMOUNTS = [50, 100, 250, 500, 1000];
+// Minimum time the "processing" screen stays up before the receipt opens.
+const PROCESSING_MS = 2500;
+
+// Text that shrinks to fit its box so amounts never clip or wrap (styles live in App.css).
+function Fit({ text, min = 12, max = 24, className = '' }) {
+  const value = String(text);
+  return (
+    <div className="fit-box">
+      <p
+        className={`fit-text ${className}`}
+        style={{ '--len': Math.max(value.length, 4), '--min': `${min}px`, '--max': `${max}px` }}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+const cardCls = 'rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(10,37,64,0.05)]';
+const labelCls = 'mb-1.5 block text-sm font-semibold text-slate-700';
+const inputCls =
+  'w-full min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 placeholder-slate-400 outline-none transition focus:border-[#0b5cab] focus:ring-2 focus:ring-[#0b5cab]/20 sm:text-sm';
+
+function Segmented({ value, onChange, options }) {
+  return (
+    <div className="grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1" role="tablist">
+      {options.map((o) => {
+        const Active = o.icon;
+        const selected = value === o.value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onChange(o.value)}
+            className={`flex min-w-0 items-center justify-center gap-2 rounded-xl px-2 py-2.5 text-sm font-semibold transition ${
+              selected ? 'bg-white text-[#0a2540] shadow-sm' : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Active size={16} className="shrink-0" aria-hidden="true" />
+            <span className="truncate">{o.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function TransferPage() {
   const { currentUser, refreshProfile } = useBankContext();
@@ -11,7 +76,7 @@ function TransferPage() {
   const apiBase = API_BASE;
   const recipientLookupVersion = useRef(0);
   const submission = useRef({ fingerprint: '', idempotencyKey: '' });
-  const [formData, setFormData] = useState({
+  const emptyForm = {
     transferType: 'external',
     recipientName: '',
     recipientEmail: '',
@@ -25,15 +90,18 @@ function TransferPage() {
     fromAccount: 'checking',
     toAccount: 'savings',
     note: '',
-  });
+  };
+  const [formData, setFormData] = useState(emptyForm);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
   const [receipt, setReceipt] = useState(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showReview, setShowReview] = useState(false);
   const [loading, setLoading] = useState(false);
   const [recipientFound, setRecipientFound] = useState(null);
 
-  const formatCurrency = (value) => `$${Number(value || 0).toFixed(2)}`;
+  const formatCurrency = (value) =>
+    `$${Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   const handlePrint = () => {
     window.print();
@@ -124,7 +192,7 @@ function TransferPage() {
 
       const res = await fetchWithAuth(url);
       if (lookupVersion !== recipientLookupVersion.current) return;
-      
+
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
         if (data.user) {
@@ -134,14 +202,14 @@ function TransferPage() {
             accountNumber: data.user.accountNumber,
             routingNumber: data.user.routingNumber,
           };
-          const isSameBank = String(found.routingNumber) === '026009593';
+          const isSameBank = String(found.routingNumber) === AURORA_ROUTING;
 
           setRecipientFound({ ...found, isSameBank });
 
           // Only auto-fill name/account details when recipient is in the same bank
           if (isSameBank) {
-            setFormData(prev => ({ 
-              ...prev, 
+            setFormData(prev => ({
+              ...prev,
               recipientName: found.name,
               recipientEmail: found.email,
               recipientAccountNumber: found.accountNumber,
@@ -186,39 +254,69 @@ function TransferPage() {
     transferType,
   });
 
-  const handleSubmit = async (e) => {
+  /* ---------------- derived display values ---------------- */
+  const isExternal = formData.transferType === 'external';
+  const balanceOf = (account) => Number(currentUser?.[account] ?? 0);
+  const amountNumber = Number(formData.amount);
+  const insufficient = amountNumber > 0 && amountNumber > balanceOf(formData.fromAccount);
+  const sameAccount = !isExternal && formData.fromAccount === formData.toAccount;
+  const accountLabel = (a) => (a === 'savings' ? 'Savings' : 'Checking');
+  const lastFour = (v) => String(v || '').slice(-4);
+  const recipientLabel = isExternal
+    ? formData.recipientName
+      || recipientFound?.name
+      || formData.recipientEmail
+      || (formData.recipientAccountNumber ? `Account ••••${lastFour(formData.recipientAccountNumber)}` : 'Not entered yet')
+    : `My ${accountLabel(formData.toAccount)}`;
+  const recipientBank = isExternal
+    ? (formData.lookupMethod === 'account' ? formData.bankName : recipientFound ? (recipientFound.isSameBank ? 'Aurora Bank' : '') : '')
+    : 'Aurora Bank';
+
+  // Same validation rules as before; returns an error message or ''.
+  const validate = () => {
+    if (!formData.amount || Number(formData.amount) <= 0) {
+      return 'Enter a valid amount greater than $0.00';
+    }
+    if (sameAccount) return 'Choose two different accounts.';
+    if (isExternal) {
+      if (formData.lookupMethod === 'email' && !formData.recipientEmail) return 'Recipient email is required.';
+      if (formData.lookupMethod === 'account' && (!formData.recipientAccountNumber || !formData.recipientRoutingNumber)) {
+        return 'Recipient account and routing numbers are required.';
+      }
+      if (formData.lookupMethod === 'account' && (!formData.bankName.trim() || !formData.recipientName.trim())) {
+        return 'Recipient name and bank name are required.';
+      }
+    }
+    return '';
+  };
+
+  // Step 1: validate, then show the review sheet.
+  const handleReview = (e) => {
     e.preventDefault();
+    setMessage('');
+    setMessageType('');
+    const error = validate();
+    if (error) {
+      setMessageType('error');
+      setMessage(error);
+      return;
+    }
+    setShowReview(true);
+  };
+
+  // Step 2: submit to the server (unchanged request logic).
+  const submitTransfer = async () => {
+    const startedAt = Date.now();
     setLoading(true);
     setMessage('');
     setMessageType('');
 
-    // Validation
-    if (!formData.amount || Number(formData.amount) <= 0) {
+    const error = validate();
+    if (error) {
       setMessageType('error');
-      setMessage('Enter a valid amount greater than $0.00');
+      setMessage(error);
       setLoading(false);
       return;
-    }
-
-    if (formData.transferType === 'external') {
-      if (formData.lookupMethod === 'email' && !formData.recipientEmail) {
-        setMessageType('error');
-        setMessage('Recipient email is required.');
-        setLoading(false);
-        return;
-      }
-      if (formData.lookupMethod === 'account' && (!formData.recipientAccountNumber || !formData.recipientRoutingNumber)) {
-        setMessageType('error');
-        setMessage('Recipient account and routing numbers are required.');
-        setLoading(false);
-        return;
-      }
-      if (formData.lookupMethod === 'account' && (!formData.bankName.trim() || !formData.recipientName.trim())) {
-        setMessageType('error');
-        setMessage('Recipient name and bank name are required.');
-        setLoading(false);
-        return;
-      }
     }
 
     try {
@@ -282,11 +380,16 @@ function TransferPage() {
         return;
       }
 
+      // Keep the processing screen up for a minimum time before the receipt appears.
+      const remaining = PROCESSING_MS - (Date.now() - startedAt);
+      if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
+
       setMessageType('success');
       setMessage(data.message || 'Transfer submitted successfully.');
 
       const receiptData = buildReceipt(data, formData.transferType, formData);
       setReceipt(receiptData);
+      setShowReview(false);
       setShowReceiptModal(true);
 
       // The server has already accepted the transfer. A failed profile refresh
@@ -299,21 +402,7 @@ function TransferPage() {
       submission.current = { fingerprint: '', idempotencyKey: '' };
 
       // Reset form
-      setFormData({
-        transferType: 'external',
-        recipientName: '',
-        recipientEmail: '',
-        recipientAccountNumber: '',
-        recipientRoutingNumber: '',
-        lookupMethod: 'email',
-        bankName: '',
-        routingNumber: '',
-        accountNumber: '',
-        amount: '',
-        fromAccount: 'checking',
-        toAccount: 'savings',
-        note: '',
-      });
+      setFormData(emptyForm);
       setRecipientFound(null);
     } catch (error) {
       console.error('Transfer error:', error);
@@ -342,117 +431,145 @@ function TransferPage() {
     }
   };
 
+  const swapAccounts = () =>
+    setFormData((prev) => ({ ...prev, fromAccount: prev.toAccount, toAccount: prev.fromAccount }));
+
+  /* ---------------- small UI pieces ---------------- */
+  const AccountPick = ({ id, selected, onSelect }) => {
+    const Icon = id === 'savings' ? PiggyBank : Wallet;
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={selected}
+        className={`flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left transition ${
+          selected ? 'border-[#0b5cab] bg-[#eef5fc] ring-2 ring-[#0b5cab]/20' : 'border-slate-200 bg-white hover:bg-slate-50'
+        }`}
+      >
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${selected ? 'bg-[#0b5cab] text-white' : 'bg-slate-100 text-slate-600'}`}>
+          <Icon size={18} aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold text-[#0a2540]">{accountLabel(id)}</span>
+          <Fit text={formatCurrency(balanceOf(id))} min={11} max={15} className="font-semibold text-slate-600" />
+        </span>
+      </button>
+    );
+  };
+
+  const SummaryRow = ({ label, children }) => (
+    <div className="flex items-start justify-between gap-3 py-2.5 text-sm">
+      <span className="shrink-0 text-slate-500">{label}</span>
+      <span className="min-w-0 break-words text-right font-semibold text-slate-900">{children}</span>
+    </div>
+  );
+
+  const arrival = isExternal ? 'Pending admin approval' : 'Instant';
+
   return (
-    <div className="min-h-[100dvh] overflow-x-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
-      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-xl shadow-sm">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
-          <div className="flex items-center gap-3">
+    <div className="bank-dashboard text-slate-900">
+      <header className="dashboard-header sticky top-0 z-30 border-b border-slate-200">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-3 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2">
             <AuroraBankLogo />
-            <span className="text-lg font-semibold tracking-tight bg-gradient-to-r from-indigo-900 to-slate-950 bg-clip-text text-transparent">Aurora Bank</span>
+            <span className="truncate text-lg font-extrabold tracking-tight text-[#0a2540]">Aurora Bank</span>
           </div>
-          <Link to="/dashboard" className="text-sm text-indigo-800 hover:text-indigo-950">
-            ← Back to Dashboard
+          <Link to="/dashboard" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-[#0b5cab] hover:bg-slate-100">
+            <ArrowLeft size={16} aria-hidden="true" />
+            <span className="hidden sm:inline">Back to Dashboard</span>
+            <span className="sm:hidden">Back</span>
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
-        <h1 className="mb-2 text-2xl font-semibold text-slate-900 sm:text-3xl">Transfer Money</h1>
-        <p className="mb-6 text-sm text-slate-600 sm:mb-8 sm:text-base">Send to another bank or move money between your accounts</p>
+      <main className="mx-auto w-full max-w-6xl px-3 py-4 sm:px-6 sm:py-8">
+        <h1 className="text-xl font-extrabold tracking-tight text-[#0a2540] sm:text-2xl lg:text-3xl">Transfer money</h1>
+        <p className="mb-5 mt-0.5 text-sm text-slate-600">Send to another bank or move money between your accounts.</p>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-lg sm:rounded-2xl sm:p-6 md:col-span-2">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="transferType"
-                    value="external"
-                    checked={formData.transferType === 'external'}
-                    onChange={() => setFormData({ ...formData, transferType: 'external' })}
-                    className="accent-indigo-900"
-                  />
-                  Send to a bank account
-                </label>
-                <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="transferType"
-                    value="internal"
-                    checked={formData.transferType === 'internal'}
-                    onChange={() => setFormData({ ...formData, transferType: 'internal' })}
-                    className="accent-indigo-900"
-                  />
-                  Between my accounts
-                </label>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-6">
+          {/* ------------------------------ Form ------------------------------ */}
+          <form onSubmit={handleReview} className="min-w-0 space-y-4" noValidate>
+            <Segmented
+              value={formData.transferType}
+              onChange={(v) => { setFormData({ ...formData, transferType: v }); setMessage(''); }}
+              options={[
+                { value: 'external', label: 'Send money', icon: Send },
+                { value: 'internal', label: 'Between my accounts', icon: ArrowLeftRight },
+              ]}
+            />
+
+            {/* From / To */}
+            <section className={`${cardCls} p-4 sm:p-5`}>
+              <h2 className="mb-3 text-base font-bold text-[#0a2540]">From</h2>
+              <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                {['checking', 'savings'].map((id) => (
+                  <AccountPick key={id} id={id} selected={formData.fromAccount === id} onSelect={() => setFormData({ ...formData, fromAccount: id })} />
+                ))}
               </div>
 
-              {formData.transferType === 'external' && (
-                <div className="space-y-4">
-                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900 sm:p-4">
-                    Enter an email address or any bank account details. Mock transfers remain pending until admin approval.
+              {!isExternal && (
+                <>
+                  <div className="my-3 flex items-center gap-3">
+                    <div className="h-px flex-1 bg-slate-200" />
+                    <button
+                      type="button"
+                      onClick={swapAccounts}
+                      aria-label="Swap accounts"
+                      className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-[#0b5cab] hover:bg-[#eef5fc]"
+                    >
+                      <ArrowUpDown size={18} aria-hidden="true" />
+                    </button>
+                    <div className="h-px flex-1 bg-slate-200" />
                   </div>
+                  <h2 className="mb-3 text-base font-bold text-[#0a2540]">To</h2>
+                  <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                    {['checking', 'savings'].map((id) => (
+                      <AccountPick key={id} id={id} selected={formData.toAccount === id} onSelect={() => setFormData({ ...formData, toAccount: id })} />
+                    ))}
+                  </div>
+                  {sameAccount && <p className="mt-3 text-sm font-medium text-rose-600">Choose two different accounts.</p>}
+                </>
+              )}
+            </section>
 
-                  {/* Lookup method toggle */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData({ ...formData, lookupMethod: 'email' });
-                        setRecipientFound(null);
+            {/* Recipient */}
+            {isExternal && (
+              <section className={`${cardCls} space-y-4 p-4 sm:p-5`}>
+                <h2 className="text-base font-bold text-[#0a2540]">Recipient</h2>
+                <Segmented
+                  value={formData.lookupMethod}
+                  onChange={(v) => { setFormData({ ...formData, lookupMethod: v }); setRecipientFound(null); }}
+                  options={[
+                    { value: 'email', label: 'By email', icon: AtSign },
+                    { value: 'account', label: 'Bank account', icon: Landmark },
+                  ]}
+                />
+
+                {formData.lookupMethod === 'email' ? (
+                  <div>
+                    <label htmlFor="recipientEmail" className={labelCls}>Recipient email *</label>
+                    <input
+                      id="recipientEmail"
+                      type="email"
+                      inputMode="email"
+                      autoComplete="off"
+                      value={formData.recipientEmail}
+                      onChange={(e) => {
+                        setFormData({ ...formData, recipientEmail: e.target.value });
+                        handleRecipientLookup(e.target.value, null, null);
                       }}
-                      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                        formData.lookupMethod === 'email'
-                          ? 'bg-indigo-900 text-white'
-                          : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      📧 By Email
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData({ ...formData, lookupMethod: 'account' });
-                        setRecipientFound(null);
-                      }}
-                      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                        formData.lookupMethod === 'account'
-                          ? 'bg-indigo-900 text-white'
-                          : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      🏦 By Bank Account
-                    </button>
+                      onBlur={(e) => handleRecipientLookup(e.target.value, null, null)}
+                      placeholder="recipient@email.com"
+                      className={inputCls}
+                    />
                   </div>
-                  
-                  {formData.lookupMethod === 'email' ? (
-                    <div className="space-y-2">
-                      <label className="text-sm text-slate-700">Recipient Email *</label>
-                      <input
-                        type="email"
-                        value={formData.recipientEmail}
-                        onChange={(e) => {
-                          setFormData({ ...formData, recipientEmail: e.target.value });
-                          handleRecipientLookup(e.target.value, null, null);
-                        }}
-                        onBlur={(e) => handleRecipientLookup(e.target.value, null, null)}
-                        placeholder="recipient@email.com"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
-                        required
-                      />
-                      {recipientFound && (
-                        <div className="flex items-center gap-2 text-sm text-emerald-700">
-                          <span>✓</span>
-                          <span>Recipient found: {recipientFound.name}</span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="text-sm text-slate-700">Routing Number *</label>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label htmlFor="recipientRouting" className={labelCls}>Routing number *</label>
                         <input
+                          id="recipientRouting"
                           type="text"
                           inputMode="numeric"
                           value={formData.recipientRoutingNumber}
@@ -464,14 +581,13 @@ function TransferPage() {
                           onBlur={(e) => handleRecipientLookup(null, formData.recipientAccountNumber, e.target.value)}
                           placeholder="9-digit routing number"
                           maxLength="9"
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
-                          required
+                          className={`${inputCls} font-mono`}
                         />
                       </div>
-                      
-                      <div className="space-y-2">
-                        <label className="text-sm text-slate-700">Account Number *</label>
+                      <div>
+                        <label htmlFor="recipientAccount" className={labelCls}>Account number *</label>
                         <input
+                          id="recipientAccount"
                           type="text"
                           inputMode="numeric"
                           value={formData.recipientAccountNumber}
@@ -484,145 +600,233 @@ function TransferPage() {
                           placeholder="Enter account number"
                           maxLength="17"
                           minLength="4"
-                          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
-                          required
+                          className={`${inputCls} font-mono`}
                         />
                       </div>
-                      
-                      {recipientFound && (
-                        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span>✓</span>
-                            <span className="font-semibold">Account Verified</span>
-                          </div>
-                          <div className="text-xs text-emerald-700/80">
-                            Recipient: {recipientFound.name} ({recipientFound.email})
-                          </div>
-                        </div>
-                      )}
-                      {/* Removed explicit 'Account not found' warning per UX request */}
                     </div>
-                  )}
-
-                  {formData.lookupMethod === 'account' && (
-                    <div className="space-y-2">
-                      <label className="text-sm text-slate-700">Bank Name *</label>
+                    <div>
+                      <label htmlFor="bankName" className={labelCls}>Bank name *</label>
                       <input
+                        id="bankName"
                         type="text"
                         value={formData.bankName}
                         onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
                         placeholder="Recipient’s bank"
                         maxLength="100"
-                        required
-                        className="w-full min-w-0 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
+                        className={inputCls}
                       />
                     </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <label className="text-sm text-slate-700">Recipient Name {formData.lookupMethod === 'account' ? '*' : '(optional)'}</label>
-                    <input
-                      type="text"
-                      value={formData.recipientName}
-                      onChange={(e) => setFormData({ ...formData, recipientName: e.target.value })}
-                      placeholder={recipientFound?.isSameBank ? "Auto-filled from Aurora Bank" : "Enter recipient name"}
-                      maxLength="100"
-                      required={formData.lookupMethod === 'account'}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <label className="text-sm text-slate-700">Amount</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    placeholder="0.00"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pl-8 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm text-slate-700">From Account</label>
-                  <select
-                    value={formData.fromAccount}
-                    onChange={(e) => setFormData({ ...formData, fromAccount: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
-                  >
-                    <option value="checking">Checking - ${Number(currentUser?.checking ?? 0).toFixed(2)}</option>
-                    <option value="savings">Savings - ${Number(currentUser?.savings ?? 0).toFixed(2)}</option>
-                  </select>
-                </div>
-
-                {formData.transferType === 'internal' && (
-                  <div className="space-y-2">
-                    <label className="text-sm text-slate-700">To Account</label>
-                    <select
-                      value={formData.toAccount}
-                      onChange={(e) => setFormData({ ...formData, toAccount: e.target.value })}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
-                    >
-                      <option value="checking">Checking</option>
-                      <option value="savings">Savings</option>
-                    </select>
                   </div>
                 )}
-              </div>
 
-              <div className="space-y-2">
-                <label className="text-sm text-slate-700">Note (Optional)</label>
-                <textarea
-                  value={formData.note}
-                  onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                  placeholder="What's this for?"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20"
-                  rows="3"
+                {recipientFound && (
+                  <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                    <BadgeCheck size={20} className="mt-0.5 shrink-0 text-emerald-700" aria-hidden="true" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-emerald-900">
+                        {formData.lookupMethod === 'account' ? 'Account verified' : 'Recipient found'}
+                      </p>
+                      <p className="break-words text-sm text-emerald-800">{recipientFound.name}</p>
+                      <p className="break-all text-xs text-emerald-700/80">{recipientFound.email}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="recipientName" className={labelCls}>
+                    Recipient name {formData.lookupMethod === 'account' ? '*' : '(optional)'}
+                  </label>
+                  <input
+                    id="recipientName"
+                    type="text"
+                    value={formData.recipientName}
+                    onChange={(e) => setFormData({ ...formData, recipientName: e.target.value })}
+                    placeholder={recipientFound?.isSameBank ? 'Auto-filled from Aurora Bank' : 'Enter recipient name'}
+                    maxLength="100"
+                    className={inputCls}
+                  />
+                </div>
+              </section>
+            )}
+
+            {/* Amount */}
+            <section className={`${cardCls} p-4 sm:p-5`}>
+              <label htmlFor="amount" className="mb-2 block text-base font-bold text-[#0a2540]">Amount</label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-400">$</span>
+                <input
+                  id="amount"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  placeholder="0.00"
+                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white py-3.5 pl-10 pr-4 text-2xl font-extrabold tabular-nums text-[#0a2540] placeholder-slate-300 outline-none transition focus:border-[#0b5cab] focus:ring-2 focus:ring-[#0b5cab]/20"
                 />
               </div>
-
-              {message && (
-                <div
-                  className={`rounded-xl p-4 ${messageType === 'success'
-                    ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
-                    : 'border border-rose-200 bg-rose-50 text-rose-700'
-                  }`}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {QUICK_AMOUNTS.map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, amount: String(q) })}
+                    className="rounded-full border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 hover:border-[#0b5cab] hover:text-[#0b5cab]"
+                  >
+                    ${q.toLocaleString('en-US')}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, amount: balanceOf(formData.fromAccount).toFixed(2) })}
+                  className="rounded-full bg-[#e8f0fa] px-3.5 py-2 text-sm font-bold text-[#0a4a8f] hover:bg-[#d7e5f6]"
                 >
-                  {message}
-                </div>
-              )}
+                  Max
+                </button>
+              </div>
+              <p className={`mt-3 text-sm ${insufficient ? 'font-semibold text-rose-600' : 'text-slate-500'}`}>
+                {insufficient
+                  ? `This is more than your ${accountLabel(formData.fromAccount)} balance of ${formatCurrency(balanceOf(formData.fromAccount))}.`
+                  : `Available in ${accountLabel(formData.fromAccount)}: ${formatCurrency(balanceOf(formData.fromAccount))}`}
+              </p>
+            </section>
 
-              <button
-                type="submit"
-                disabled={loading || (formData.transferType === 'external' && formData.lookupMethod === 'email' && !formData.recipientEmail)}
-                className="w-full rounded-xl bg-gradient-to-r from-indigo-900 to-slate-950 py-3 text-sm font-semibold text-white transition hover:from-indigo-950 hover:to-black disabled:opacity-50 disabled:cursor-not-allowed"
+            {/* Note */}
+            <section className={`${cardCls} p-4 sm:p-5`}>
+              <label htmlFor="note" className="mb-2 block text-base font-bold text-[#0a2540]">
+                Note <span className="text-sm font-medium text-slate-400">(optional)</span>
+              </label>
+              <textarea
+                id="note"
+                value={formData.note}
+                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                placeholder="What's this for?"
+                className={inputCls}
+                rows="3"
+              />
+            </section>
+
+            {message && !showReview && (
+              <div
+                role="alert"
+                className={`rounded-xl p-4 text-sm font-medium ${messageType === 'success'
+                  ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+                  : 'border border-rose-200 bg-rose-50 text-rose-700'
+                }`}
               >
-                {loading ? 'Processing...' : 'Send Money'}
-              </button>
-            </form>
-          </div>
+                {message}
+              </div>
+            )}
 
-          <div className="min-w-0 space-y-4">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-lg sm:rounded-2xl sm:p-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-900">Available Balance</h3>
-              <p className="text-2xl font-semibold text-indigo-900">${Number(currentUser?.balance ?? 0).toFixed(2)}</p>
+            <button
+              type="submit"
+              disabled={loading || sameAccount || (isExternal && formData.lookupMethod === 'email' && !formData.recipientEmail)}
+              className="w-full rounded-xl bg-[#c8102e] py-3.5 text-base font-bold text-white transition hover:bg-[#a90d26] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Review transfer
+            </button>
+          </form>
+
+          {/* ----------------------------- Sidebar ----------------------------- */}
+          <aside className="min-w-0 space-y-4 lg:sticky lg:top-24 lg:self-start">
+            <section className="hero-card rounded-3xl p-4 text-white sm:p-5">
+              <p className="text-sm font-medium text-blue-100">Available balance</p>
+              <div className="mt-1">
+                <Fit text={formatCurrency(currentUser?.balance)} min={20} max={36} className="font-extrabold tracking-tight" />
+              </div>
+              <p className="mt-1 text-xs text-blue-100">Checking + Savings · Member FDIC</p>
+            </section>
+
+            <section className={`${cardCls} px-4 py-3 sm:px-5`}>
+              <h2 className="py-2 text-base font-bold text-[#0a2540]">Transfer summary</h2>
+              <div className="divide-y divide-slate-100">
+                <SummaryRow label="Amount">{amountNumber > 0 ? formatCurrency(amountNumber) : '—'}</SummaryRow>
+                <SummaryRow label="From">{accountLabel(formData.fromAccount)}</SummaryRow>
+                <SummaryRow label="To">
+                  {recipientLabel}
+                  {recipientBank && <span className="block text-xs font-medium text-slate-500">{recipientBank}</span>}
+                </SummaryRow>
+                <SummaryRow label="Fee">Free</SummaryRow>
+                <SummaryRow label="Arrives">{arrival}</SummaryRow>
+              </div>
+            </section>
+
+            <section className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+              <p className="flex gap-3"><Clock size={18} className="mt-0.5 shrink-0 text-[#0b5cab]" aria-hidden="true" /><span><strong className="text-slate-900">External transfers</strong> to any bank require admin approval before funds are released.</span></p>
+              <p className="flex gap-3"><ArrowLeftRight size={18} className="mt-0.5 shrink-0 text-[#0b5cab]" aria-hidden="true" /><span><strong className="text-slate-900">Internal transfers</strong> between Checking and Savings move instantly.</span></p>
+              <p className="flex gap-3"><ShieldCheck size={18} className="mt-0.5 shrink-0 text-[#0b5cab]" aria-hidden="true" /><span>Funds are deducted immediately but held pending approval for external transfers.</span></p>
+            </section>
+          </aside>
+        </div>
+      </main>
+
+      {/* ============================ Review sheet ============================ */}
+      {showReview && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="review-title">
+          <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
+            <div className="flex items-center justify-between px-5 pt-5">
+              <h2 id="review-title" className="text-lg font-extrabold text-[#0a2540]">Review transfer</h2>
+              <button type="button" onClick={() => setShowReview(false)} aria-label="Close review" className="rounded-full p-2 text-slate-500 hover:bg-slate-100">
+                <X size={20} aria-hidden="true" />
+              </button>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2 text-sm text-slate-600">
-              <p>💡 <strong>External transfers</strong> to any bank require admin approval before funds are released.</p>
-              <p>↔️ <strong>Internal transfers</strong> between your Checking and Savings move instantly.</p>
-              <p>🔒 Funds are deducted immediately but held pending approval for external transfers.</p>
+            <div className="px-5 pb-5 pt-3">
+              <div className="rounded-2xl bg-[#eef5fc] px-4 py-5 text-center">
+                <p className="text-xs font-medium text-slate-600">You're sending</p>
+                <div className="mt-1"><Fit text={formatCurrency(amountNumber)} min={22} max={40} className="text-center font-extrabold text-[#0a2540]" /></div>
+              </div>
+              <div className="mt-2 divide-y divide-slate-100">
+                <SummaryRow label="From">{accountLabel(formData.fromAccount)}</SummaryRow>
+                <SummaryRow label="To">
+                  {recipientLabel}
+                  {recipientBank && <span className="block text-xs font-medium text-slate-500">{recipientBank}</span>}
+                </SummaryRow>
+                {isExternal && formData.lookupMethod === 'email' && formData.recipientEmail && (
+                  <SummaryRow label="Email"><span className="break-all">{formData.recipientEmail}</span></SummaryRow>
+                )}
+                {formData.note && <SummaryRow label="Note">{formData.note}</SummaryRow>}
+                <SummaryRow label="Fee">Free</SummaryRow>
+                <SummaryRow label="Arrives">{arrival}</SummaryRow>
+              </div>
+              {insufficient && (
+                <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm font-medium text-amber-800">
+                  This amount is higher than your {accountLabel(formData.fromAccount)} balance and may be declined.
+                </p>
+              )}
+              {message && messageType === 'error' && (
+                <div role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-medium text-rose-700">{message}</div>
+              )}
+              <div className="mt-5 grid grid-cols-2 gap-3 pb-[env(safe-area-inset-bottom)]">
+                <button type="button" onClick={() => setShowReview(false)} disabled={loading} className="rounded-xl border border-slate-300 bg-white py-3.5 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+                  Edit
+                </button>
+                <button type="button" onClick={submitTransfer} disabled={loading} className="rounded-xl bg-[#c8102e] py-3.5 text-sm font-bold text-white hover:bg-[#a90d26] disabled:cursor-not-allowed disabled:opacity-60">
+                  {loading ? 'Processing...' : 'Confirm & send'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </main>
+      )}
+
+      {/* Processing screen (shown while the transfer is submitted, before the receipt) */}
+      {loading && !showReceiptModal && (
+        <div className="no-print fixed inset-0 z-[70] flex items-center justify-center bg-[#0a2540]/70 p-4 backdrop-blur-sm" role="alertdialog" aria-modal="true" aria-live="assertive" aria-labelledby="transfer-processing-title">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl sm:p-8">
+            <div className="mx-auto mb-5 h-14 w-14 animate-spin rounded-full border-4 border-[#e8f0fa] border-t-[#0b5cab]" aria-hidden="true" />
+            <h2 id="transfer-processing-title" className="text-lg font-extrabold text-[#0a2540]">Processing your transfer</h2>
+            <p className="mt-1.5 text-sm text-slate-600">Securely submitting your details. Please don't close or refresh this page.</p>
+            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+              <div className="transfer-progress h-full rounded-full bg-[#0b5cab]" />
+            </div>
+          </div>
+        </div>
+      )}
+      <style>{`
+        @keyframes transfer-progress { from { width: 8%; } to { width: 96%; } }
+        .transfer-progress { width: 8%; animation: transfer-progress ${PROCESSING_MS}ms ease-out forwards; }
+      `}</style>
 
       {/* Print styles scoped for the receipt modal */}
       <style>{`
@@ -641,7 +845,7 @@ function TransferPage() {
             padding: 0 !important;
             background: white !important;
           }
-          .printable { 
+          .printable {
             position: absolute;
             top: 0;
             left: 0;
@@ -659,7 +863,7 @@ function TransferPage() {
           }
           .print\\:hidden { display: none !important; }
           .no-print { display: none !important; }
-          
+
           .printable * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
@@ -668,99 +872,99 @@ function TransferPage() {
       `}</style>
 
       {showReceiptModal && receipt && (
-        <div className="receipt-overlay fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:p-6">
-          <div className="printable my-auto w-full max-w-xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto bg-white text-slate-900 shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
+        <div className="receipt-overlay fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+          <div className="printable my-auto w-full max-w-xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl bg-white text-slate-900 shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
             {/* Typewriter Style Receipt - Professional & Organized */}
-            <div className="p-5 font-mono text-xs leading-relaxed bg-white sm:p-8" style={{fontFamily: "'Courier New', 'Courier', monospace"}}>
-              
+            <div className="bg-white p-5 font-mono text-xs leading-relaxed sm:p-8" style={{ fontFamily: "'Courier New', 'Courier', monospace" }}>
+
               {/* Header */}
-              <div className="text-center mb-3">
+              <div className="mb-3 text-center">
                 <p className="font-bold">AURORA BANK</p>
                 <p>TRANSACTION RECEIPT</p>
               </div>
 
-              <div className="border-t border-b border-black py-2 mb-3 text-center">
+              <div className="mb-3 border-b border-t border-black py-2 text-center">
                 <p>*** {receipt.status === 'completed' ? 'TRANSFER COMPLETED' : 'TRANSFER SUBMITTED'} ***</p>
               </div>
 
               {/* Transaction Info */}
               <div className="mb-3 space-y-0.5">
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-3">
                   <span>DATE:</span>
-                  <span>{receipt.date}</span>
+                  <span className="text-right">{receipt.date}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-3">
                   <span>REFERENCE:</span>
-                  <span>{receipt.reference}</span>
+                  <span className="break-all text-right">{receipt.reference}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between gap-3">
                   <span>STATUS:</span>
                   <span>{String(receipt.status || 'pending').toUpperCase()}</span>
                 </div>
               </div>
 
-              <div className="border-t border-black my-3"></div>
+              <div className="my-3 border-t border-black"></div>
 
               {/* Amount */}
               <div className="mb-3">
-                <div className="flex justify-between font-bold">
+                <div className="flex justify-between gap-3 font-bold">
                   <span>AMOUNT:</span>
                   <span>{formatCurrency(receipt.amount)}</span>
                 </div>
               </div>
 
-              <div className="border-t border-black my-3"></div>
+              <div className="my-3 border-t border-black"></div>
 
               {/* From Account */}
               <div className="mb-3 space-y-0.5">
                 <p className="font-bold">FROM:</p>
-                <p className="ml-2">{currentUser?.name}</p>
-                <div className="ml-2 flex justify-between">
+                <p className="ml-2 break-words">{currentUser?.name}</p>
+                <div className="ml-2 flex justify-between gap-3">
                   <span>ACCOUNT:</span>
                   <span>{receipt.fromAccount.toUpperCase()}</span>
                 </div>
                 {currentUser?.accountNumber && (
-                  <div className="ml-2 flex justify-between">
+                  <div className="ml-2 flex justify-between gap-3">
                     <span>ACCT #:</span>
                     <span>****{String(currentUser.accountNumber).slice(-4)}</span>
                   </div>
                 )}
               </div>
 
-              <div className="border-t border-black my-3"></div>
+              <div className="my-3 border-t border-black"></div>
 
               {/* To Account */}
               <div className="mb-3 space-y-0.5">
                 <p className="font-bold">TO:</p>
                 {receipt.toAccount ? (
                   <>
-                    <p className="ml-2">{currentUser?.name}</p>
-                    <div className="ml-2 flex justify-between">
+                    <p className="ml-2 break-words">{currentUser?.name}</p>
+                    <div className="ml-2 flex justify-between gap-3">
                       <span>ACCOUNT:</span>
                       <span>{receipt.toAccount.toUpperCase()}</span>
                     </div>
                   </>
                 ) : (
                   <>
-                    <p className="ml-2">{receipt.recipient?.recipientName || receipt.recipient?.name || 'External Account'}</p>
-                    <div className="ml-2 flex justify-between">
+                    <p className="ml-2 break-words">{receipt.recipient?.recipientName || receipt.recipient?.name || 'External Account'}</p>
+                    <div className="ml-2 flex justify-between gap-3">
                       <span>BANK:</span>
                       <span className="ml-2 text-right">{receipt.recipient?.bankName || (receipt.recipient?.email ? 'Aurora Bank' : 'External bank')}</span>
                     </div>
                     {receipt.recipient?.accountNumber && (
-                      <div className="ml-2 flex justify-between">
+                      <div className="ml-2 flex justify-between gap-3">
                         <span>ACCT #:</span>
                         <span>****{String(receipt.recipient.accountNumber).slice(-4)}</span>
                       </div>
                     )}
                     {receipt.recipient?.email && (
-                      <div className="ml-2 flex justify-between">
+                      <div className="ml-2 flex justify-between gap-3">
                         <span>EMAIL:</span>
                         <span className="ml-2 break-all text-right">{receipt.recipient.email}</span>
                       </div>
                     )}
                     {receipt.recipient?.routingNumber && (
-                      <div className="ml-2 flex justify-between">
+                      <div className="ml-2 flex justify-between gap-3">
                         <span>ROUTING:</span>
                         <span>{receipt.recipient.routingNumber}</span>
                       </div>
@@ -772,21 +976,21 @@ function TransferPage() {
               {/* Memo */}
               {receipt.note && (
                 <>
-                  <div className="border-t border-black my-3"></div>
+                  <div className="my-3 border-t border-black"></div>
                   <div className="mb-3">
                     <div className="flex">
                       <span className="font-bold">MEMO:</span>
-                      <span className="ml-2">{receipt.note}</span>
+                      <span className="ml-2 break-words">{receipt.note}</span>
                     </div>
                   </div>
                 </>
               )}
 
-              <div className="border-t border-black my-3"></div>
+              <div className="my-3 border-t border-black"></div>
 
               {/* Notice */}
               <div className="mb-3 text-xs">
-                <p className="text-center mb-1">IMPORTANT NOTICE</p>
+                <p className="mb-1 text-center">IMPORTANT NOTICE</p>
                 {receipt.status === 'completed' ? (
                   <p>{receipt.transferType === 'internal' ? 'Your internal transfer has completed.' : 'Your external mock transfer was approved and marked complete.'}</p>
                 ) : (
@@ -797,7 +1001,7 @@ function TransferPage() {
                 )}
               </div>
 
-              <div className="border-t border-black my-3"></div>
+              <div className="my-3 border-t border-black"></div>
 
               {/* Footer */}
               <div className="text-center text-xs">
@@ -809,26 +1013,25 @@ function TransferPage() {
               </div>
 
               {/* Bottom Border */}
-              <div className="text-center mt-4">
-                <p>{'='.repeat(50)}</p>
+              <div className="mt-4 overflow-hidden text-center">
+                <p className="whitespace-nowrap">{'='.repeat(50)}</p>
               </div>
-
             </div>
 
             {/* On-Screen Controls (Hidden on Print) */}
-            <div className="no-print border-t border-slate-200 bg-slate-50 px-8 py-4">
+            <div className="no-print border-t border-slate-200 bg-slate-50 px-4 py-4 sm:px-8">
               <div className="flex items-center justify-center gap-3">
                 <button
                   type="button"
                   onClick={handleReceiptClose}
-                  className="rounded-lg border border-slate-300 bg-white px-6 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                  className="flex-1 rounded-xl border border-slate-300 bg-white px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-100 sm:flex-none"
                 >
                   Close
                 </button>
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                  className="flex-1 rounded-xl bg-[#0b5cab] px-6 py-3 text-sm font-bold text-white hover:bg-[#0a4a8f] sm:flex-none"
                 >
                   Print as PDF
                 </button>

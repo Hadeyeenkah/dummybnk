@@ -2,7 +2,54 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
 import AuroraBankLogo from '../components/AuroraBankLogo';
+import {
+  ArrowLeft,
+  Banknote,
+  Check,
+  ClipboardList,
+  Clock,
+  Lock,
+  PiggyBank,
+  Printer,
+  Wallet,
+  X,
+} from 'lucide-react';
 import '../App.css';
+
+// How long the "processing" screen stays up before the receipt opens.
+const PROCESSING_MS = 2500;
+
+const PURPOSES = [
+  { value: 'payment', label: 'Payment' },
+  { value: 'personal', label: 'Personal transfer' },
+  { value: 'business', label: 'Business payment' },
+  { value: 'investment', label: 'Investment' },
+  { value: 'other', label: 'Other' },
+];
+
+// Text that shrinks to fit its box so amounts never clip or wrap (styles live in App.css).
+function Fit({ text, min = 12, max = 24, className = '' }) {
+  const value = String(text);
+  return (
+    <div className="fit-box">
+      <p
+        className={`fit-text ${className}`}
+        style={{ '--len': Math.max(value.length, 4), '--min': `${min}px`, '--max': `${max}px` }}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+const cardCls = 'rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(10,37,64,0.05)]';
+const sectionTitleCls = 'text-base font-bold text-[#0a2540] sm:text-lg';
+const labelCls = 'mb-1.5 block text-sm font-semibold text-slate-700';
+const inputCls =
+  'w-full min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 placeholder-slate-400 outline-none transition focus:border-[#0b5cab] focus:ring-2 focus:ring-[#0b5cab]/20 sm:text-sm';
+
+const money = (value) =>
+  `$${Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function WireTransferPage() {
   const { currentUser, transferMoney } = useBankContext();
@@ -62,7 +109,7 @@ function WireTransferPage() {
     return true;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
 
@@ -74,7 +121,7 @@ function WireTransferPage() {
 
     try {
       const amount = parseFloat(formData.amount);
-      const result = transferMoney({
+      const result = await transferMoney({
         fromUserId: currentUser.id,
         amount,
         fromAccount: formData.fromAccount,
@@ -92,6 +139,8 @@ function WireTransferPage() {
       });
 
       if (result.success) {
+        // Keep the processing screen up briefly before the receipt appears.
+        await new Promise((resolve) => setTimeout(resolve, PROCESSING_MS));
         setMessageType('success');
         setMessage(result.message || 'Wire transfer submitted successfully!');
         setReceipt({
@@ -136,297 +185,318 @@ function WireTransferPage() {
     window.print();
   };
 
+  const checkingBalance = currentUser?.checking || 0;
+  const savingsBalance = currentUser?.savings || 0;
+  const amountNumber = parseFloat(formData.amount);
+
+  const AccountPick = ({ id, balance }) => {
+    const selected = formData.fromAccount === id;
+    const Icon = id === 'savings' ? PiggyBank : Wallet;
+    return (
+      <button
+        type="button"
+        aria-pressed={selected}
+        onClick={() => setFormData((prev) => ({ ...prev, fromAccount: id }))}
+        className={`flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left transition ${
+          selected ? 'border-[#0b5cab] bg-[#eef5fc] ring-2 ring-[#0b5cab]/20' : 'border-slate-200 bg-white hover:bg-slate-50'
+        }`}
+      >
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${selected ? 'bg-[#0b5cab] text-white' : 'bg-slate-100 text-slate-600'}`}>
+          <Icon size={18} aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold capitalize text-[#0a2540]">{id}</span>
+          <Fit text={money(balance)} min={11} max={15} className="font-semibold text-slate-600" />
+        </span>
+      </button>
+    );
+  };
+
+  const ReceiptRow = ({ label, children, bold }) => (
+    <div className={`flex justify-between gap-3 ${bold ? 'font-bold' : ''}`}>
+      <span className="shrink-0">{label}</span>
+      <span className="min-w-0 break-words text-right">{children}</span>
+    </div>
+  );
+
+  const infoItems = [
+    { icon: Clock, text: 'Typically processed within 1-2 business days' },
+    { icon: Banknote, text: 'May require admin approval for amounts over $5,000' },
+    { icon: Lock, text: 'All transfers are encrypted and secure' },
+    { icon: ClipboardList, text: 'Keep your confirmation number for reference' },
+  ];
+
+  const requirements = [
+    'Valid recipient name',
+    'Bank name and routing number',
+    'Recipient account number',
+    'Valid transfer amount',
+    'Sufficient funds in selected account',
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
-      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-xl shadow-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
+    <div className="bank-dashboard text-slate-900">
+      <header className="dashboard-header sticky top-0 z-30 border-b border-slate-200 no-print">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-3 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2">
             <AuroraBankLogo />
-            <span className="text-lg font-semibold tracking-tight bg-gradient-to-r from-indigo-900 to-slate-950 bg-clip-text text-transparent">Aurora Bank</span>
+            <span className="truncate text-lg font-extrabold tracking-tight text-[#0a2540]">Aurora Bank</span>
           </div>
-          <Link to="/dashboard" className="text-sm text-indigo-800 hover:text-indigo-950">
-            ← Back to Dashboard
+          <Link to="/dashboard" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-[#0b5cab] hover:bg-slate-100">
+            <ArrowLeft size={16} aria-hidden="true" />
+            <span className="hidden sm:inline">Back to Dashboard</span>
+            <span className="sm:hidden">Back</span>
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-12">
-        <h1 className="mb-2 text-3xl font-semibold text-slate-900">Wire Transfer</h1>
-        <p className="mb-8 text-slate-600">Send domestic and international wire transfers securely and quickly</p>
+      <main className="mx-auto w-full max-w-6xl px-3 py-4 sm:px-6 sm:py-8 no-print">
+        <h1 className="text-xl font-extrabold tracking-tight text-[#0a2540] sm:text-2xl lg:text-3xl">Wire transfer</h1>
+        <p className="mb-5 mt-0.5 text-sm text-slate-600">Send domestic and international wire transfers securely and quickly.</p>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {/* Form Section */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg md:col-span-2">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Message Display */}
-              {message && (
-                <div className={`rounded-lg p-4 text-sm ${messageType === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
-                  {message}
-                </div>
-              )}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-6">
+          {/* ------------------------------ Form ------------------------------ */}
+          <form onSubmit={handleSubmit} className="min-w-0 space-y-4">
+            {message && (
+              <div
+                role="alert"
+                className={`rounded-xl border p-4 text-sm font-medium ${
+                  messageType === 'success'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                    : 'border-rose-200 bg-rose-50 text-rose-700'
+                }`}
+              >
+                {message}
+              </div>
+            )}
 
-              {/* From Account */}
+            {/* From account */}
+            <section className={`${cardCls} p-4 sm:p-5`}>
+              <h2 className="mb-3 text-base font-bold text-[#0a2540]">From account</h2>
+              <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                <AccountPick id="checking" balance={checkingBalance} />
+                <AccountPick id="savings" balance={savingsBalance} />
+              </div>
+            </section>
+
+            {/* Recipient */}
+            <section className={`${cardCls} space-y-4 p-4 sm:p-5`}>
+              <h2 className="text-base font-bold text-[#0a2540]">Recipient information</h2>
+
               <div>
-                <label className="mb-2 block text-sm font-semibold text-slate-700">
-                  From Account
-                </label>
-                <select
-                  name="fromAccount"
-                  value={formData.fromAccount}
+                <label htmlFor="recipientName" className={labelCls}>Recipient full name *</label>
+                <input
+                  id="recipientName"
+                  type="text"
+                  name="recipientName"
+                  value={formData.recipientName}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
-                >
-                  <option value="checking">Checking - ${currentUser?.checking?.toFixed(2) || '0.00'}</option>
-                  <option value="savings">Savings - ${currentUser?.savings?.toFixed(2) || '0.00'}</option>
-                </select>
+                  placeholder="e.g., John Smith"
+                  autoComplete="off"
+                  className={inputCls}
+                />
               </div>
 
-              <div className="border-t border-slate-200 pt-6">
-                <h3 className="mb-4 text-lg font-semibold text-slate-900">Recipient Information</h3>
-
-                {/* Recipient Name */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">
-                    Recipient Full Name *
-                  </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="recipientBankName" className={labelCls}>Recipient bank name *</label>
                   <input
-                    type="text"
-                    name="recipientName"
-                    value={formData.recipientName}
-                    onChange={handleChange}
-                    placeholder="e.g., John Smith"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
-                  />
-                </div>
-
-                {/* Bank Name */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">
-                    Recipient Bank Name *
-                  </label>
-                  <input
+                    id="recipientBankName"
                     type="text"
                     name="recipientBankName"
                     value={formData.recipientBankName}
                     onChange={handleChange}
                     placeholder="e.g., First National Bank"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
+                    className={inputCls}
                   />
                 </div>
-
-                {/* Bank Address */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">
-                    Bank Address
-                  </label>
+                <div>
+                  <label htmlFor="recipientBankAddress" className={labelCls}>Bank address</label>
                   <input
+                    id="recipientBankAddress"
                     type="text"
                     name="recipientBankAddress"
                     value={formData.recipientBankAddress}
                     onChange={handleChange}
                     placeholder="e.g., 123 Main St, New York, NY 10001"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
+                    className={inputCls}
                   />
                 </div>
+              </div>
 
-                {/* Routing Number */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">
-                    Routing Number *
-                  </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="recipientRoutingNumber" className={labelCls}>Routing number *</label>
                   <input
+                    id="recipientRoutingNumber"
                     type="text"
+                    inputMode="numeric"
                     name="recipientRoutingNumber"
                     value={formData.recipientRoutingNumber}
                     onChange={handleChange}
                     placeholder="e.g., 021000021"
                     maxLength="9"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
+                    className={`${inputCls} font-mono`}
                   />
-                  <p className="mt-1 text-xs text-slate-400">9-digit ABA routing number</p>
+                  <p className="mt-1 text-xs text-slate-500">9-digit ABA routing number</p>
                 </div>
-
-                {/* Account Number */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">
-                    Account Number *
-                  </label>
+                <div>
+                  <label htmlFor="recipientAccountNumber" className={labelCls}>Account number *</label>
                   <input
+                    id="recipientAccountNumber"
                     type="text"
+                    inputMode="numeric"
                     name="recipientAccountNumber"
                     value={formData.recipientAccountNumber}
                     onChange={handleChange}
                     placeholder="e.g., 123456789"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
-                  />
-                </div>
-
-                {/* SWIFT Code (Optional) */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">
-                    SWIFT Code (International)
-                  </label>
-                  <input
-                    type="text"
-                    name="recipientSwiftCode"
-                    value={formData.recipientSwiftCode}
-                    onChange={handleChange}
-                    placeholder="e.g., CHASUS33"
-                    maxLength="11"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
+                    className={`${inputCls} font-mono`}
                   />
                 </div>
               </div>
 
-              <div className="border-t border-slate-200 pt-6">
-                <h3 className="mb-4 text-lg font-semibold text-slate-900">Transfer Details</h3>
+              <div>
+                <label htmlFor="recipientSwiftCode" className={labelCls}>SWIFT code (international)</label>
+                <input
+                  id="recipientSwiftCode"
+                  type="text"
+                  name="recipientSwiftCode"
+                  value={formData.recipientSwiftCode}
+                  onChange={handleChange}
+                  placeholder="e.g., CHASUS33"
+                  maxLength="11"
+                  autoCapitalize="characters"
+                  className={`${inputCls} font-mono`}
+                />
+              </div>
+            </section>
 
-                {/* Amount */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">
-                    Amount *
-                  </label>
-                  <div className="flex items-center">
-                    <span className="text-slate-400 mr-2">$</span>
-                    <input
-                      type="number"
-                      name="amount"
-                      value={formData.amount}
-                      onChange={handleChange}
-                      placeholder="0.00"
-                      step="0.01"
-                      min="0"
-                      className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
-                    />
-                  </div>
-                </div>
+            {/* Amount */}
+            <section className={`${cardCls} p-4 sm:p-5`}>
+              <label htmlFor="amount" className="mb-2 block text-base font-bold text-[#0a2540]">Amount *</label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-400">$</span>
+                <input
+                  id="amount"
+                  type="number"
+                  inputMode="decimal"
+                  name="amount"
+                  value={formData.amount}
+                  onChange={handleChange}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white py-3.5 pl-10 pr-4 text-2xl font-extrabold tabular-nums text-[#0a2540] placeholder-slate-300 outline-none transition focus:border-[#0b5cab] focus:ring-2 focus:ring-[#0b5cab]/20"
+                />
+              </div>
+              {formData.amount && amountNumber > 0 && (
+                <p className="mt-2 text-sm text-slate-600">You are sending {money(amountNumber)}</p>
+              )}
+            </section>
 
-                {/* Purpose */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">
-                    Purpose of Wire
-                  </label>
-                  <select
-                    name="purpose"
-                    value={formData.purpose}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
-                  >
-                    <option value="">Select a purpose</option>
-                    <option value="payment">Payment</option>
-                    <option value="personal">Personal Transfer</option>
-                    <option value="business">Business Payment</option>
-                    <option value="investment">Investment</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                {/* Note */}
-                <div className="mb-4">
-                  <label className="mb-2 block text-sm font-semibold text-slate-200">
-                    Notes/Reference
-                  </label>
-                  <textarea
-                    name="note"
-                    value={formData.note}
-                    onChange={handleChange}
-                    placeholder="Add any additional details about this transfer..."
-                    rows="3"
-                    className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition resize-none"
-                  />
+            {/* Purpose + note */}
+            <section className={`${cardCls} space-y-4 p-4 sm:p-5`}>
+              <div>
+                <span className="mb-2 block text-base font-bold text-[#0a2540]">
+                  Purpose of wire <span className="text-sm font-medium text-slate-400">(optional)</span>
+                </span>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Purpose of wire">
+                  {PURPOSES.map((p) => {
+                    const selected = formData.purpose === p.value;
+                    return (
+                      <button
+                        key={p.value}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setFormData((prev) => ({ ...prev, purpose: selected ? '' : p.value }))}
+                        className={`flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-semibold transition ${
+                          selected ? 'border-[#0b5cab] bg-[#eef5fc] text-[#0a4a8f]' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {selected && <Check size={14} aria-hidden="true" />}
+                        {p.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Submit Button */}
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 rounded-lg bg-gradient-to-r from-indigo-900 to-slate-950 py-3 text-sm font-semibold text-white hover:from-indigo-950 hover:to-black transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submitting ? 'Processing...' : 'Send Wire Transfer'}
-                </button>
-                <Link
-                  to="/dashboard"
-                  className="flex-1 rounded-lg border border-slate-200 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition text-center"
-                >
-                  Cancel
-                </Link>
+              <div>
+                <label htmlFor="note" className="mb-2 block text-base font-bold text-[#0a2540]">
+                  Notes / reference <span className="text-sm font-medium text-slate-400">(optional)</span>
+                </label>
+                <textarea
+                  id="note"
+                  name="note"
+                  value={formData.note}
+                  onChange={handleChange}
+                  placeholder="Add any additional details about this transfer..."
+                  rows="3"
+                  className={`${inputCls} resize-none`}
+                />
               </div>
-            </form>
-          </div>
+            </section>
 
-          {/* Info Section */}
-          <div className="space-y-6">
-            {/* Wire Transfer Info */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
-              <h3 className="mb-4 text-lg font-semibold text-slate-900">Wire Transfer Info</h3>
+            {/* Actions */}
+            <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-[1fr_auto]">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="rounded-xl bg-[#c8102e] py-3.5 text-base font-bold text-white transition hover:bg-[#a90d26] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {submitting ? 'Processing...' : 'Send wire transfer'}
+              </button>
+              <Link
+                to="/dashboard"
+                className="rounded-xl border border-slate-300 bg-white px-8 py-3.5 text-center text-base font-bold text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </Link>
+            </div>
+          </form>
+
+          {/* ----------------------------- Sidebar ----------------------------- */}
+          <aside className="min-w-0 space-y-4 lg:sticky lg:top-24 lg:self-start">
+            <section className="hero-card rounded-3xl p-4 text-white sm:p-5">
+              <p className="text-sm font-medium text-blue-100">Your accounts</p>
+              <div className="mt-3 grid grid-cols-2 gap-2.5">
+                <div className="min-w-0 rounded-2xl bg-white/10 p-3">
+                  <p className="text-xs font-medium text-blue-100">Checking</p>
+                  <div className="mt-1"><Fit text={money(checkingBalance)} min={12} max={22} className="font-bold" /></div>
+                </div>
+                <div className="min-w-0 rounded-2xl bg-white/10 p-3">
+                  <p className="text-xs font-medium text-blue-100">Savings</p>
+                  <div className="mt-1"><Fit text={money(savingsBalance)} min={12} max={22} className="font-bold" /></div>
+                </div>
+              </div>
+            </section>
+
+            <section className={`${cardCls} p-4 sm:p-5`}>
+              <h2 className={`${sectionTitleCls} mb-3`}>Wire transfer info</h2>
               <ul className="space-y-3 text-sm text-slate-600">
-                <li className="flex gap-3">
-                  <span className="text-indigo-700">⏱</span>
-                  <span>Typically processed within 1-2 business days</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="text-indigo-700">💰</span>
-                  <span>May require admin approval for amounts over $5,000</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="text-indigo-700">🔒</span>
-                  <span>All transfers are encrypted and secure</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="text-indigo-700">📋</span>
-                  <span>Keep your confirmation number for reference</span>
-                </li>
+                {infoItems.map(({ icon: Icon, text }) => (
+                  <li key={text} className="flex items-start gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e8f0fa] text-[#0b5cab]">
+                      <Icon size={16} aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 pt-1">{text}</span>
+                  </li>
+                ))}
               </ul>
-            </div>
+            </section>
 
-            {/* Account Balance */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
-              <h3 className="mb-4 text-lg font-semibold text-slate-900">Your Accounts</h3>
-              <div className="space-y-3">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs text-slate-400">Checking</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">
-                    ${currentUser?.checking?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                  <p className="text-xs text-slate-400">Savings</p>
-                  <p className="mt-1 text-lg font-semibold text-slate-900">
-                    ${currentUser?.savings?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || '0.00'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Requirements */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
-              <h3 className="mb-4 text-lg font-semibold text-slate-900">Requirements</h3>
-              <ul className="space-y-2 text-xs text-slate-600">
-                <li className="flex items-start gap-2">
-                  <span className="text-indigo-700 mt-1">✓</span>
-                  <span>Valid recipient name</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-indigo-700 mt-1">✓</span>
-                  <span>Bank name and routing number</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-indigo-700 mt-1">✓</span>
-                  <span>Recipient account number</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-indigo-700 mt-1">✓</span>
-                  <span>Valid transfer amount</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-indigo-700 mt-1">✓</span>
-                  <span>Sufficient funds in selected account</span>
-                </li>
+            <section className={`${cardCls} p-4 sm:p-5`}>
+              <h2 className={`${sectionTitleCls} mb-3`}>Requirements</h2>
+              <ul className="space-y-2 text-sm text-slate-600">
+                {requirements.map((r) => (
+                  <li key={r} className="flex items-start gap-2">
+                    <Check size={16} className="mt-0.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                    <span className="min-w-0">{r}</span>
+                  </li>
+                ))}
               </ul>
-            </div>
-          </div>
+            </section>
+          </aside>
         </div>
       </main>
 
@@ -435,125 +505,125 @@ function WireTransferPage() {
         @media print {
           body * { visibility: hidden; }
           .printable, .printable * { visibility: visible; }
-          .printable { position: absolute; left: 0; top: 0; }
+          .printable { position: absolute; left: 0; top: 0; width: 100%; }
           .no-print { display: none !important; }
           @page { size: A4; margin: 15mm; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
         }
       `}</style>
 
+      {/* Processing screen (shown while the wire is submitted, before the receipt) */}
+      {submitting && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#0a2540]/70 p-4 backdrop-blur-sm no-print" role="alertdialog" aria-modal="true" aria-live="assertive" aria-labelledby="wire-processing-title">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl sm:p-8">
+            <div className="mx-auto mb-5 h-14 w-14 animate-spin rounded-full border-4 border-[#e8f0fa] border-t-[#0b5cab]" aria-hidden="true" />
+            <h2 id="wire-processing-title" className="text-lg font-extrabold text-[#0a2540]">Processing your wire transfer</h2>
+            <p className="mt-1.5 text-sm text-slate-600">Securely submitting your details. Please don't close or refresh this page.</p>
+            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+              <div className="wire-progress h-full rounded-full bg-[#0b5cab]" />
+            </div>
+          </div>
+        </div>
+      )}
+      <style>{`
+        @keyframes wire-progress { from { width: 8%; } to { width: 96%; } }
+        .wire-progress { width: 8%; animation: wire-progress ${PROCESSING_MS}ms ease-out forwards; }
+      `}</style>
+
       {/* Receipt Modal */}
       {showReceiptModal && receipt && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:p-6">
-          <div className="my-auto w-full max-w-2xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
+        <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/60 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="wire-receipt-title">
+          <div className="w-full max-w-2xl max-h-[92dvh] overflow-y-auto rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:rounded-3xl">
             {/* Modal Header */}
-            <div className="sticky top-0 border-b border-slate-200 bg-white px-6 py-4 flex items-center justify-between no-print">
-              <h2 className="text-2xl font-semibold text-slate-900">Wire Transfer Receipt</h2>
-              <div className="flex items-center gap-3">
+            <div className="no-print sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:px-6 sm:py-4">
+              <h2 id="wire-receipt-title" className="min-w-0 truncate text-lg font-extrabold text-[#0a2540] sm:text-2xl">Wire transfer receipt</h2>
+              <div className="flex shrink-0 items-center gap-2">
                 <button
+                  type="button"
                   onClick={handlePrint}
-                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+                  className="flex items-center gap-1.5 rounded-full border border-[#0b5cab] px-3.5 py-2 text-sm font-bold text-[#0b5cab] transition hover:bg-[#eef5fc]"
                 >
-                  🖨️ Print
+                  <Printer size={16} aria-hidden="true" /> Print
                 </button>
                 <button
+                  type="button"
                   onClick={handleReceiptClose}
-                  className="text-slate-400 hover:text-slate-900 transition text-2xl"
+                  aria-label="Close receipt"
+                  className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
                 >
-                  ✕
+                  <X size={22} aria-hidden="true" />
                 </button>
               </div>
             </div>
 
             {/* Receipt Content */}
-            <div className="printable p-8 font-mono text-xs leading-relaxed bg-white" style={{fontFamily: "'Courier New', 'Courier', monospace"}}>
-              
+            <div className="printable bg-white p-5 font-mono text-xs leading-relaxed sm:p-8" style={{ fontFamily: "'Courier New', 'Courier', monospace" }}>
+
               {/* Header */}
-              <div className="text-center mb-3">
+              <div className="mb-3 text-center">
                 <p className="font-bold">AURORA BANK</p>
                 <p>WIRE TRANSFER RECEIPT</p>
               </div>
 
-              <div className="border-t border-b border-black py-2 mb-3 text-center">
+              <div className="mb-3 border-b border-t border-black py-2 text-center">
                 <p>*** WIRE TRANSFER SUBMITTED ***</p>
               </div>
 
               {/* Transaction Info */}
               <div className="mb-3 space-y-0.5">
-                <div className="flex justify-between">
-                  <span>DATE:</span>
-                  <span>{receipt.date}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>REFERENCE:</span>
-                  <span>{receipt.reference || `WIR-${Date.now().toString().slice(-10)}`}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>STATUS:</span>
-                  <span>PENDING APPROVAL</span>
-                </div>
+                <ReceiptRow label="DATE:">{receipt.date}</ReceiptRow>
+                <ReceiptRow label="REFERENCE:"><span className="break-all">{receipt.reference || `WIR-${Date.now().toString().slice(-10)}`}</span></ReceiptRow>
+                <ReceiptRow label="STATUS:">PENDING APPROVAL</ReceiptRow>
               </div>
 
-              <div className="border-t border-black my-3"></div>
+              <div className="my-3 border-t border-black"></div>
 
               {/* Amount */}
               <div className="mb-3">
-                <div className="flex justify-between font-bold">
-                  <span>AMOUNT:</span>
-                  <span>${parseFloat(receipt.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                </div>
+                <ReceiptRow label="AMOUNT:" bold>
+                  ${parseFloat(receipt.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </ReceiptRow>
               </div>
 
-              <div className="border-t border-black my-3"></div>
+              <div className="my-3 border-t border-black"></div>
 
               {/* From Account */}
               <div className="mb-3 space-y-0.5">
                 <p className="font-bold">FROM:</p>
-                <p className="ml-2">{currentUser?.name}</p>
-                <div className="ml-2 flex justify-between">
-                  <span>ACCOUNT:</span>
-                  <span>{receipt.fromAccount === 'checking' ? 'CHECKING' : 'SAVINGS'}</span>
+                <p className="ml-2 break-words">{currentUser?.name}</p>
+                <div className="ml-2 space-y-0.5">
+                  <ReceiptRow label="ACCOUNT:">{receipt.fromAccount === 'checking' ? 'CHECKING' : 'SAVINGS'}</ReceiptRow>
+                  {currentUser?.accountNumber && (
+                    <ReceiptRow label="ACCT #:">****{String(currentUser.accountNumber).slice(-4)}</ReceiptRow>
+                  )}
                 </div>
-                {currentUser?.accountNumber && (
-                  <div className="ml-2 flex justify-between">
-                    <span>ACCT #:</span>
-                    <span>****{String(currentUser.accountNumber).slice(-4)}</span>
-                  </div>
-                )}
               </div>
 
-              <div className="border-t border-black my-3"></div>
+              <div className="my-3 border-t border-black"></div>
 
               {/* To Account */}
               <div className="mb-3 space-y-0.5">
                 <p className="font-bold">TO:</p>
-                <p className="ml-2">{receipt.recipientName}</p>
-                <div className="ml-2 flex justify-between">
-                  <span>BANK:</span>
-                  <span>{receipt.recipientBankName}</span>
+                <p className="ml-2 break-words">{receipt.recipientName}</p>
+                <div className="ml-2 space-y-0.5">
+                  <ReceiptRow label="BANK:">{receipt.recipientBankName}</ReceiptRow>
+                  {receipt.recipientAccountNumber && (
+                    <ReceiptRow label="ACCT #:">****{String(receipt.recipientAccountNumber).slice(-4)}</ReceiptRow>
+                  )}
+                  {receipt.recipientRoutingNumber && (
+                    <ReceiptRow label="ROUTING:">{receipt.recipientRoutingNumber}</ReceiptRow>
+                  )}
                 </div>
-                {receipt.recipientAccountNumber && (
-                  <div className="ml-2 flex justify-between">
-                    <span>ACCT #:</span>
-                    <span>****{String(receipt.recipientAccountNumber).slice(-4)}</span>
-                  </div>
-                )}
-                {receipt.recipientRoutingNumber && (
-                  <div className="ml-2 flex justify-between">
-                    <span>ROUTING:</span>
-                    <span>{receipt.recipientRoutingNumber}</span>
-                  </div>
-                )}
               </div>
 
               {/* Purpose */}
               {formData.purpose && (
                 <>
-                  <div className="border-t border-black my-3"></div>
+                  <div className="my-3 border-t border-black"></div>
                   <div className="mb-3">
                     <div className="flex">
                       <span className="font-bold">PURPOSE:</span>
-                      <span className="ml-2">{formData.purpose}</span>
+                      <span className="ml-2 break-words">{formData.purpose}</span>
                     </div>
                   </div>
                 </>
@@ -562,26 +632,26 @@ function WireTransferPage() {
               {/* Note */}
               {formData.note && (
                 <>
-                  <div className="border-t border-black my-3"></div>
+                  <div className="my-3 border-t border-black"></div>
                   <div className="mb-3">
                     <div className="flex">
                       <span className="font-bold">NOTE:</span>
-                      <span className="ml-2">{formData.note}</span>
+                      <span className="ml-2 break-words">{formData.note}</span>
                     </div>
                   </div>
                 </>
               )}
 
-              <div className="border-t border-black my-3"></div>
+              <div className="my-3 border-t border-black"></div>
 
               {/* Notice */}
               <div className="mb-3 text-xs">
-                <p className="text-center mb-1">IMPORTANT NOTICE</p>
+                <p className="mb-1 text-center">IMPORTANT NOTICE</p>
                 <p>Your wire transfer is currently being</p>
                 <p>processed. This takes 1-2 business days.</p>
               </div>
 
-              <div className="border-t border-black my-3"></div>
+              <div className="my-3 border-t border-black"></div>
 
               {/* Footer */}
               <div className="text-center text-xs">
@@ -591,6 +661,16 @@ function WireTransferPage() {
                 <p className="mt-3">Member FDIC</p>
                 <p className="mt-2">RETAIN FOR YOUR RECORDS</p>
               </div>
+            </div>
+
+            <div className="no-print border-t border-slate-200 bg-slate-50 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:px-8">
+              <button
+                type="button"
+                onClick={handleReceiptClose}
+                className="w-full rounded-xl bg-[#0b5cab] py-3 text-sm font-bold text-white transition hover:bg-[#0a4a8f]"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>

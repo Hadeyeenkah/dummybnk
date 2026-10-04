@@ -1,10 +1,72 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useBankContext } from '../context/BankContext';
 import AuroraBankLogo from '../components/AuroraBankLogo';
 import { API_BASE, getAuthHeaders } from '../config';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronRight,
+  CreditCard,
+  Download,
+  Home,
+  Lock,
+  MoreHorizontal,
+  PiggyBank,
+  Printer,
+  ShieldCheck,
+  Smartphone,
+  Wallet,
+  Wifi,
+  Zap,
+} from 'lucide-react';
 import '../App.css';
+
+// Minimum time the "processing" screen stays up before the receipt opens.
+const PROCESSING_MS = 2500;
+
+const CATEGORY_ICONS = {
+  Utilities: Zap,
+  Internet: Wifi,
+  Phone: Smartphone,
+  Rent: Home,
+  Insurance: ShieldCheck,
+  'Credit Card': CreditCard,
+  Other: MoreHorizontal,
+};
+
+// Text that shrinks to fit its box so amounts never clip or wrap (styles live in App.css).
+function Fit({ text, min = 12, max = 24, className = '' }) {
+  const value = String(text);
+  return (
+    <div className="fit-box">
+      <p
+        className={`fit-text ${className}`}
+        style={{ '--len': Math.max(value.length, 4), '--min': `${min}px`, '--max': `${max}px` }}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
+const cardCls = 'rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(10,37,64,0.05)]';
+const sectionTitleCls = 'text-base font-bold text-[#0a2540] sm:text-lg';
+const labelCls = 'mb-1.5 block text-sm font-semibold text-slate-700';
+const inputCls =
+  'w-full min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 placeholder-slate-400 outline-none transition focus:border-[#0b5cab] focus:ring-2 focus:ring-[#0b5cab]/20 disabled:bg-slate-50 disabled:opacity-60 sm:text-sm';
+
+const money = (value) =>
+  `$${Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function CategoryBadge({ category, size = 'h-10 w-10' }) {
+  const Icon = CATEGORY_ICONS[category] || MoreHorizontal;
+  return (
+    <span className={`flex ${size} shrink-0 items-center justify-center rounded-full bg-[#e8f0fa] text-[#0b5cab]`} aria-hidden="true">
+      <Icon size={18} />
+    </span>
+  );
+}
 
 function BillsPage() {
   const { currentUser, payBill, isAuthenticated } = useBankContext();
@@ -43,25 +105,25 @@ function BillsPage() {
       if (!currentUser) {
         return;
       }
-      
+
       try {
         const res = await fetch(`${apiBase}/bills?limit=10`, {
           method: 'GET',
           credentials: 'include',
           headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
         });
-        
+
         // Handle all response types gracefully
         if (res.ok) {
           const data = await res.json();
           const bills = data.bills || [];
           setBillHistory(bills);
-          
+
           // Extract unique payees for recent payees list
           if (bills.length > 0) {
             const uniquePayees = [];
             const payeeNames = new Set();
-            
+
             for (const bill of bills) {
               if (!payeeNames.has(bill.payee) && uniquePayees.length < 5) {
                 payeeNames.add(bill.payee);
@@ -72,7 +134,7 @@ function BillsPage() {
                 });
               }
             }
-            
+
             if (uniquePayees.length > 0) {
               setRecentPayees(uniquePayees);
             }
@@ -91,7 +153,7 @@ function BillsPage() {
         setBillHistory([]);
       }
     };
-    
+
     // Add a small delay to ensure auth is ready
     const timer = setTimeout(fetchBillHistory, 300);
     return () => clearTimeout(timer);
@@ -113,26 +175,26 @@ function BillsPage() {
     // Clear any existing messages
     setMessage('');
     setMessageType('');
-    
+
     if (!formData.payee.trim()) {
       setMessageType('error');
       setMessage('Payee name is required');
       return false;
     }
-    
+
     const amount = parseFloat(formData.amount);
     if (!formData.amount || isNaN(amount) || amount <= 0) {
       setMessageType('error');
       setMessage('Enter a valid amount greater than $0.00');
       return false;
     }
-    
+
     if (amount > 100000) {
       setMessageType('error');
       setMessage('Amount exceeds maximum limit of $100,000.00');
       return false;
     }
-    
+
     if (!formData.accountNumber.trim()) {
       setMessageType('error');
       setMessage('Account number is required');
@@ -145,10 +207,10 @@ function BillsPage() {
       return false;
     }
 
-    const balance = formData.fromAccount === 'checking' 
-      ? (currentUser.checking || 0) 
+    const balance = formData.fromAccount === 'checking'
+      ? (currentUser.checking || 0)
       : (currentUser.savings || 0);
-    
+
     if (balance < amount) {
       setMessageType('error');
       setMessage(`Insufficient funds. Available in ${formData.fromAccount}: $${balance.toFixed(2)}`);
@@ -160,13 +222,14 @@ function BillsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       // Scroll to top to show error message
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
+    const startedAt = Date.now();
     setLoading(true);
     setMessage('Processing your payment...');
     setMessageType('info');
@@ -181,12 +244,18 @@ function BillsPage() {
         note: formData.note.trim(),
       });
 
+      // On success, keep the processing screen up for a minimum time before the receipt appears.
+      if (result.success) {
+        const remaining = PROCESSING_MS - (Date.now() - startedAt);
+        if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
+      }
+
       setLoading(false);
 
       if (result.success) {
         setMessageType('success');
         setMessage('Bill payment submitted and is awaiting admin approval.');
-        
+
         // Create receipt with proper data
         const billData = result.bill || {};
         const receiptData = {
@@ -200,17 +269,17 @@ function BillsPage() {
           status: billData.status || 'completed',
           accountNumber: formData.accountNumber,
         };
-        
+
         setReceipt(receiptData);
         setShowReceiptModal(true);
 
         // Add to recent payees if not already there
         const payeeExists = recentPayees.some(p => p.name === formData.payee);
         if (!payeeExists) {
-          const newPayee = { 
-            id: Date.now(), 
-            name: formData.payee, 
-            category: formData.category 
+          const newPayee = {
+            id: Date.now(),
+            name: formData.payee,
+            category: formData.category
           };
           setRecentPayees([newPayee, ...recentPayees.slice(0, 4)]);
         }
@@ -253,10 +322,10 @@ function BillsPage() {
   };
 
   const handleQuickPayee = (payee) => {
-    setFormData({ 
-      ...formData, 
-      payee: payee.name, 
-      category: payee.category 
+    setFormData({
+      ...formData,
+      payee: payee.name,
+      category: payee.category
     });
     // Scroll to form
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -277,7 +346,7 @@ function BillsPage() {
 
   const handleDownloadReceipt = () => {
     if (!receipt) return;
-    
+
     const receiptText = `
 AURORA BANK, FSB
 Bill Payment Receipt
@@ -298,7 +367,7 @@ Status: ${receipt.status.toUpperCase()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Thank you for banking with Aurora Bank!
     `.trim();
-    
+
     const blob = new Blob([receiptText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -313,325 +382,386 @@ Thank you for banking with Aurora Bank!
   // Don't render if not authenticated
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900 flex items-center justify-center">
+      <div className="bank-dashboard flex min-h-screen items-center justify-center p-4 text-slate-900">
         <div className="text-center">
-          <div className="text-6xl mb-4">🔒</div>
-          <p className="text-xl text-slate-600">Loading...</p>
+          <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#e8f0fa] text-[#0b5cab]">
+            <Lock size={26} aria-hidden="true" />
+          </span>
+          <p className="text-lg text-slate-600">Loading...</p>
         </div>
       </div>
     );
   }
 
+  const checkingBalance = currentUser?.checking || 0;
+  const savingsBalance = currentUser?.savings || 0;
+  const amountNumber = parseFloat(formData.amount);
+
+  const AccountPick = ({ id, balance }) => {
+    const selected = formData.fromAccount === id;
+    const Icon = id === 'savings' ? PiggyBank : Wallet;
+    return (
+      <button
+        type="button"
+        disabled={loading}
+        aria-pressed={selected}
+        onClick={() => setFormData({ ...formData, fromAccount: id })}
+        className={`flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left transition disabled:opacity-60 ${
+          selected ? 'border-[#0b5cab] bg-[#eef5fc] ring-2 ring-[#0b5cab]/20' : 'border-slate-200 bg-white hover:bg-slate-50'
+        }`}
+      >
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${selected ? 'bg-[#0b5cab] text-white' : 'bg-slate-100 text-slate-600'}`}>
+          <Icon size={18} aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold capitalize text-[#0a2540]">{id}</span>
+          <Fit text={money(balance)} min={11} max={15} className="font-semibold text-slate-600" />
+        </span>
+      </button>
+    );
+  };
+
+  const messageCls =
+    messageType === 'success'
+      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+      : messageType === 'info'
+        ? 'border-blue-200 bg-blue-50 text-blue-800'
+        : 'border-rose-200 bg-rose-50 text-rose-700';
+
+  const receiptRows = receipt
+    ? [
+        ['Payee', receipt.payee],
+        ['Amount', money(receipt.amount)],
+        ['Category', receipt.category],
+        receipt.accountNumber ? ['Account #', receipt.accountNumber, 'font-mono'] : null,
+        ['From', receipt.account, 'capitalize'],
+        [
+          'Date',
+          receipt.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        ],
+        ['Reference', receipt.reference, 'font-mono text-xs'],
+      ].filter(Boolean)
+    : [];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-900">
-      <div className="absolute inset-0 -z-10 gradient-veil" />
-      
-      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-xl shadow-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
+    <div className="bank-dashboard text-slate-900">
+      <header className="dashboard-header sticky top-0 z-30 border-b border-slate-200 no-print">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-3 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2">
             <AuroraBankLogo />
-            <span className="text-lg font-semibold tracking-tight bg-gradient-to-r from-indigo-900 to-slate-950 bg-clip-text text-transparent">Aurora Bank, FSB</span>
+            <span className="truncate text-lg font-extrabold tracking-tight text-[#0a2540]">Aurora Bank, FSB</span>
           </div>
-          <Link to="/dashboard" className="text-sm text-indigo-800 hover:text-indigo-950 transition">
-            ← Back to Dashboard
+          <Link to="/dashboard" className="flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold text-[#0b5cab] hover:bg-slate-100">
+            <ArrowLeft size={16} aria-hidden="true" />
+            <span className="hidden sm:inline">Back to Dashboard</span>
+            <span className="sm:hidden">Back</span>
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-12">
-        <div className="mb-8">
-          <p className="text-sm uppercase tracking-[0.2em] text-indigo-700">Bill Payments</p>
-          <h1 className="text-3xl font-semibold text-slate-900 mt-2">Pay Bills</h1>
-          <p className="text-slate-600 mt-2">Manage your bill payments safely and securely</p>
-        </div>
+      <main className="mx-auto w-full max-w-6xl px-3 py-4 sm:px-6 sm:py-8 no-print">
+        <h1 className="text-xl font-extrabold tracking-tight text-[#0a2540] sm:text-2xl lg:text-3xl">Pay bills</h1>
+        <p className="mb-5 mt-0.5 text-sm text-slate-600">Manage your bill payments safely and securely.</p>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg md:col-span-2">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Payee Name</label>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:gap-6">
+          {/* ------------------------------ Form ------------------------------ */}
+          <form onSubmit={handleSubmit} className="min-w-0 space-y-4">
+            {/* Payee + category */}
+            <section className={`${cardCls} space-y-4 p-4 sm:p-5`}>
+              <div>
+                <label htmlFor="payee" className={labelCls}>Payee name</label>
                 <input
+                  id="payee"
                   type="text"
                   value={formData.payee}
                   onChange={(e) => setFormData({ ...formData, payee: e.target.value })}
                   placeholder="Electric Company, Rent Landlord, etc."
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
+                  className={inputCls}
                   maxLength="100"
                   disabled={loading}
                   required
                 />
               </div>
 
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">Category</label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
-                    disabled={loading}
-                  >
-                    {billCategories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">Account to Pay From</label>
-                  <select
-                    value={formData.fromAccount}
-                    onChange={(e) => setFormData({ ...formData, fromAccount: e.target.value })}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
-                    disabled={loading}
-                  >
-                    <option value="checking">
-                      Checking - ${((currentUser?.checking || 0).toFixed(2))}
-                    </option>
-                    <option value="savings">
-                      Savings - ${((currentUser?.savings || 0).toFixed(2))}
-                    </option>
-                  </select>
+              <div>
+                <span className={labelCls}>Category</span>
+                <div className="grid grid-cols-2 gap-2 min-[480px]:grid-cols-3 sm:grid-cols-4" role="group" aria-label="Category">
+                  {billCategories.map((cat) => {
+                    const Icon = CATEGORY_ICONS[cat] || MoreHorizontal;
+                    const selected = formData.category === cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        disabled={loading}
+                        aria-pressed={selected}
+                        onClick={() => setFormData({ ...formData, category: cat })}
+                        className={`flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm font-semibold transition disabled:opacity-60 ${
+                          selected ? 'border-[#0b5cab] bg-[#eef5fc] text-[#0a4a8f]' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <Icon size={16} className="shrink-0" aria-hidden="true" />
+                        <span className="truncate">{cat}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Account/Reference Number</label>
+              <div>
+                <label htmlFor="accountNumber" className={labelCls}>Account / reference number</label>
                 <input
+                  id="accountNumber"
                   type="text"
                   value={formData.accountNumber}
                   onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
                   placeholder="Customer/Account number at payee"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
+                  className={inputCls}
                   maxLength="50"
                   disabled={loading}
                   required
                 />
               </div>
+            </section>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Amount</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    max="100000"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    placeholder="0.00"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 pl-8 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition"
-                    disabled={loading}
-                    required
-                  />
-                </div>
-                {formData.amount && parseFloat(formData.amount) > 0 && (
-                  <p className="text-xs text-slate-600">
-                    You are paying ${parseFloat(formData.amount).toFixed(2)}
-                  </p>
-                )}
+            {/* Pay from */}
+            <section className={`${cardCls} p-4 sm:p-5`}>
+              <h2 className="mb-3 text-base font-bold text-[#0a2540]">Pay from</h2>
+              <div className="grid grid-cols-1 gap-2.5 min-[420px]:grid-cols-2">
+                <AccountPick id="checking" balance={checkingBalance} />
+                <AccountPick id="savings" balance={savingsBalance} />
               </div>
+            </section>
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Note (Optional)</label>
-                <textarea
-                  value={formData.note}
-                  onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                  placeholder="Add a note for your records..."
-                  rows="2"
-                  maxLength="200"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 outline-none focus:border-indigo-800 focus:ring-2 focus:ring-indigo-900/20 transition resize-none"
+            {/* Amount */}
+            <section className={`${cardCls} p-4 sm:p-5`}>
+              <label htmlFor="amount" className="mb-2 block text-base font-bold text-[#0a2540]">Amount</label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-slate-400">$</span>
+                <input
+                  id="amount"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0.01"
+                  max="100000"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  placeholder="0.00"
+                  className="w-full min-w-0 rounded-xl border border-slate-300 bg-white py-3.5 pl-10 pr-4 text-2xl font-extrabold tabular-nums text-[#0a2540] placeholder-slate-300 outline-none transition focus:border-[#0b5cab] focus:ring-2 focus:ring-[#0b5cab]/20 disabled:opacity-60"
                   disabled={loading}
+                  required
                 />
-                {formData.note && (
-                  <p className="text-xs text-slate-600">
-                    {formData.note.length}/200 characters
-                  </p>
-                )}
               </div>
-
-              {message && (
-                <div className={`rounded-xl border p-4 ${
-                  messageType === 'success'
-                    ? 'border-green-500/20 bg-green-500/10 text-green-400'
-                    : messageType === 'info'
-                    ? 'border-blue-500/20 bg-blue-500/10 text-blue-400'
-                    : 'border-red-500/20 bg-red-500/10 text-red-400'
-                }`}>
-                  {message}
-                </div>
+              {formData.amount && amountNumber > 0 && (
+                <p className="mt-2 text-sm text-slate-600">You are paying {money(amountNumber)}</p>
               )}
+            </section>
 
-              <button
-                type="submit"
+            {/* Note */}
+            <section className={`${cardCls} p-4 sm:p-5`}>
+              <label htmlFor="note" className="mb-2 block text-base font-bold text-[#0a2540]">
+                Note <span className="text-sm font-medium text-slate-400">(optional)</span>
+              </label>
+              <textarea
+                id="note"
+                value={formData.note}
+                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                placeholder="Add a note for your records..."
+                rows="2"
+                maxLength="200"
+                className={`${inputCls} resize-none`}
                 disabled={loading}
-                className="w-full rounded-xl bg-gradient-to-r from-indigo-900 to-slate-950 py-3 text-sm font-semibold text-white transition hover:from-indigo-950 hover:to-black disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Processing...' : 'Pay Bill'}
-              </button>
-            </form>
-          </div>
+              />
+              {formData.note && (
+                <p className="mt-1.5 text-right text-xs text-slate-500">{formData.note.length}/200 characters</p>
+              )}
+            </section>
 
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
-              <h3 className="mb-4 text-sm font-semibold text-slate-900">Account Balance</h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs text-slate-600 mb-1">Checking</p>
-                  <p className="text-2xl font-semibold text-indigo-800">
-                    ${((currentUser?.checking || 0).toFixed(2))}
-                  </p>
+            {message && (
+              <div role="alert" className={`rounded-xl border p-4 text-sm font-medium ${messageCls}`}>
+                {message}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-[#c8102e] py-3.5 text-base font-bold text-white transition hover:bg-[#a90d26] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? 'Processing...' : 'Pay bill'}
+            </button>
+          </form>
+
+          {/* ----------------------------- Sidebar ----------------------------- */}
+          <aside className="min-w-0 space-y-4 lg:sticky lg:top-24 lg:self-start">
+            <section className="hero-card rounded-3xl p-4 text-white sm:p-5">
+              <p className="text-sm font-medium text-blue-100">Total balance</p>
+              <div className="mt-1">
+                <Fit text={money(currentUser?.balance)} min={20} max={36} className="font-extrabold tracking-tight" />
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2.5">
+                <div className="min-w-0 rounded-2xl bg-white/10 p-3">
+                  <p className="text-xs font-medium text-blue-100">Checking</p>
+                  <div className="mt-1"><Fit text={money(checkingBalance)} min={12} max={20} className="font-bold" /></div>
                 </div>
-                <div className="border-t border-slate-200 pt-3">
-                  <p className="text-xs text-slate-600 mb-1">Savings</p>
-                  <p className="text-2xl font-semibold text-indigo-800">
-                    ${((currentUser?.savings || 0).toFixed(2))}
-                  </p>
-                </div>
-                <div className="border-t border-slate-200 pt-3">
-                  <p className="text-xs text-slate-600 mb-1">Total Balance</p>
-                  <p className="text-2xl font-semibold text-slate-900">
-                    ${((currentUser?.balance || 0).toFixed(2))}
-                  </p>
+                <div className="min-w-0 rounded-2xl bg-white/10 p-3">
+                  <p className="text-xs font-medium text-blue-100">Savings</p>
+                  <div className="mt-1"><Fit text={money(savingsBalance)} min={12} max={20} className="font-bold" /></div>
                 </div>
               </div>
-            </div>
+            </section>
 
             {recentPayees.length > 0 && (
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg">
-                <h3 className="mb-4 text-sm font-semibold text-slate-900">Recent Payees</h3>
-                <div className="space-y-2">
+              <section className={`${cardCls} p-2 sm:p-3`}>
+                <h2 className={`${sectionTitleCls} px-2 pb-1 pt-2`}>Recent payees</h2>
+                <div className="divide-y divide-slate-100">
                   {recentPayees.map((payee) => (
                     <button
                       key={payee.id}
+                      type="button"
                       onClick={() => handleQuickPayee(payee)}
                       disabled={loading}
-                      className="block w-full text-left rounded-lg p-3 hover:bg-slate-50 transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex w-full min-w-0 items-center gap-3 rounded-xl px-2 py-3 text-left transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      <div className="font-medium text-slate-900">{payee.name}</div>
-                      <div className="text-xs text-slate-600">{payee.category}</div>
+                      <CategoryBadge category={payee.category} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-[#0a2540]">{payee.name}</span>
+                        <span className="block truncate text-xs text-slate-500">{payee.category}</span>
+                      </span>
+                      <ChevronRight size={16} className="shrink-0 text-slate-400" aria-hidden="true" />
                     </button>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
-          </div>
+          </aside>
         </div>
 
         {/* Bill Payment History */}
-        <div className="mt-12">
-          <div className="mb-6 flex items-center justify-between gap-3">
-            <h2 className="text-2xl font-semibold text-slate-900">Recent Payments</h2>
+        <section className="mt-6 sm:mt-8">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-extrabold text-[#0a2540] sm:text-xl">Recent payments</h2>
             <Link
               to="/transactions"
-              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-indigo-800 transition hover:bg-slate-50 shadow-sm"
+              className="flex shrink-0 items-center gap-0.5 rounded-full px-3 py-2 text-sm font-semibold text-[#0b5cab] hover:bg-white"
             >
-              View transaction history
-              <span aria-hidden>→</span>
+              <span className="hidden min-[420px]:inline">View transaction history</span>
+              <span className="min-[420px]:hidden">View all</span>
+              <ChevronRight size={16} aria-hidden="true" />
             </Link>
           </div>
           {billHistory.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-lg">
-              <p className="text-slate-600">No bill payments yet</p>
+            <div className={`${cardCls} px-6 py-12 text-center`}>
+              <p className="font-semibold text-[#0a2540]">No bill payments yet</p>
+              <p className="mt-1 text-sm text-slate-500">Payments you make will appear here.</p>
             </div>
           ) : (
-            <div className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-200 shadow-lg">
-              {billHistory.map((bill) => (
-                <div key={bill._id} className="p-4 hover:bg-slate-50 transition">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-slate-900">{bill.payee}</div>
-                      <div className="text-xs text-slate-600 mt-1">
-                        {bill.category} • {new Date(bill.paymentDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-1">{bill.reference}</div>
+            <ul className={`${cardCls} divide-y divide-slate-100 overflow-hidden`}>
+              {billHistory.map((bill) => {
+                const completed = bill.status === 'completed';
+                return (
+                  <li key={bill._id} className="flex items-center gap-3 px-4 py-3.5 transition hover:bg-slate-50 sm:px-5">
+                    <CategoryBadge category={bill.category} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-[#0a2540]">{bill.payee}</p>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">
+                        {bill.category} · {new Date(bill.paymentDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                      <p className="mt-0.5 truncate font-mono text-[11px] text-slate-400">{bill.reference}</p>
                     </div>
-                    <div className="text-right">
-                      <div className="text-lg font-semibold text-indigo-700">-${bill.amount.toFixed(2)}</div>
-                      <div className={`text-xs mt-1 ${bill.status === 'completed' ? 'text-green-600' : 'text-amber-600'}`}>
-                        {bill.status === 'completed' ? '✓ Completed' : 'Pending'}
-                      </div>
+                    <div className="w-[6.5rem] shrink-0 text-right sm:w-36">
+                      <Fit text={`−${money(bill.amount)}`} min={11} max={16} className="text-right font-bold text-red-600" />
+                      <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${completed ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'}`}>
+                        {completed ? 'Completed' : 'Pending'}
+                      </span>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
-        </div>
+        </section>
       </main>
+
+      {/* Processing screen (shown while the payment is submitted, before the receipt) */}
+      {loading && !showReceiptModal && (
+        <div className="no-print fixed inset-0 z-[70] flex items-center justify-center bg-[#0a2540]/70 p-4 backdrop-blur-sm" role="alertdialog" aria-modal="true" aria-live="assertive" aria-labelledby="bill-processing-title">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center shadow-2xl sm:p-8">
+            <div className="mx-auto mb-5 h-14 w-14 animate-spin rounded-full border-4 border-[#e8f0fa] border-t-[#0b5cab]" aria-hidden="true" />
+            <h2 id="bill-processing-title" className="text-lg font-extrabold text-[#0a2540]">Processing your payment</h2>
+            <p className="mt-1.5 text-sm text-slate-600">Securely submitting your details. Please don't close or refresh this page.</p>
+            <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+              <div className="bill-progress h-full rounded-full bg-[#0b5cab]" />
+            </div>
+          </div>
+        </div>
+      )}
+      <style>{`
+        @keyframes bill-progress { from { width: 8%; } to { width: 96%; } }
+        .bill-progress { width: 8%; animation: bill-progress ${PROCESSING_MS}ms ease-out forwards; }
+      `}</style>
+
+      {/* Print styles: only the receipt is printed */}
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 0.5in; }
+          body * { visibility: hidden; }
+          .bill-receipt, .bill-receipt * { visibility: visible; }
+          .receipt-overlay { position: static !important; display: block !important; overflow: visible !important; padding: 0 !important; background: white !important; }
+          .bill-receipt { position: absolute; top: 0; left: 0; width: 100%; max-width: none !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; border: none !important; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
 
       {/* Receipt Modal */}
       {showReceiptModal && receipt && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-3 backdrop-blur sm:items-center sm:p-6">
-          <div className="my-auto w-full max-w-lg max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl sm:max-h-[calc(100dvh-3rem)] sm:p-8">
-            <div className="mb-6 text-center">
-              <div className="text-5xl mb-3">✓</div>
-              <h2 className="text-2xl font-semibold text-green-600">Payment Confirmed</h2>
-              <p className="text-slate-600 mt-2">Your bill payment has been processed successfully</p>
+        <div className="receipt-overlay fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-slate-900/50 backdrop-blur-sm sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-labelledby="receipt-title">
+          <div className="bill-receipt w-full max-w-lg max-h-[92dvh] overflow-y-auto rounded-t-3xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-3rem)] sm:rounded-3xl">
+            <div className="px-5 pb-2 pt-6 text-center sm:px-8">
+              <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                <CheckCircle2 size={30} aria-hidden="true" />
+              </span>
+              <h2 id="receipt-title" className="text-xl font-extrabold text-[#0a2540] sm:text-2xl">Payment confirmed</h2>
+              <p className="mt-1 text-sm text-slate-600">Your bill payment has been processed successfully</p>
+              <div className="mt-4 rounded-2xl bg-[#eef5fc] px-4 py-4">
+                <Fit text={money(receipt.amount)} min={22} max={36} className="text-center font-extrabold text-[#0a2540]" />
+                <p className="mt-1 truncate text-sm text-slate-600">to {receipt.payee}</p>
+              </div>
             </div>
 
-            <div className="space-y-4 border-y border-slate-200 py-6">
-              <div className="flex justify-between">
-                <span className="text-slate-600">Payee:</span>
-                <span className="font-semibold text-slate-900">{receipt.payee}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">Amount:</span>
-                <span className="font-semibold text-slate-900">${receipt.amount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">Category:</span>
-                <span className="text-slate-900">{receipt.category}</span>
-              </div>
-              {receipt.accountNumber && (
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Account #:</span>
-                  <span className="font-mono text-slate-900">{receipt.accountNumber}</span>
+            <div className="divide-y divide-slate-100 px-5 py-2 sm:px-8">
+              {receiptRows.map(([label, value, extra]) => (
+                <div key={label} className="flex items-start justify-between gap-4 py-2.5 text-sm">
+                  <span className="shrink-0 text-slate-500">{label}</span>
+                  <span className={`min-w-0 break-all text-right font-semibold text-slate-900 ${extra || ''}`}>{value}</span>
                 </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-slate-600">From:</span>
-                <span className="capitalize text-slate-900">{receipt.account}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">Date:</span>
-                <span className="text-slate-900">
-                  {receipt.date.toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric', 
-                    year: 'numeric', 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">Reference:</span>
-                <span className="font-mono text-xs text-indigo-700">{receipt.reference}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600">Status:</span>
-                <span className="text-green-600 font-semibold uppercase">{receipt.status}</span>
+              ))}
+              <div className="flex items-start justify-between gap-4 py-2.5 text-sm">
+                <span className="shrink-0 text-slate-500">Status</span>
+                <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold uppercase text-emerald-800">{receipt.status}</span>
               </div>
             </div>
 
-            <div className="sticky bottom-0 -mx-5 mt-6 flex gap-2 border-t border-slate-200 bg-white px-5 pt-4 sm:-mx-8 sm:gap-3 sm:px-8">
+            <div className="no-print sticky bottom-0 grid grid-cols-3 gap-2 border-t border-slate-200 bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:gap-3 sm:px-8">
               <button
+                type="button"
                 onClick={handleDownloadReceipt}
-                className="flex-1 rounded-lg border border-indigo-800 px-4 py-3 text-sm font-semibold text-indigo-800 hover:bg-indigo-50 transition"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-[#0b5cab] px-2 py-3 text-sm font-bold text-[#0b5cab] transition hover:bg-[#eef5fc]"
               >
-                💾 Download
+                <Download size={16} aria-hidden="true" /> Download
               </button>
               <button
+                type="button"
                 onClick={handlePrint}
-                className="flex-1 rounded-lg border border-indigo-800 px-4 py-3 text-sm font-semibold text-indigo-800 hover:bg-indigo-50 transition"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-[#0b5cab] px-2 py-3 text-sm font-bold text-[#0b5cab] transition hover:bg-[#eef5fc]"
               >
-                🖨️ Print
+                <Printer size={16} aria-hidden="true" /> Print
               </button>
               <button
+                type="button"
                 onClick={handleReceiptClose}
-                className="flex-1 rounded-lg bg-gradient-to-r from-indigo-900 to-slate-950 px-4 py-3 text-sm font-semibold text-white hover:from-indigo-950 hover:to-black transition"
+                className="rounded-xl bg-[#0b5cab] px-2 py-3 text-sm font-bold text-white transition hover:bg-[#0a4a8f]"
               >
                 Done
               </button>
