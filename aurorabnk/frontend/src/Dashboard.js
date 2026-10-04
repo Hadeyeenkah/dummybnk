@@ -103,6 +103,7 @@ function Dashboard() {
   const [notifications, setNotifications] = useState([]);
   const [adminMessages, setAdminMessages] = useState([]);
   const [supportChatMessages, setSupportChatMessages] = useState([]);
+  const [dailyInvestmentReturn, setDailyInvestmentReturn] = useState(null);
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   useEffect(() => {
@@ -157,11 +158,6 @@ function Dashboard() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const getAccountBalanceLayoutClass = (value) => (
-    formatCurrency(value).length > 15
-      ? 'grid-cols-1'
-      : 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
-  );
   const [formData, setFormData] = useState({
     firstName: currentUser?.name.split(' ')[0] || '',
     lastName: currentUser?.name.split(' ').slice(1).join(' ') || '',
@@ -175,6 +171,41 @@ function Dashboard() {
   const [showAccountNumber, setShowAccountNumber] = useState(false);
   const [showRoutingNumber, setShowRoutingNumber] = useState(false);
   const [showBalance, setShowBalance] = useState(true);
+
+  useEffect(() => {
+    if (!currentUser?.id) {
+      setDailyInvestmentReturn(null);
+      return undefined;
+    }
+
+    let active = true;
+    setDailyInvestmentReturn(null);
+
+    const fetchDailyInvestmentReturn = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/market/overview`, {
+          credentials: 'include',
+          headers: getAuthHeaders(),
+        });
+        if (!response.ok) throw new Error('Unable to load today’s investment return.');
+
+        const data = await response.json();
+        const amount = Number(data.settings?.todaysReturn);
+        const percent = Number(data.settings?.todaysReturnPercent);
+        if (!Number.isFinite(amount) || !Number.isFinite(percent)) {
+          throw new Error('Market overview returned an invalid investment return.');
+        }
+
+        if (active) setDailyInvestmentReturn({ amount, percent });
+      } catch (error) {
+        console.error('Failed to load dashboard investment return:', error);
+        if (active) setDailyInvestmentReturn(null);
+      }
+    };
+
+    fetchDailyInvestmentReturn();
+    return () => { active = false; };
+  }, [currentUser?.id]);
 
 
   const handleToggleNotifications = async () => {
@@ -711,10 +742,18 @@ function Dashboard() {
     },
     {
       label: 'Investment return',
-      value: `$${(user.investmentReturn || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
-      sub: 'This quarter performance',
-      badge: `${user.investmentReturnPercent >= 0 ? '+' : ''}${user.investmentReturnPercent || 0}%`,
-      badgeClass: user.investmentReturn >= 0 ? 'text-emerald-800 bg-emerald-50' : 'text-red-700 bg-red-50',
+      value: dailyInvestmentReturn
+        ? `${dailyInvestmentReturn.amount >= 0 ? '+' : '−'}${formatCurrency(Math.abs(dailyInvestmentReturn.amount))}`
+        : '—',
+      sub: "Today's return",
+      badge: dailyInvestmentReturn
+        ? `${dailyInvestmentReturn.percent >= 0 ? '+' : ''}${dailyInvestmentReturn.percent.toFixed(2)}%`
+        : '—',
+      badgeClass: !dailyInvestmentReturn
+        ? 'text-slate-600 bg-slate-100'
+        : dailyInvestmentReturn.amount >= 0
+          ? 'text-emerald-800 bg-emerald-50'
+          : 'text-red-700 bg-red-50',
     },
   ];
 
@@ -916,15 +955,20 @@ function Dashboard() {
             {/* Accounts */}
             <section className={`dashboard-accounts ${cardCls} overflow-hidden`}>
               <div className="dashboard-balance-card flex flex-wrap items-start justify-between gap-3 bg-[#0a2540] px-5 py-5 text-white sm:px-6 sm:py-6">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm text-slate-300">Total balance</p>
-                  <div className="mt-1 flex items-center gap-2">
-                    <p className="text-3xl font-bold tabular-nums sm:text-4xl">
-                      {showBalance ? formatCurrency(user.balance) : '$ •••••••'}
-                    </p>
+                  <div className="mt-1 flex w-full min-w-0 items-center gap-2">
+                    <div className="dashboard-total-balance-value min-w-0 flex-1">
+                      <p
+                        className="dashboard-total-balance-amount font-semibold tabular-nums"
+                        style={{ '--balance-length': showBalance ? formatCurrency(user.balance).length : 6 }}
+                      >
+                        {showBalance ? formatCurrency(user.balance) : '$ •••••••'}
+                      </p>
+                    </div>
                     <button
                       onClick={() => setShowBalance(!showBalance)}
-                      className="rounded-md p-1.5 text-white/70 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40"
+                      className="shrink-0 rounded-md p-1.5 text-white/70 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/40"
                       title={showBalance ? 'Hide balance' : 'Show balance'}
                     >
                       <Icon name={showBalance ? 'eye' : 'eyeOff'} />
@@ -938,28 +982,28 @@ function Dashboard() {
               </div>
 
               <div className="divide-y divide-slate-200">
-                <div className={`grid ${getAccountBalanceLayoutClass(user.checking)} items-center gap-3 px-5 py-4 sm:px-6`}>
+                <div className="grid grid-cols-1 items-center gap-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-3 sm:px-6">
                   <div className="min-w-0">
                     <p className="font-semibold text-[#0a2540]">Checking</p>
                     <p className="text-xs text-slate-500">Everyday Checking · ending in {String(user.accountNumber || '0000').slice(-4)}</p>
                   </div>
                   <div className="dashboard-account-balance min-w-0 text-right">
                     <p
-                      className="break-all text-right font-bold tabular-nums text-slate-900"
+                      className="text-right font-semibold tabular-nums text-slate-900"
                       style={{ '--balance-length': showBalance ? formatCurrency(user.checking).length : 6 }}
                     >
                       {showBalance ? formatCurrency(user.checking) : hidden}
                     </p>
                   </div>
                 </div>
-                <div className={`grid ${getAccountBalanceLayoutClass(user.savings)} items-center gap-3 px-5 py-4 sm:px-6`}>
+                <div className="grid grid-cols-1 items-center gap-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-3 sm:px-6">
                   <div className="min-w-0">
                     <p className="font-semibold text-[#0a2540]">Savings</p>
                     <p className="text-xs text-slate-500">Available balance</p>
                   </div>
                   <div className="dashboard-account-balance min-w-0 text-right">
                     <p
-                      className="break-all text-right font-bold tabular-nums text-slate-900"
+                      className="text-right font-semibold tabular-nums text-slate-900"
                       style={{ '--balance-length': showBalance ? formatCurrency(user.savings).length : 6 }}
                     >
                       {showBalance ? formatCurrency(user.savings) : hidden}
@@ -1324,27 +1368,33 @@ function Dashboard() {
                 </div>
 
                 <div className="divide-y divide-slate-100 rounded-xl border border-slate-200">
-                  <div className="flex items-center justify-between gap-4 px-4 py-3">
+                  <div className="grid grid-cols-1 items-center gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-4">
                     <p className="text-sm text-slate-500">Total Balance</p>
-                    <p className="font-bold tabular-nums text-slate-900">
-                      {showBalance ? `$${user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '$ •••••••'}
-                    </p>
+                    <div className="dashboard-account-balance min-w-0">
+                      <p className="text-right font-semibold tabular-nums text-slate-900" style={{ '--balance-length': showBalance ? formatCurrency(user.balance).length : 6 }}>
+                        {showBalance ? formatCurrency(user.balance) : '$ •••••••'}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between gap-4 px-4 py-3">
                     <p className="text-sm text-slate-500">Account Type</p>
                     <p className="text-sm font-semibold text-slate-900">Personal Checking & Savings</p>
                   </div>
-                  <div className="flex items-center justify-between gap-4 px-4 py-3">
+                  <div className="grid grid-cols-1 items-center gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-4">
                     <p className="text-sm text-slate-500">Checking Balance</p>
-                    <p className="break-all font-bold tabular-nums text-slate-900">
-                      {showBalance ? `$${user.checking.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : hidden}
-                    </p>
+                    <div className="dashboard-account-balance min-w-0">
+                      <p className="text-right font-semibold tabular-nums text-slate-900" style={{ '--balance-length': showBalance ? formatCurrency(user.checking).length : 6 }}>
+                        {showBalance ? formatCurrency(user.checking) : hidden}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between gap-4 px-4 py-3">
+                  <div className="grid grid-cols-1 items-center gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-4">
                     <p className="text-sm text-slate-500">Savings Balance</p>
-                    <p className="break-all font-bold tabular-nums text-slate-900">
-                      {showBalance ? `$${user.savings.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : hidden}
-                    </p>
+                    <div className="dashboard-account-balance min-w-0">
+                      <p className="text-right font-semibold tabular-nums text-slate-900" style={{ '--balance-length': showBalance ? formatCurrency(user.savings).length : 6 }}>
+                        {showBalance ? formatCurrency(user.savings) : hidden}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

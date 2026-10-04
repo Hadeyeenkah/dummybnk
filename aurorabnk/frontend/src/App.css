@@ -307,13 +307,28 @@ body {
 
 .dashboard-account-balance {
   container-type: inline-size;
+  width: 100%;
+  min-width: 0;
 }
 
 .dashboard-account-balance > p {
-  font-size: 1.5rem;
-  font-size: clamp(0.625rem, calc(100cqi / (var(--balance-length) * 0.62)), 1.5rem);
+  max-width: 100%;
+  font-size: 1.125rem;
+  font-size: clamp(0.625rem, calc(100cqi / (var(--balance-length) * 0.62)), 1.125rem);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.dashboard-total-balance-value {
+  container-type: inline-size;
+}
+
+.dashboard-total-balance-amount {
+  max-width: 100%;
+  font-size: 1.75rem;
+  font-size: clamp(0.75rem, calc(100cqi / (var(--balance-length) * 0.62)), 1.75rem);
   line-height: 1.15;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .dashboard-balance-card::after {
