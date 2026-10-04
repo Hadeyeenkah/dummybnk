@@ -321,12 +321,14 @@ body {
 
 .dashboard-total-balance-value {
   container-type: inline-size;
+  width: 100%;
+  min-width: 0;
 }
 
 .dashboard-total-balance-amount {
   max-width: 100%;
-  font-size: 2.25rem;
-  font-size: clamp(0.75rem, calc(100cqi / (var(--balance-length) * 0.68)), 2.25rem);
+  font-size: 1.25rem;
+  font-size: clamp(1rem, calc(100cqi / (var(--balance-length) * 0.68)), 2.25rem);
   line-height: 1.15;
   white-space: nowrap;
 }
