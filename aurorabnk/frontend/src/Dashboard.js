@@ -960,7 +960,7 @@ function Dashboard() {
                   <div className="mt-1 flex w-full min-w-0 items-center gap-2">
                     <div className="dashboard-total-balance-value min-w-0 flex-1">
                       <p
-                        className="dashboard-total-balance-amount font-semibold tabular-nums"
+                        className="dashboard-total-balance-amount font-bold tabular-nums"
                         style={{ '--balance-length': showBalance ? formatCurrency(user.balance).length : 6 }}
                       >
                         {showBalance ? formatCurrency(user.balance) : '$ •••••••'}
