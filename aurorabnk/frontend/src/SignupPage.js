@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import AuroraBankLogo from './components/AuroraBankLogo';
 import { API_BASE } from './config';
 import './App.css';
 
 function SignupPage() {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', phone: '', dateOfBirth: '', password: '', confirmPassword: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [registrationSubmitted, setRegistrationSubmitted] = useState(false);
 
   const updateField = (field) => (event) => setFormData((current) => ({ ...current, [field]: event.target.value }));
 
@@ -44,7 +44,7 @@ function SignupPage() {
         const validationMessage = data.errors?.[0]?.msg;
         throw new Error(validationMessage || data.message || 'Unable to create your account.');
       }
-      navigate('/dashboard');
+      setRegistrationSubmitted(true);
     } catch (signupError) {
       setError(signupError.message);
     } finally {
@@ -57,6 +57,16 @@ function SignupPage() {
       <main className="auth-main flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
         <div className="login-card auth-login-card w-full max-w-2xl p-6 sm:p-8">
           <div className="mb-6 flex justify-center"><AuroraBankLogo /></div>
+          {registrationSubmitted ? (
+            <div className="text-center" role="status">
+              <h1 className="text-2xl font-bold text-white sm:text-3xl">Registration submitted</h1>
+              <p className="mt-3 text-sm text-slate-300">
+                Your account is awaiting administrator approval. If email verification is requested, please complete it too. You can sign in after your account has been approved.
+              </p>
+              <Link to="/login" className="auth-submit-btn mt-6 inline-block">Return to sign in</Link>
+            </div>
+          ) : (
+          <>
           <h1 className="text-center text-2xl font-bold text-white sm:text-3xl">Open your Aurora account</h1>
           <p className="mt-2 text-center text-sm text-slate-300">Create your secure banking profile in a few steps.</p>
           <form onSubmit={handleSubmit} className="mt-7 grid gap-4">
@@ -77,6 +87,8 @@ function SignupPage() {
             <button type="submit" disabled={submitting} className="auth-submit-btn mt-2 disabled:cursor-not-allowed disabled:opacity-60">{submitting ? 'Creating account...' : 'Create account'}</button>
           </form>
           <p className="mt-6 text-center text-sm text-slate-300">Already have an account? <Link to="/login" className="font-semibold text-cyan-300 hover:text-cyan-200">Sign in</Link></p>
+          </>
+          )}
         </div>
       </main>
     </div>

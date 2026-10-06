@@ -33,8 +33,8 @@ Browser will open at `http://localhost:3000`
    [EMAIL] Verification to your@email.com: http://localhost:5000/api/auth/verify-email?token=abc123...
    ```
 3. Copy that URL and paste it in your browser to verify email
-4. Go back to app → Click **"Sign In"** → Login with your credentials
-5. You're in! 🎉
+4. Wait for an administrator to approve the registration
+5. Go back to app → Click **"Sign In"** → Login with your credentials
 
 ## CORS Error Fix
 
@@ -65,11 +65,7 @@ After logging in, you can:
 
 ## Admin Account
 
-To test admin features:
-1. Sign up with email: `admin@aurorabank.com`
-2. Any password you choose
-3. Verify email from backend console
-4. Login - you'll have admin role automatically!
+Use a provisioned admin account. Public signup never grants admin privileges; the demo admin account is created by the backend's demo-user seeding process.
 
 ## Default Test Users
 

@@ -22,6 +22,11 @@ npm start
 ```
 Frontend runs on `http://localhost:3000`
 
+### New account approvals
+New customer registrations remain pending until an administrator approves them in the **New user approvals** section of the admin dashboard. Pending and declined registrations cannot sign in; approved customers can sign in with their registered email and password.
+
+Admin privileges are assigned only to provisioned admin accounts; registering with an admin email address does not grant admin access.
+
 ## ✨ Features
 
 ### Strong Authentication System

@@ -110,6 +110,11 @@ const UserSchema = new mongoose.Schema(
       enum: ['user', 'admin'],
       default: 'user'
     },
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'declined'],
+      default: 'approved'
+    },
 
     // For refresh token login systems
     refreshToken: {

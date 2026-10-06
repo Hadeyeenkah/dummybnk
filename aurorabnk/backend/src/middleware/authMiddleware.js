@@ -34,6 +34,9 @@ exports.protect = async (req, res, next) => {
 		if (!user) {
 			return res.status(401).json({ message: 'User not found' });
 		}
+		if (user.approvalStatus !== 'approved') {
+			return res.status(403).json({ message: 'This account is not approved for access.' });
+		}
 		req.user = user;
 		req.userId = decoded.userId;
 		next();
@@ -56,6 +59,9 @@ exports.protect = async (req, res, next) => {
 				const user = await User.findById(decoded.userId);
 				if (!user) {
 					return res.status(401).json({ message: 'User not found' });
+				}
+				if (user.approvalStatus !== 'approved') {
+					return res.status(403).json({ message: 'This account is not approved for access.' });
 				}
 				req.user = user;
 				req.userId = decoded.userId;

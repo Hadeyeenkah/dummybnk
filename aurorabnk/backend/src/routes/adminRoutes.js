@@ -77,6 +77,7 @@ router.get('/users', protect, requireRole('admin'), async (req, res) => {
             accountType: t.accountType,
           })),
           role: user.role,
+          approvalStatus: user.approvalStatus,
           estimatedTradeTotal,
           todaysReturn,
           todaysReturnPercent,
@@ -90,6 +91,68 @@ router.get('/users', protect, requireRole('admin'), async (req, res) => {
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/pending-users', protect, requireRole('admin'), async (_req, res) => {
+  try {
+    const users = await User.find({ role: 'user', approvalStatus: 'pending' })
+      .select('firstName lastName email createdAt isVerified')
+      .sort({ createdAt: 1 })
+      .lean();
+
+    res.json({
+      users: users.map((user) => ({
+        id: user._id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        createdAt: user.createdAt,
+        isVerified: user.isVerified,
+      })),
+    });
+  } catch (error) {
+    console.error('Get pending users error:', error);
+    res.status(500).json({ message: 'Unable to load pending user registrations.' });
+  }
+});
+
+router.patch('/users/:userId/approval', protect, requireRole('admin'), async (req, res) => {
+  const { userId } = req.params;
+  const { approvalStatus } = req.body || {};
+  if (!mongoose.isValidObjectId(userId)) {
+    return res.status(400).json({ message: 'Invalid user ID.' });
+  }
+  if (!['approved', 'declined'].includes(approvalStatus)) {
+    return res.status(400).json({ message: 'Approval status must be approved or declined.' });
+  }
+
+  try {
+    const user = await User.findOneAndUpdate(
+      { _id: userId, role: 'user', approvalStatus: 'pending' },
+      { $set: { approvalStatus } },
+      { new: true, runValidators: true }
+    ).select('firstName lastName email approvalStatus');
+
+    if (user) {
+      return res.json({
+        message: approvalStatus === 'approved' ? 'User account approved.' : 'User registration declined.',
+        user: {
+          id: user._id,
+          name: `${user.firstName} ${user.lastName}`,
+          email: user.email,
+          approvalStatus: user.approvalStatus,
+        },
+      });
+    }
+
+    const existingUser = await User.findById(userId).select('approvalStatus role');
+    if (!existingUser || existingUser.role === 'admin') {
+      return res.status(404).json({ message: 'Pending user registration not found.' });
+    }
+    return res.status(409).json({ message: 'This user registration has already been reviewed.' });
+  } catch (error) {
+    console.error('Update user approval error:', error);
+    res.status(500).json({ message: 'Unable to update user approval.' });
   }
 });
 

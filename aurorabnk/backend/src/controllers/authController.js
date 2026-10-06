@@ -35,8 +35,6 @@ exports.register = async (req, res) => {
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
-    const role = email.toLowerCase() === 'admin@aurorabank.com' ? 'admin' : 'user';
-
     let user = null;
     try {
       user = await User.create({
@@ -50,7 +48,8 @@ exports.register = async (req, res) => {
         isVerified: false,
         verificationToken,
         verificationExpires,
-        role,
+        role: 'user',
+        approvalStatus: 'pending',
         accounts: [
           { accountType: 'checking', accountNumber: `CHK${Date.now()}`, balance: 1000 },
           { accountType: 'savings', accountNumber: `SAV${Date.now()}`, balance: 0 },
@@ -77,12 +76,8 @@ exports.register = async (req, res) => {
       console.log('⚠️  Email service unavailable:', emailErr.message);
     }
 
-    // Issue auth cookies immediately so the user can land in the app post-signup
-    const { accessToken, refreshToken } = generateTokens(user._id || user.id);
-    setAuthCookies(res, { accessToken, refreshToken });
-
     res.status(201).json({
-      message: 'User registered successfully. Please check your email to verify your account.',
+      message: 'Registration submitted. Please verify your email and wait for an administrator to approve your account before signing in.',
       verificationLink: process.env.NODE_ENV === 'production' ? undefined : link,
       user: {
         id: user._id || user.id,
@@ -91,6 +86,7 @@ exports.register = async (req, res) => {
         lastName: user.lastName,
         role: user.role,
         isVerified: user.isVerified,
+        approvalStatus: user.approvalStatus,
       },
     });
   } catch (error) {
@@ -176,6 +172,13 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    if (user.approvalStatus === 'pending') {
+      return res.status(403).json({ message: 'Your account is awaiting administrator approval.' });
+    }
+    if (user.approvalStatus === 'declined') {
+      return res.status(403).json({ message: 'Your account registration was declined. Please contact the bank for assistance.' });
+    }
+
     // Generate account number if user doesn't have one (for existing users)
     if (!user.accountNumber) {
       console.log('⚠️ User missing account number, generating on login...');
@@ -257,8 +260,11 @@ exports.refreshToken = async (req, res) => {
       refreshToken,
       process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET || 'dev-access-secret-change-me'
     );
-    const user = await User.findById(decoded.userId).select('_id');
+    const user = await User.findById(decoded.userId).select('_id approvalStatus');
     if (!user) return res.status(401).json({ message: 'Session is no longer valid' });
+    if (user.approvalStatus !== 'approved') {
+      return res.status(403).json({ message: 'This account is not approved for access.' });
+    }
 
     const tokens = generateTokens(decoded.userId);
     setAuthCookies(res, tokens);
@@ -453,8 +459,11 @@ exports.verify2FA = async (req, res) => {
     const decoded = jwt.verify(challengeToken, process.env.JWT_SECRET);
     if (decoded.type !== 'mfa') return res.status(400).json({ message: 'Invalid challenge' });
 
-    const user = await User.findById(decoded.userId).select('+mfaSecret');
+    const user = await User.findById(decoded.userId).select('+mfaSecret approvalStatus');
     if (!user || !user.mfaEnabled || !user.mfaSecret) return res.status(400).json({ message: '2FA not enabled' });
+    if (user.approvalStatus !== 'approved') {
+      return res.status(403).json({ message: 'This account is not approved for access.' });
+    }
 
     const verified = speakeasy.totp.verify({
       secret: user.mfaSecret,

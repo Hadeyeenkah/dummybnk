@@ -20,7 +20,7 @@
 
 #### 3. **Role-Based Access Control**
 - Two roles: `user` (default) and `admin`
-- Admin account auto-assigned: `admin@aurorabank.com`
+- Admin access is limited to provisioned admin accounts; public signup does not grant admin privileges.
 - Middleware `requireRole('admin')` protects admin-only routes
 - Frontend `RequireAuth` wrapper blocks unauthenticated access to dashboard/features
 

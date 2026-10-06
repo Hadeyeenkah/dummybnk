@@ -45,7 +45,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email: email.toLowerCase() }).select('+password approvalStatus');
     if (!user) {
       return {
         statusCode: 401,
@@ -60,6 +60,21 @@ exports.handler = async (event, context) => {
         statusCode: 401,
         headers,
         body: JSON.stringify({ message: 'Invalid credentials' })
+      };
+    }
+
+    if (user.approvalStatus === 'pending') {
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ message: 'Your account is awaiting administrator approval.' })
+      };
+    }
+    if (user.approvalStatus === 'declined') {
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({ message: 'Your account registration was declined. Please contact the bank for assistance.' })
       };
     }
 

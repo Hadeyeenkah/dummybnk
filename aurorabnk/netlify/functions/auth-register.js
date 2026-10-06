@@ -1,6 +1,5 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
 const User = require('backend/src/models/User');
 const { connectDB } = require('backend/src/config/database');
 
@@ -57,8 +56,6 @@ exports.handler = async (event, context) => {
     const passwordHash = await bcrypt.hash(password, salt);
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
-    const role = email.toLowerCase() === 'admin@aurorabank.com' ? 'admin' : 'user';
-
     let user = null;
     try {
       user = await User.create({
@@ -72,7 +69,8 @@ exports.handler = async (event, context) => {
         isVerified: false,
         verificationToken,
         verificationExpires,
-        role,
+        role: 'user',
+        approvalStatus: 'pending',
         accounts: [
           { accountType: 'checking', accountNumber: `CHK${Date.now()}`, balance: 1000 },
           { accountType: 'savings', accountNumber: `SAV${Date.now()}`, balance: 0 },
@@ -86,16 +84,16 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '24h' });
     return {
       statusCode: 201,
       headers,
       body: JSON.stringify({
-        token,
+        message: 'Registration submitted. Please verify your email and wait for an administrator to approve your account before signing in.',
         user: {
           id: user._id,
           email: user.email,
-          name: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email
+          name: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email,
+          approvalStatus: user.approvalStatus,
         }
       })
     };
@@ -107,13 +105,4 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ message: 'Server error', error: error.message })
     };
   }
-      statusCode: 500,
-      body: JSON.stringify({ message: 'Database error', error: dbError.message })
-    };
-  }
-
-  return {
-    statusCode: 201,
-    body: JSON.stringify({ message: 'User registered', user: { email: user.email, firstName: user.firstName, lastName: user.lastName } })
-  };
 };

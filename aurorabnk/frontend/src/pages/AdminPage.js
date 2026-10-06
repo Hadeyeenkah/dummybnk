@@ -69,6 +69,7 @@ const finiteNumber = (value, fallback = 0) => {
 
 const navItems = [
   { id: 'users', label: 'User management' },
+  { id: 'user-approvals', label: 'New user approvals' },
   { id: 'approvals', label: 'Pending approvals' },
   { id: 'transactions', label: 'Transaction management' },
   { id: 'chat', label: 'User chat' },
@@ -84,7 +85,9 @@ function AdminPage() {
   const [editingUser, setEditingUser] = useState(null);
   const [editValues, setEditValues] = useState({});
   const [displayUsers, setDisplayUsers] = useState([]);
+  const [displayPendingUsers, setDisplayPendingUsers] = useState([]);
   const [displayPendingApprovals, setDisplayPendingApprovals] = useState([]);
+  const [pendingUserActionId, setPendingUserActionId] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [showAddTransactionModal, setShowAddTransactionModal] = useState(false);
@@ -196,6 +199,21 @@ function AdminPage() {
 
       const usersData = await readResponseData(usersRes);
       if (isMounted.current) setDisplayUsers(Array.isArray(usersData.users) ? usersData.users : []);
+
+      const pendingUsersRes = await fetch(`${API_BASE}/admin/pending-users`, {
+        credentials: 'include',
+        headers: getAuthHeaders(),
+      });
+      if (pendingUsersRes.ok) {
+        const pendingUsersData = await readResponseData(pendingUsersRes);
+        if (isMounted.current) {
+          setDisplayPendingUsers(Array.isArray(pendingUsersData.users) ? pendingUsersData.users : []);
+        }
+      } else if (handleAuthorizationFailure(pendingUsersRes)) {
+        return;
+      } else {
+        console.error('Failed to fetch pending user registrations:', await readResponseData(pendingUsersRes));
+      }
 
       const approvalsRes = await fetch(`${API_BASE}/admin/pending-approvals`, {
         credentials: 'include',
@@ -647,6 +665,33 @@ function AdminPage() {
     }
   };
 
+  const handleUserApproval = async (userId, approvalStatus) => {
+    setPendingUserActionId(userId);
+    try {
+      const response = await fetch(`${API_BASE}/admin/users/${encodeURIComponent(userId)}/approval`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ approvalStatus }),
+      });
+      const data = await readResponseData(response);
+      if (!response.ok) {
+        if (handleAuthorizationFailure(response)) return;
+        throw new Error(data.message || 'Unable to update user approval.');
+      }
+
+      setDisplayPendingUsers((users) => users.filter((user) => user.id !== userId));
+      setDisplayUsers((users) => users.map((user) => (
+        user.id === userId ? { ...user, approvalStatus } : user
+      )));
+    } catch (error) {
+      console.error('Update user approval error:', error);
+      alert(error.message || 'Unable to update user approval.');
+    } finally {
+      setPendingUserActionId(null);
+    }
+  };
+
   const handleEdit = (user) => {
     setEditingUser(user.id);
     setEditValues({
@@ -887,8 +932,8 @@ function AdminPage() {
             <p className="mt-2 text-2xl font-semibold tabular-nums">${systemBalance.toFixed(2)}</p>
           </div>
           <div className="bg-white p-5">
-            <p className="text-sm text-[#5b6459]">Pending approvals</p>
-            <p className={`mt-2 text-2xl font-semibold tabular-nums ${displayPendingApprovals.length > 0 ? 'text-[#A9843C]' : ''}`}>{displayPendingApprovals.length}</p>
+            <p className="text-sm text-[#5b6459]">New user approvals</p>
+            <p className={`mt-2 text-2xl font-semibold tabular-nums ${displayPendingUsers.length > 0 ? 'text-[#A9843C]' : ''}`}>{displayPendingUsers.length}</p>
           </div>
           <div className="bg-white p-5">
             <p className="text-sm text-[#5b6459]">Total transactions</p>
@@ -901,7 +946,8 @@ function AdminPage() {
           <nav className="flex gap-1 overflow-x-auto border border-[#D9DBD2] bg-white p-2 lg:h-fit lg:flex-col lg:overflow-visible lg:p-2">
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
-              const badge = item.id === 'approvals' ? displayPendingApprovals.length
+              const badge = item.id === 'user-approvals' ? displayPendingUsers.length
+                : item.id === 'approvals' ? displayPendingApprovals.length
                 : item.id === 'chat' ? conversations.length
                 : null;
               return (
@@ -920,7 +966,7 @@ function AdminPage() {
                   <span className="whitespace-nowrap">{item.label}</span>
                   {badge !== null && badge > 0 && (
                     <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${
-                      item.id === 'approvals' ? 'bg-[#FBF6EC] text-[#8a6c2e]' : 'bg-[#ECEDE7] text-[#5b6459]'
+                      item.id === 'user-approvals' || item.id === 'approvals' ? 'bg-[#FBF6EC] text-[#8a6c2e]' : 'bg-[#ECEDE7] text-[#5b6459]'
                     }`}>
                       {badge}
                     </span>
@@ -1260,6 +1306,52 @@ function AdminPage() {
                               Edit
                             </button>
                           )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {activeTab === 'user-approvals' && (
+              <section className="border border-[#D9DBD2] bg-white">
+                <div className="border-b border-[#D9DBD2] px-5 py-5 sm:px-6">
+                  <h2 className="text-lg font-semibold">New user registrations</h2>
+                  <p className="mt-1 text-sm text-[#5b6459]">Approve a registration to allow the user to sign in, or decline it to deny account access.</p>
+                </div>
+                {loading ? (
+                  <p className="px-6 py-10 text-center text-sm text-[#5b6459]">Loading registrations…</p>
+                ) : displayPendingUsers.length === 0 ? (
+                  <p className="px-6 py-10 text-center text-sm text-[#5b6459]">No new user registrations awaiting approval.</p>
+                ) : (
+                  <div className="divide-y divide-[#ECEDE7]">
+                    {displayPendingUsers.map((user) => (
+                      <div key={user.id} className="flex flex-col gap-4 border-l-2 border-[#A9843C] bg-[#FBF6EC] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                        <div className="min-w-0">
+                          <p className="font-semibold">{user.name}</p>
+                          <p className="text-sm text-[#5b6459]">{user.email}</p>
+                          <p className="mt-1 text-xs text-[#8a9081]">
+                            Registered {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'date unavailable'}
+                            {' · '}
+                            {user.isVerified ? 'Email verified' : 'Email not verified'}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 gap-2">
+                          <button
+                            onClick={() => handleUserApproval(user.id, 'approved')}
+                            disabled={pendingUserActionId === user.id}
+                            className="rounded-md bg-[#163B2E] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#0F2C22] disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleUserApproval(user.id, 'declined')}
+                            disabled={pendingUserActionId === user.id}
+                            className="rounded-md border border-[#9B3232] px-3 py-1.5 text-sm font-semibold text-[#9B3232] hover:bg-[#fbf1f1] disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Decline
+                          </button>
                         </div>
                       </div>
                     ))}
